@@ -1,19 +1,8 @@
-import { countWords, deriveDisplayTitleState, extractSnippet } from '@tolaria/markdown'
+import { projectMobileNotes, type MobileNote, type MobileNoteSource } from './mobileNoteProjection'
 
-export interface MobileNote {
-  id: string
-  type: string
-  icon: string
-  date: string
-  modified: string
-  content: string
-  title: string
-  snippet: string
-  words: number
-  tags: string[]
-}
+export type { MobileNote } from './mobileNoteProjection'
 
-const noteContent = [
+const noteContent: MobileNoteSource[] = [
   {
     id: 'workflow',
     type: 'Essay',
@@ -76,15 +65,7 @@ const noteContent = [
   },
 ]
 
-export const notes: MobileNote[] = noteContent.map((note) => {
-  const titleState = deriveDisplayTitleState({ content: note.content, filename: note.filename })
-  return {
-    ...note,
-    title: titleState.title,
-    snippet: extractSnippet(note.content),
-    words: countWords(note.content),
-  }
-})
+export const notes: MobileNote[] = projectMobileNotes(noteContent)
 
 export const sidebarSections = [
   {

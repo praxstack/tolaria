@@ -8,7 +8,7 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 
 - Branch: `codex/mobile`
 - Active phase: Phase 2 - Mobile Shell
-- Active slice: Prepare compact navigation for gesture-driven phone shell
+- Active slice: Separate mobile note projection from fixtures
 - Push policy: commit locally; do not push unless explicitly requested
 - Validation target: iPad/iOS simulator first
 
@@ -35,6 +35,7 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Split mobile styles into small panel-specific StyleSheet modules so new mobile code starts at CodeScene `10.0`.
 - Pinned Expo runtime dependencies to the versions expected by Expo 55 after the initial generated versions failed iOS bundle export (`react-native@0.83.6`, `react@19.2.0`, matching safe-area/svg versions).
 - Extracted compact phone navigation into a pure tested state machine so future swipe gestures can dispatch explicit events instead of mutating panels ad hoc.
+- Extracted mobile note projection into a pure module that turns raw vault-like note records into the list/editor shape used by the mobile shell.
 
 ## Next Action
 
@@ -85,6 +86,10 @@ Continue Phase 2 with the next mobile shell slice:
 - `pnpm --filter @tolaria/mobile typecheck` passed after compact navigation extraction.
 - CodeScene after compact navigation extraction: `apps/mobile/src/compactNavigation.ts`, `apps/mobile/src/compactNavigation.test.ts`, and the touched `apps/mobile/src/MobileApp.tsx` scored `10`.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after compact navigation extraction.
+- `pnpm --filter @tolaria/mobile test` passed after note projection extraction: 3 files / 8 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after note projection extraction.
+- CodeScene after note projection extraction: `apps/mobile/src/mobileNoteProjection.ts` and `apps/mobile/src/mobileNoteProjection.test.ts` scored `10`; `apps/mobile/src/demoData.ts` returned no scorable code and no findings.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after note projection extraction.
 
 ## Risks / Watch Items
 
