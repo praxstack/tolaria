@@ -39,11 +39,15 @@ import { styles } from './styles'
 import { colors } from './theme'
 import { MobileNoteCreatePrompt } from './MobileNoteCreatePrompt'
 import { useMobileNoteCreateFlow } from './useMobileNoteCreateFlow'
+import { createNativeMobileAppStateStorage } from './mobileNativeAppStateStorage'
+
+const activeMobileVaultId = 'personal'
 
 export function MobileApp() {
   const { width } = useWindowDimensions()
   const isTablet = width >= 820
   const showsProperties = width >= 1120
+  const appStateStorage = useMemo(() => createNativeMobileAppStateStorage(), [])
   const [availableNotes, setAvailableNotes] = useState(fallbackNotes)
   const [compactNavigation, setCompactNavigation] = useState(() => createCompactNavigationState(fallbackNotes[0].id))
   const [saveStateByNoteId, setSaveStateByNoteId] = useState<Record<string, MobileEditorSaveState>>({})
@@ -70,11 +74,11 @@ export function MobileApp() {
   useEffect(() => {
     let isActive = true
 
-    loadDemoVaultNotes()
-      .then((loadedNotes) => {
+    Promise.all([loadDemoVaultNotes(), appStateStorage.load(activeMobileVaultId)])
+      .then(([loadedNotes, appState]) => {
         if (isActive && loadedNotes.length > 0) {
           setAvailableNotes(loadedNotes)
-          setCompactNavigation((state) => selectLoadedNote(state, loadedNotes))
+          setCompactNavigation((state) => selectLoadedNote(state, loadedNotes, appState.selectedNoteId))
         }
       })
       .catch(() => {})
@@ -82,19 +86,21 @@ export function MobileApp() {
     return () => {
       isActive = false
     }
-  }, [])
+  }, [appStateStorage])
 
   useEffect(() => () => autosaveQueue.cancelAll(), [autosaveQueue])
 
-  const selectNote = (note: MobileNote) => {
-    setCompactNavigation((state) => transitionCompactNavigation(state, { type: 'selectNote', noteId: note.id }))
-  }
+  const selectNoteId = useCallback((noteId: string) => {
+    setCompactNavigation((state) => transitionCompactNavigation(state, { type: 'selectNote', noteId }))
+    void appStateStorage.save({ activeVaultId: activeMobileVaultId, selectedNoteId: noteId }).catch(() => {})
+  }, [appStateStorage])
+  const selectNote = useCallback((note: MobileNote) => selectNoteId(note.id), [selectNoteId])
   const saveDraft = useCallback((draft: MobileEditorDraft) => autosaveQueue.enqueue(draft), [autosaveQueue])
   const createFlow = useMobileNoteCreateFlow({
     createNote: (title) => createDemoVaultNote({ title }),
     onCreated: (note) => {
       setAvailableNotes((notes) => [note, ...notes.filter((item) => item.id !== note.id)])
-      setCompactNavigation((state) => transitionCompactNavigation(state, { type: 'selectNote', noteId: note.id }))
+      selectNoteId(note.id)
     },
   })
 
@@ -352,7 +358,15 @@ function NoteListPanel({
   )
 }
 
-function selectLoadedNote(state: ReturnType<typeof createCompactNavigationState>, loadedNotes: MobileNote[]) {
+function selectLoadedNote(
+  state: ReturnType<typeof createCompactNavigationState>,
+  loadedNotes: MobileNote[],
+  preferredNoteId: string | null,
+) {
+  if (preferredNoteId && loadedNotes.some((note) => note.id === preferredNoteId)) {
+    return { ...state, selectedNoteId: preferredNoteId }
+  }
+
   return loadedNotes.some((note) => note.id === state.selectedNoteId)
     ? state
     : { ...state, selectedNoteId: loadedNotes[0].id }

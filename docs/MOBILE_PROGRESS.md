@@ -65,14 +65,15 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Added the first app-local mobile note creation path and wired the compose button to write a new Markdown note, prepend it to the current list, and select it through the shared compact navigation reducer.
 - Added create-note UX state so the compose button disables during app-local creation and displays a compact failure message if storage creation fails.
 - Added a title-entry prompt for mobile note creation so new notes are named before they are written to app-local storage.
+- Added app-managed mobile state storage for the active vault and last selected note, then restored and persisted note selection across launches.
 
 ## Next Action
 
 Continue Phase 3 with app-managed vault storage hardening:
 
-1. Add local saved state for active vault and last selected note, then restore it on launch.
-2. Add delete/archive support for local app-managed notes.
-3. Add a focused simulator interaction path for create/open/edit/autosave once Expo Go's overlay no longer blocks clean screenshots.
+1. Add delete/archive support for local app-managed notes.
+2. Add a focused simulator interaction path for create/open/edit/autosave once Expo Go's overlay no longer blocks clean screenshots.
+3. Add app-local vault metadata beyond the hardcoded demo vault id.
 
 ## Verification Log
 
@@ -221,6 +222,11 @@ Continue Phase 3 with app-managed vault storage hardening:
 - CodeScene after title-entry note creation: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/MobileNoteCreatePrompt.tsx`, `apps/mobile/src/useMobileNoteCreateFlow.ts`, `apps/mobile/src/mobileDemoVault.ts`, `apps/mobile/src/mobileNoteCreate.test.ts`, and `apps/mobile/src/styles/noteCreateStyles.ts` scored `10`.
 - `pnpm --filter @tolaria/mobile test` passed after title-entry note creation: 17 files / 54 tests.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after title-entry note creation.
+- `pnpm --filter @tolaria/mobile test -- src/mobileAppStateStorage.test.ts src/mobileNoteCreate.test.ts` passed after saved app state storage: 18 files / 57 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after saved app state storage.
+- CodeScene after saved app state storage: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/mobileAppStateStorage.ts`, `apps/mobile/src/mobileAppStateStorage.test.ts`, and `apps/mobile/src/mobileNativeAppStateStorage.ts` scored `10`.
+- `pnpm --filter @tolaria/mobile test` passed after saved app state storage: 18 files / 57 tests.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after saved app state storage.
 
 ## Risks / Watch Items
 
