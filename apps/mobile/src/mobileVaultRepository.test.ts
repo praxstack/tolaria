@@ -51,6 +51,34 @@ describe('mobile vault repository', () => {
     })
   })
 
+  it('projects supported frontmatter metadata from app-local markdown storage', async () => {
+    const repository = createStoredMobileVaultRepository({
+      storage: createMemoryMobileVaultStorage([
+        {
+          path: 'workflow.md',
+          content: [
+            '---',
+            'type: Essay',
+            'icon: pen-nib',
+            'date: 2026-05-05',
+            'tags: [Tolaria MVP, mobile]',
+            '---',
+            '# Workflow',
+          ].join('\n'),
+        },
+      ]),
+      vault: createVault(),
+    })
+
+    await expect(repository.readNote('workflow')).resolves.toMatchObject({
+      id: 'workflow',
+      type: 'Essay',
+      icon: 'pen-nib',
+      date: '2026-05-05',
+      tags: ['Tolaria MVP', 'mobile'],
+    })
+  })
+
   it('deletes notes from app-local markdown storage by id', async () => {
     const repository = createStoredMobileVaultRepository({
       storage: createMemoryMobileVaultStorage([

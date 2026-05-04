@@ -1,4 +1,5 @@
 import { projectMobileNote, projectMobileNotes, type MobileNote, type MobileNoteSource } from './mobileNoteProjection'
+import { readMobileNoteFrontmatter } from './mobileNoteFrontmatter'
 import type { MobileVaultConfig } from './mobileVaultConfig'
 import type { MobileVaultFile, MobileVaultStorageDriver } from './mobileVaultStorage'
 
@@ -53,15 +54,17 @@ async function findFileById({
 }
 
 function fileToSource(file: MobileVaultFile): MobileNoteSource {
+  const metadata = readMobileNoteFrontmatter(file.content)
+
   return {
     id: fileId(file.path),
-    type: 'Note',
-    icon: 'file-text',
-    date: '',
+    type: metadata.type ?? 'Note',
+    icon: metadata.icon ?? 'file-text',
+    date: metadata.date ?? '',
     modified: '',
     filename: file.path,
     content: file.content,
-    tags: [],
+    tags: metadata.tags,
   }
 }
 

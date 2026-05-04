@@ -75,12 +75,13 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Added first-class runtime vault load failure state with a visible retry notice in the note list, replacing the previous silent failure path.
 - Completed the Phase 3 app-managed vault storage path for the current single-vault mobile app: app-local metadata, seeded markdown files, note listing, open, autosave, create, delete, last selection restore, runtime retry, and iPad/iPhone simulator render validation.
 - Deferred archive as a first-class mobile note state until the mobile vault schema/frontmatter model is explicit; implementing archive now as file movement would create throwaway semantics that may conflict with desktop-compatible metadata.
+- Added mobile frontmatter metadata parsing for stored markdown notes, including type, icon, date, and inline tags, so app-local vault scans can project note metadata instead of hardcoding every stored note as a generic file.
 
 ## Next Action
 
 Continue Phase 4 with editor durability:
 
-1. Add frontmatter parsing/serialization for mobile note saves so type/date/status/icon and future archive state round-trip through canonical Markdown.
+1. Add frontmatter serialization helpers for future mobile property edits, including type/date/status/icon/tags and eventual archive state.
 2. Expand TenTap Markdown serialization coverage for common writing constructs and preserve unsupported blocks without corrupting files.
 3. Add simulator interaction coverage for create/open/edit/autosave/delete using a development-client path or another route that avoids Expo Go's overlay controls.
 
@@ -259,6 +260,11 @@ Continue Phase 4 with editor durability:
 - `pnpm --filter @tolaria/mobile exec expo start --ios --clear --port 8090` launched the runtime metadata/retry build in Expo Go.
 - iPhone simulator screenshot captured at `/tmp/tolaria-mobile-runtime-iphone.png`; the note list rendered from app-local storage with no red runtime error overlay, but Expo Go's gear overlay still blocks clean interaction screenshots.
 - iPad simulator screenshot captured at `/tmp/tolaria-mobile-runtime-ipad-loaded.png`; the iPad split layout rendered stored notes and TenTap content with the `Ready` save state and no red runtime error overlay.
+- `pnpm --filter @tolaria/mobile test -- src/mobileNoteFrontmatter.test.ts src/mobileVaultRepository.test.ts src/mobileEditorDraft.test.ts` passed after mobile frontmatter metadata parsing: 23 files / 74 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after mobile frontmatter metadata parsing.
+- CodeScene after mobile frontmatter metadata parsing: `apps/mobile/src/mobileNoteFrontmatter.ts`, `apps/mobile/src/mobileNoteFrontmatter.test.ts`, `apps/mobile/src/mobileVaultRepository.ts`, and `apps/mobile/src/mobileVaultRepository.test.ts` scored `10`.
+- `pnpm --filter @tolaria/mobile test` passed after mobile frontmatter metadata parsing: 23 files / 74 tests.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after mobile frontmatter metadata parsing.
 
 ## Risks / Watch Items
 
