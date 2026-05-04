@@ -5,40 +5,50 @@ import { createMobileNoteFile } from './mobileNoteCreate'
 import {
   createMobileVaultConfigFromMetadata,
   defaultMobileVaultMetadata,
+  type MobileVaultMetadata,
 } from './mobileVaultMetadata'
 import { createNativeMobileVaultStorage } from './mobileNativeVaultStorage'
 import { createStoredMobileVaultRepository } from './mobileVaultRepository'
 import { seedMobileVaultIfEmpty } from './mobileVaultSeed'
 import type { MobileVaultFile } from './mobileVaultStorage'
 
-const demoVault = createDemoVaultConfig()
-
-export async function loadDemoVaultNotes() {
+export async function loadDemoVaultNotes(vaultMetadata = defaultMobileVaultMetadata) {
   const storage = createNativeMobileVaultStorage()
+  const demoVault = createDemoVaultConfig(vaultMetadata)
   await seedMobileVaultIfEmpty({ files: demoVaultFiles(), storage, vault: demoVault })
 
   return createStoredMobileVaultRepository({ storage, vault: demoVault }).listNotes()
 }
 
-export function saveDemoVaultDraft(draft: MobileEditorDraft) {
+export function saveDemoVaultDraft(draft: MobileEditorDraft, vaultMetadata = defaultMobileVaultMetadata) {
   return saveMobileEditorDraft({
     draft,
     storage: createNativeMobileVaultStorage(),
-    vault: demoVault,
+    vault: createDemoVaultConfig(vaultMetadata),
   })
 }
 
-export async function createDemoVaultNote({ title }: { title?: string } = {}) {
+export async function createDemoVaultNote({
+  title,
+  vaultMetadata = defaultMobileVaultMetadata,
+}: {
+  title?: string
+  vaultMetadata?: MobileVaultMetadata
+} = {}) {
   const storage = createNativeMobileVaultStorage()
+  const demoVault = createDemoVaultConfig(vaultMetadata)
   const file = createMobileNoteFile({ title })
   await storage.writeMarkdownFile(demoVault, file.path, file.content)
 
   return createStoredMobileVaultRepository({ storage, vault: demoVault }).readNote(file.path.replace(/\.md$/, ''))
 }
 
-export async function deleteDemoVaultNote(noteId: string) {
+export async function deleteDemoVaultNote(noteId: string, vaultMetadata = defaultMobileVaultMetadata) {
   const storage = createNativeMobileVaultStorage()
-  await createStoredMobileVaultRepository({ storage, vault: demoVault }).deleteNote(noteId)
+  await createStoredMobileVaultRepository({
+    storage,
+    vault: createDemoVaultConfig(vaultMetadata),
+  }).deleteNote(noteId)
 }
 
 function demoVaultFiles(): MobileVaultFile[] {
@@ -48,6 +58,6 @@ function demoVaultFiles(): MobileVaultFile[] {
   }))
 }
 
-function createDemoVaultConfig() {
-  return createMobileVaultConfigFromMetadata(defaultMobileVaultMetadata)
+function createDemoVaultConfig(vaultMetadata: MobileVaultMetadata) {
+  return createMobileVaultConfigFromMetadata(vaultMetadata)
 }

@@ -42,15 +42,18 @@ import { MobileNoteCreatePrompt } from './MobileNoteCreatePrompt'
 import { useMobileNoteCreateFlow } from './useMobileNoteCreateFlow'
 import { useMobileNoteDeleteFlow } from './useMobileNoteDeleteFlow'
 import { createNativeMobileAppStateStorage } from './mobileNativeAppStateStorage'
+import { createNativeMobileVaultMetadataStorage } from './mobileNativeVaultMetadataStorage'
 import { defaultMobileVaultMetadata } from './mobileVaultMetadata'
-
-const activeMobileVaultId = defaultMobileVaultMetadata.id
+import type { MobileVaultRuntime } from './mobileVaultRuntime'
+import { useMobileVaultRuntimeLoader } from './useMobileVaultRuntimeLoader'
 
 export function MobileApp() {
   const { width } = useWindowDimensions()
   const isTablet = width >= 820
   const showsProperties = width >= 1120
   const appStateStorage = useMemo(() => createNativeMobileAppStateStorage(), [])
+  const vaultMetadataStorage = useMemo(() => createNativeMobileVaultMetadataStorage(), [])
+  const [activeVaultMetadata, setActiveVaultMetadata] = useState(defaultMobileVaultMetadata)
   const [availableNotes, setAvailableNotes] = useState(fallbackNotes)
   const [compactNavigation, setCompactNavigation] = useState(() => createCompactNavigationState(fallbackNotes[0].id))
   const [saveStateByNoteId, setSaveStateByNoteId] = useState<Record<string, MobileEditorSaveState>>({})
@@ -63,7 +66,7 @@ export function MobileApp() {
     () =>
       createMobileAutosaveQueue({
         delayMs: 700,
-        saveDraft: saveDemoVaultDraft,
+        saveDraft: (draft) => saveDemoVaultDraft(draft, activeVaultMetadata),
         onStateChange: (noteId, saveState) => {
           setSaveStateByNoteId((state) => ({ ...state, [noteId]: saveState }))
         },
@@ -71,44 +74,40 @@ export function MobileApp() {
           setAvailableNotes((notes) => applySavedMobileEditorDraft({ draft, notes }))
         },
       }),
-    [],
+    [activeVaultMetadata],
   )
 
-  useEffect(() => {
-    let isActive = true
+  const applyLoadedVaultRuntime = useCallback(({ activeVault, notes, selectedNoteId }: MobileVaultRuntime) => {
+    setActiveVaultMetadata(activeVault)
+    setAvailableNotes(notes)
+    setCompactNavigation((state) => selectLoadedNote(state, notes, selectedNoteId))
+  }, [])
 
-    Promise.all([loadDemoVaultNotes(), appStateStorage.load(activeMobileVaultId)])
-      .then(([loadedNotes, appState]) => {
-        if (isActive && loadedNotes.length > 0) {
-          setAvailableNotes(loadedNotes)
-          setCompactNavigation((state) => selectLoadedNote(state, loadedNotes, appState.selectedNoteId))
-        }
-      })
-      .catch(() => {})
-
-    return () => {
-      isActive = false
-    }
-  }, [appStateStorage])
+  useMobileVaultRuntimeLoader({
+    appStateStorage,
+    loadNotes: loadDemoVaultNotes,
+    metadataStorage: vaultMetadataStorage,
+    onLoaded: applyLoadedVaultRuntime,
+  })
 
   useEffect(() => () => autosaveQueue.cancelAll(), [autosaveQueue])
 
   const selectNoteId = useCallback((noteId: string) => {
     setCompactNavigation((state) => transitionCompactNavigation(state, { type: 'selectNote', noteId }))
-    void appStateStorage.save({ activeVaultId: activeMobileVaultId, selectedNoteId: noteId }).catch(() => {})
-  }, [appStateStorage])
+    void appStateStorage.save({ activeVaultId: activeVaultMetadata.id, selectedNoteId: noteId }).catch(() => {})
+  }, [activeVaultMetadata.id, appStateStorage])
   const selectNote = useCallback((note: MobileNote) => selectNoteId(note.id), [selectNoteId])
   const saveDraft = useCallback((draft: MobileEditorDraft) => autosaveQueue.enqueue(draft), [autosaveQueue])
   const deleteFlow = useMobileNoteDeleteFlow({
-    deleteNote: deleteDemoVaultNote,
-    loadNotes: loadDemoVaultNotes,
+    deleteNote: (noteId) => deleteDemoVaultNote(noteId, activeVaultMetadata),
+    loadNotes: () => loadDemoVaultNotes(activeVaultMetadata),
     notes: availableNotes,
     onNotesLoaded: setAvailableNotes,
     onSelectedNoteId: selectNoteId,
     selectedNoteId: selectedNote.id,
   })
   const createFlow = useMobileNoteCreateFlow({
-    createNote: (title) => createDemoVaultNote({ title }),
+    createNote: (title) => createDemoVaultNote({ title, vaultMetadata: activeVaultMetadata }),
     onCreated: (note) => {
       setAvailableNotes((notes) => [note, ...notes.filter((item) => item.id !== note.id)])
       selectNoteId(note.id)

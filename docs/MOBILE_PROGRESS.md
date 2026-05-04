@@ -70,14 +70,16 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Extracted mobile note deletion orchestration into a small hook so the app shell stays at CodeScene `10.0`.
 - Added app-local mobile vault metadata and metadata storage boundaries so vault id/name/remote URL can live in persisted app state instead of being hardcoded in the app shell.
 - Replaced the demo vault's hardcoded identity with the shared default vault metadata boundary.
+- Wired mobile runtime loading through the persisted vault metadata catalog boundary, so app state, note loading, autosave, note creation, and deletion all operate against the active vault metadata.
+- Extracted runtime loading into a hook plus tested pure loader to keep `MobileApp.tsx` at CodeScene `10.0`.
 
 ## Next Action
 
 Continue Phase 3 with app-managed vault storage hardening:
 
 1. Add a focused simulator interaction path for create/open/edit/autosave/delete once Expo Go's overlay no longer blocks clean screenshots.
-2. Wire the persisted vault metadata catalog into runtime vault loading instead of only exposing the storage boundary.
-3. Decide whether archive should be modeled as a first-class note state or deferred until the mobile vault schema exists.
+2. Decide whether archive should be modeled as a first-class note state or deferred until the mobile vault schema exists.
+3. Add first-class error/retry state for vault runtime load failures instead of silently falling back to fixture notes.
 
 ## Verification Log
 
@@ -241,6 +243,11 @@ Continue Phase 3 with app-managed vault storage hardening:
 - CodeScene after vault metadata storage: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/mobileDemoVault.ts`, `apps/mobile/src/mobileVaultMetadata.ts`, `apps/mobile/src/mobileVaultMetadataStorage.ts`, `apps/mobile/src/mobileNativeVaultMetadataStorage.ts`, `apps/mobile/src/mobileVaultMetadata.test.ts`, and `apps/mobile/src/mobileVaultMetadataStorage.test.ts` scored `10`.
 - `pnpm --filter @tolaria/mobile test` passed after vault metadata storage: 21 files / 68 tests.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after vault metadata storage.
+- `pnpm --filter @tolaria/mobile test -- src/mobileVaultRuntime.test.ts src/mobileVaultMetadata.test.ts src/mobileVaultMetadataStorage.test.ts` passed after runtime vault metadata wiring: 22 files / 70 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after runtime vault metadata wiring.
+- CodeScene after runtime vault metadata wiring: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/mobileDemoVault.ts`, `apps/mobile/src/mobileVaultRuntime.ts`, and `apps/mobile/src/mobileVaultRuntime.test.ts` scored `10`; `apps/mobile/src/useMobileVaultRuntimeLoader.ts` returned no scorable code and no findings.
+- `pnpm --filter @tolaria/mobile test` passed after runtime vault metadata wiring: 22 files / 70 tests.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after runtime vault metadata wiring.
 
 ## Risks / Watch Items
 
