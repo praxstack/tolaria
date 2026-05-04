@@ -8,7 +8,7 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 
 - Branch: `codex/mobile`
 - Active phase: Phase 2 - Mobile Shell
-- Active slice: Add mobile editor draft save boundary
+- Active slice: Wire editor save state UI
 - Push policy: commit locally; do not push unless explicitly requested
 - Validation target: iPad/iOS simulator first
 
@@ -58,6 +58,8 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Expanded supported TenTap HTML serialization to include H1-H6 headings, ordered lists, task-list markers, inline strong/emphasis/code, and links while continuing to block unsupported block HTML.
 - Split the mobile editor HTML serializer into its own CodeScene-10 module so the draft boundary stays small.
 - Added a mobile editor draft save boundary that writes persistable canonical Markdown drafts to vault storage and refuses blocked drafts.
+- Wired mobile editor draft changes to the app-local demo vault save path and added visible editor save states: Ready, Saving, Saved, Blocked, and Save failed.
+- Split editor save-state styles into a separate style module to keep mobile style files at CodeScene `10`.
 
 ## Next Action
 
@@ -65,7 +67,7 @@ Continue Phase 2 with the next mobile shell slice:
 
 1. Dismiss or suppress Expo Go's first-run tools modal during simulator QA so screenshots capture the app without the overlay.
 2. Expand the serializer for additional TenTap output needed by real notes: links, emphasis, code, headings, ordered lists, and task lists.
-3. Wire `MobileEditorAdapter` draft callbacks to the save boundary with explicit dirty/saved/blocked UI state.
+3. Add a debounced autosave scheduler so editor changes do not write on every TenTap change event.
 
 ## Verification Log
 
@@ -182,6 +184,12 @@ Continue Phase 2 with the next mobile shell slice:
 - `pnpm --filter @tolaria/mobile typecheck` passed after editor draft save boundary.
 - CodeScene after editor draft save boundary: `apps/mobile/src/mobileEditorDraftSave.ts` and `apps/mobile/src/mobileEditorDraftSave.test.ts` scored `10`.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after editor draft save boundary.
+- `pnpm --filter @tolaria/mobile test -- src/mobileEditorSaveState.test.ts src/mobileEditorDraftSave.test.ts` passed after editor save UI wiring: 14 files / 46 tests.
+- `pnpm --filter @tolaria/mobile test` passed after editor save UI wiring: 14 files / 46 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after editor save UI wiring.
+- CodeScene after editor save UI wiring: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/MobileEditorAdapter.tsx`, `apps/mobile/src/mobileDemoVault.ts`, `apps/mobile/src/mobileEditorSaveState.ts`, `apps/mobile/src/mobileEditorSaveState.test.ts`, `apps/mobile/src/styles/editorStyles.ts`, and `apps/mobile/src/styles/editorSaveStateStyles.ts` scored `10`; `apps/mobile/src/styles.ts` returned no scorable code.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after editor save UI wiring.
+- `pnpm --filter @tolaria/mobile exec expo start --ios --clear --port 8088` launched on `iPad Pro 13-inch (M4)` after editor save UI wiring; screenshot captured at `/tmp/tolaria-mobile-save-state-ipad.png`. The app rendered the `Ready` save state with no red runtime error overlay.
 
 ## Risks / Watch Items
 

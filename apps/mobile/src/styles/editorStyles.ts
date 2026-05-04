@@ -25,6 +25,7 @@ export const editorStyles = StyleSheet.create({
   breadcrumbRow: {
     marginBottom: spacing.xl,
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
   breadcrumbText: {

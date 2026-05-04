@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   FlatList,
   Pressable,
@@ -18,7 +18,15 @@ import {
   SlidersHorizontal,
 } from 'phosphor-react-native'
 import { MobileNote, notes as fallbackNotes, sidebarSections } from './demoData'
-import { loadDemoVaultNotes } from './mobileDemoVault'
+import { loadDemoVaultNotes, saveDemoVaultDraft } from './mobileDemoVault'
+import type { MobileEditorDraft } from './mobileEditorDraft'
+import {
+  failedMobileEditorSaveState,
+  idleMobileEditorSaveState,
+  saveResultState,
+  savingMobileEditorSaveState,
+  type MobileEditorSaveState,
+} from './mobileEditorSaveState'
 import { MobileEditorAdapter } from './MobileEditorAdapter'
 import {
   createCompactNavigationState,
@@ -37,10 +45,12 @@ export function MobileApp() {
   const showsProperties = width >= 1120
   const [availableNotes, setAvailableNotes] = useState(fallbackNotes)
   const [compactNavigation, setCompactNavigation] = useState(() => createCompactNavigationState(fallbackNotes[0].id))
+  const [saveStateByNoteId, setSaveStateByNoteId] = useState<Record<string, MobileEditorSaveState>>({})
   const selectedNote = useMemo(
     () => availableNotes.find((note) => note.id === compactNavigation.selectedNoteId) ?? availableNotes[0],
     [availableNotes, compactNavigation.selectedNoteId],
   )
+  const selectedSaveState = saveStateByNoteId[selectedNote.id] ?? idleMobileEditorSaveState
 
   useEffect(() => {
     let isActive = true
@@ -62,6 +72,16 @@ export function MobileApp() {
   const selectNote = (note: MobileNote) => {
     setCompactNavigation((state) => transitionCompactNavigation(state, { type: 'selectNote', noteId: note.id }))
   }
+  const saveDraft = useCallback((draft: MobileEditorDraft) => {
+    setSaveStateByNoteId((state) => ({ ...state, [draft.noteId]: savingMobileEditorSaveState }))
+    void saveDemoVaultDraft(draft)
+      .then((result) => {
+        setSaveStateByNoteId((state) => ({ ...state, [draft.noteId]: saveResultState(result) }))
+      })
+      .catch(() => {
+        setSaveStateByNoteId((state) => ({ ...state, [draft.noteId]: failedMobileEditorSaveState }))
+      })
+  }, [])
 
   return (
     <SafeAreaProvider>
@@ -74,7 +94,7 @@ export function MobileApp() {
               selectedNoteId={compactNavigation.selectedNoteId}
               onSelectNote={selectNote}
             />
-            <EditorPanel note={selectedNote} />
+            <EditorPanel note={selectedNote} saveState={selectedSaveState} onDraftChange={saveDraft} />
             {showsProperties ? <PropertiesPanel note={selectedNote} /> : null}
           </View>
         ) : (
@@ -82,8 +102,10 @@ export function MobileApp() {
             activePanel={compactNavigation.panel}
             note={selectedNote}
             notes={availableNotes}
+            saveState={selectedSaveState}
             selectedNoteId={compactNavigation.selectedNoteId}
             onNavigate={(event) => setCompactNavigation((state) => transitionCompactNavigation(state, event))}
+            onDraftChange={saveDraft}
             onSelectNote={selectNote}
           />
         )}
@@ -96,14 +118,18 @@ function CompactShell({
   activePanel,
   note,
   notes,
+  saveState,
   onNavigate,
+  onDraftChange,
   onSelectNote,
   selectedNoteId,
 }: {
   activePanel: CompactPanel
   note: MobileNote
   notes: MobileNote[]
+  saveState: MobileEditorSaveState
   onNavigate: (event: CompactNavigationEvent) => void
+  onDraftChange: (draft: MobileEditorDraft) => void
   onSelectNote: (note: MobileNote) => void
   selectedNoteId: string
 }) {
@@ -120,6 +146,8 @@ function CompactShell({
       <SwipeSurface panel="note" onNavigate={onNavigate}>
         <EditorPanel
           note={note}
+          saveState={saveState}
+          onDraftChange={onDraftChange}
           onBack={() => onNavigate({ type: 'backToList' })}
           onOpenProperties={() => onNavigate({ type: 'openProperties' })}
         />
@@ -242,10 +270,14 @@ function selectLoadedNote(state: ReturnType<typeof createCompactNavigationState>
 
 function EditorPanel({
   note,
+  saveState,
+  onDraftChange,
   onBack,
   onOpenProperties,
 }: {
   note: MobileNote
+  saveState?: MobileEditorSaveState
+  onDraftChange?: (draft: MobileEditorDraft) => void
   onBack?: () => void
   onOpenProperties?: () => void
 }) {
@@ -257,7 +289,7 @@ function EditorPanel({
         {onOpenProperties ? <IconButton icon={<Info size={23} color={colors.textSoft} />} onPress={onOpenProperties} /> : null}
         <IconButton icon={<DotsThreeVertical size={23} color={colors.textSoft} />} />
       </Toolbar>
-      <MobileEditorAdapter note={note} />
+      <MobileEditorAdapter note={note} saveState={saveState} onDraftChange={onDraftChange} />
     </View>
   )
 }

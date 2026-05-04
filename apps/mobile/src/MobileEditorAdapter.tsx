@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Text, View } from 'react-native'
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor'
 import type { MobileNote } from './mobileNoteProjection'
 import { createMobileEditorDraft, type MobileEditorDraft } from './mobileEditorDraft'
+import { idleMobileEditorSaveState, type MobileEditorSaveState } from './mobileEditorSaveState'
 import {
   createMobileEditorDocument,
   createMobileEditorHtml,
@@ -12,9 +13,11 @@ import { styles } from './styles'
 export function MobileEditorAdapter({
   note,
   onDraftChange,
+  saveState = idleMobileEditorSaveState,
 }: {
   note: MobileNote
   onDraftChange?: (draft: MobileEditorDraft) => void
+  saveState?: MobileEditorSaveState
 }) {
   const document = useMemo(() => createMobileEditorDocument(note), [note])
   const initialContent = useMemo(() => createMobileEditorHtml(document), [document])
@@ -39,6 +42,7 @@ export function MobileEditorAdapter({
         <Text style={styles.breadcrumbText}>{note.type}</Text>
         <Text style={styles.breadcrumbDivider}>/</Text>
         <Text style={styles.breadcrumbText}>{note.id}</Text>
+        <Text style={[styles.editorSaveState, saveStateStyle(saveState)]}>{saveState.label}</Text>
       </View>
       <View style={styles.tentapEditor}>
         <RichText key={note.id} editor={editor} />
@@ -51,4 +55,19 @@ export function MobileEditorAdapter({
       </KeyboardAvoidingView>
     </View>
   )
+}
+
+function saveStateStyle(saveState: MobileEditorSaveState) {
+  switch (saveState.state) {
+    case 'blocked':
+      return styles.editorSaveState_blocked
+    case 'failed':
+      return styles.editorSaveState_failed
+    case 'saved':
+      return styles.editorSaveState_saved
+    case 'saving':
+      return styles.editorSaveState_saving
+    default:
+      return styles.editorSaveState_idle
+  }
 }

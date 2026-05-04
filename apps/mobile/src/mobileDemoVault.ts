@@ -1,4 +1,6 @@
 import { demoNoteSources } from './demoData'
+import type { MobileEditorDraft } from './mobileEditorDraft'
+import { saveMobileEditorDraft } from './mobileEditorDraftSave'
 import { createMobileVaultConfig } from './mobileVaultConfig'
 import { createNativeMobileVaultStorage } from './mobileNativeVaultStorage'
 import { createStoredMobileVaultRepository } from './mobileVaultRepository'
@@ -12,6 +14,14 @@ export async function loadDemoVaultNotes() {
   await seedMobileVaultIfEmpty({ files: demoVaultFiles(), storage, vault: demoVault })
 
   return createStoredMobileVaultRepository({ storage, vault: demoVault }).listNotes()
+}
+
+export function saveDemoVaultDraft(draft: MobileEditorDraft) {
+  return saveMobileEditorDraft({
+    draft,
+    storage: createNativeMobileVaultStorage(),
+    vault: demoVault,
+  })
 }
 
 function demoVaultFiles(): MobileVaultFile[] {
