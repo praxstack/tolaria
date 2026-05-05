@@ -1,12 +1,21 @@
-import { createMobileGitSyncPlan, type MobileGitCredentialState, type MobileGitSyncPlan } from './mobileGitSyncPlan'
+import {
+  createMobileGitSyncPlan,
+  type MobileGitCredentialState,
+  type MobileGitOperation,
+  type MobileGitSyncPlan,
+} from './mobileGitSyncPlan'
 import { createMobileVaultConfig } from './mobileVaultConfig'
 import type { MobileVaultMetadata } from './mobileVaultMetadata'
 
 export function createMobileGitSyncPlanForVault({
   credentials = { state: 'missing' },
+  failure,
+  operation,
   vault,
 }: {
   credentials?: MobileGitCredentialState
+  failure?: { message: string; operation: MobileGitOperation }
+  operation?: MobileGitOperation
   vault: MobileVaultMetadata
 }): MobileGitSyncPlan {
   const result = createMobileVaultConfig(vault)
@@ -16,6 +25,8 @@ export function createMobileGitSyncPlanForVault({
 
   return createMobileGitSyncPlan({
     credentials,
+    failure,
+    operation,
     sync: result.config.sync,
   })
 }

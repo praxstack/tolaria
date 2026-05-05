@@ -732,6 +732,7 @@ Rules:
 - Store tokens and private keys only in Keychain / Android Keystore.
 - Keep the JavaScript-facing credential contract at `available` / `missing` plus provider metadata; raw tokens and SSH material stay behind the secure storage and native Git credential callback boundary.
 - Use the `tolaria://oauth/github` redirect scheme for development builds; production redirect registration must match the final app scheme/bundle identity.
+- Read the OAuth App client ID from `EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID`; if it is absent, the Connect action must fail visibly and avoid writing placeholder credentials.
 - Do not persist credentials inside Git remote URLs.
 - Use credential callbacks at operation time.
 - Redact credentials from logs, analytics, crash reports, and support bundles.

@@ -52,18 +52,21 @@ import { useMobileNoteDeleteFlow } from './useMobileNoteDeleteFlow'
 import { useMobileNotePropertiesFlow } from './useMobileNotePropertiesFlow'
 import { createNativeMobileAppStateStorage } from './mobileNativeAppStateStorage'
 import { createNativeMobileVaultMetadataStorage } from './mobileNativeVaultMetadataStorage'
-import { createMobileGitSyncPlanForVault } from './mobileGitSyncRuntimePlan'
+import { createNativeMobileGitCredentialStorage } from './mobileNativeGitCredentialStorage'
+import { createNativeMobileGitHubOAuthSessionFromEnvironment } from './mobileGitHubOAuthEnvironment'
 import type { MobileGitSyncPlan } from './mobileGitSyncPlan'
 import { defaultMobileVaultMetadata } from './mobileVaultMetadata'
 import type { MobileVaultRuntime } from './mobileVaultRuntime'
 import { useMobileVaultRuntimeLoader } from './useMobileVaultRuntimeLoader'
 import type { MobileNotePropertyPatch } from './mobileNoteProperties'
+import { useMobileGitSyncFlow } from './useMobileGitSyncFlow'
 
 export function MobileApp() {
   const { width } = useWindowDimensions()
   const isTablet = width >= 820
   const showsProperties = width >= 1000
   const appStateStorage = useMemo(() => createNativeMobileAppStateStorage(), [])
+  const gitCredentialStorage = useMemo(() => createNativeMobileGitCredentialStorage(), [])
   const vaultMetadataStorage = useMemo(() => createNativeMobileVaultMetadataStorage(), [])
   const [activeVaultMetadata, setActiveVaultMetadata] = useState(defaultMobileVaultMetadata)
   const [availableNotes, setAvailableNotes] = useState(fallbackNotes)
@@ -74,10 +77,11 @@ export function MobileApp() {
     [availableNotes, compactNavigation.selectedNoteId],
   )
   const selectedSaveState = saveStateByNoteId[selectedNote.id] ?? idleMobileEditorSaveState
-  const gitSyncPlan = useMemo(
-    () => createMobileGitSyncPlanForVault({ vault: activeVaultMetadata }),
-    [activeVaultMetadata],
-  )
+  const gitSyncFlow = useMobileGitSyncFlow({
+    createGitHubOAuthSession: createNativeMobileGitHubOAuthSessionFromEnvironment,
+    credentialStorage: gitCredentialStorage,
+    vault: activeVaultMetadata,
+  })
   const autosaveQueue = useMemo(
     () =>
       createMobileAutosaveQueue({
@@ -147,7 +151,7 @@ export function MobileApp() {
           <View style={styles.tabletShell}>
             <SidebarPanel />
             <NoteListPanel
-              gitSyncPlan={gitSyncPlan}
+              gitSyncPlan={gitSyncFlow.gitSyncPlan}
               notes={availableNotes}
               selectedNoteId={compactNavigation.selectedNoteId}
               createNoteFailed={createFlow.failed}
@@ -158,6 +162,7 @@ export function MobileApp() {
               onCancelCreateNote={createFlow.cancel}
               onChangeCreateNoteTitle={createFlow.setTitle}
               onOpenCreateNote={createFlow.open}
+              onGitSyncAction={gitSyncFlow.authenticate}
               onRetryRuntimeLoad={runtimeLoader.retry}
               onSubmitCreateNote={createFlow.submit}
               onSelectNote={selectNote}
@@ -181,7 +186,7 @@ export function MobileApp() {
           <CompactShell
             activePanel={compactNavigation.panel}
             note={selectedNote}
-            gitSyncPlan={gitSyncPlan}
+            gitSyncPlan={gitSyncFlow.gitSyncPlan}
             notes={availableNotes}
             saveState={selectedSaveState}
             selectedNoteId={compactNavigation.selectedNoteId}
@@ -196,6 +201,7 @@ export function MobileApp() {
             onCancelCreateNote={createFlow.cancel}
             onChangeCreateNoteTitle={createFlow.setTitle}
             onOpenCreateNote={createFlow.open}
+            onGitSyncAction={gitSyncFlow.authenticate}
             onRetryRuntimeLoad={runtimeLoader.retry}
             onSubmitCreateNote={createFlow.submit}
             onSelectNote={selectNote}
@@ -226,6 +232,7 @@ function CompactShell({
   onCancelCreateNote,
   onChangeCreateNoteTitle,
   onOpenCreateNote,
+  onGitSyncAction,
   onChangeProperties,
   onRetryRuntimeLoad,
   onSubmitCreateNote,
@@ -250,6 +257,7 @@ function CompactShell({
   onCancelCreateNote: () => void
   onChangeCreateNoteTitle: (title: string) => void
   onOpenCreateNote: () => void
+  onGitSyncAction: () => void
   onChangeProperties: (patch: MobileNotePropertyPatch) => void
   onRetryRuntimeLoad: () => void
   onSubmitCreateNote: () => void
@@ -308,6 +316,7 @@ function CompactShell({
         runtimeLoadFailed={runtimeLoadFailed}
         onCancelCreateNote={onCancelCreateNote}
         onChangeCreateNoteTitle={onChangeCreateNoteTitle}
+        onGitSyncAction={onGitSyncAction}
         onOpenCreateNote={onOpenCreateNote}
         onOpenSidebar={() => onNavigate({ type: 'openSidebar' })}
         onRetryRuntimeLoad={onRetryRuntimeLoad}
@@ -361,6 +370,7 @@ function NoteListPanel({
   runtimeLoadFailed,
   onCancelCreateNote,
   onChangeCreateNoteTitle,
+  onGitSyncAction,
   onOpenCreateNote,
   onOpenSidebar,
   onRetryRuntimeLoad,
@@ -377,6 +387,7 @@ function NoteListPanel({
   runtimeLoadFailed: boolean
   onCancelCreateNote: () => void
   onChangeCreateNoteTitle: (title: string) => void
+  onGitSyncAction: () => void
   onOpenCreateNote: () => void
   onOpenSidebar?: () => void
   onRetryRuntimeLoad: () => void
@@ -392,7 +403,7 @@ function NoteListPanel({
         <View style={styles.toolbarSpacer} />
         <IconButton icon={<MagnifyingGlass size={23} color={colors.textSoft} />} />
       </Toolbar>
-      <MobileGitSyncStatusCard plan={gitSyncPlan} />
+      <MobileGitSyncStatusCard plan={gitSyncPlan} onPrimaryAction={onGitSyncAction} />
       {runtimeLoadFailed ? <VaultLoadErrorNotice onRetry={onRetryRuntimeLoad} /> : null}
       <FlatList
         data={notes}

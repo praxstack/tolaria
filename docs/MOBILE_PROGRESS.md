@@ -92,12 +92,13 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Created [ADR-0113](./adr/0113-expo-secure-store-for-mobile-git-credentials.md) for the mobile secure credential storage dependency.
 - Added the mobile GitHub OAuth session boundary with Expo AuthSession/WebBrowser, PKCE request shaping, code exchange, SecureStore handoff, and the `tolaria://oauth/github` redirect scheme.
 - Created [ADR-0114](./adr/0114-expo-auth-session-for-mobile-github-oauth.md) for the mobile GitHub OAuth native dependency and redirect scheme.
+- Wired remote-backed mobile sync status actions to credential loading and the GitHub OAuth flow, including visible syncing/failed status states when Connect is tapped.
 
 ## Next Action
 
 Continue Phase 4 with editor durability:
 
-1. Wire remote-backed vault status actions to the GitHub OAuth flow so tapping Connect can populate credential state, still behind model-only Git operations until the native git adapter is selected.
+1. Add a mobile vault-management path for entering remote URLs and exposing the configured GitHub OAuth client ID requirement during setup.
 2. Continue TenTap Markdown serialization coverage for any editor output observed in simulator QA.
 3. Retry the iOS development-client build after installing an iOS 26.2 simulator runtime in Xcode.
 
@@ -341,6 +342,10 @@ Continue Phase 4 with editor durability:
 - `pnpm --filter @tolaria/mobile typecheck` passed after mobile GitHub OAuth boundary.
 - CodeScene after mobile GitHub OAuth boundary: `apps/mobile/src/mobileGitCredentialStorage.ts`, `apps/mobile/src/mobileGitCredentialStorage.test.ts`, `apps/mobile/src/mobileGitHubOAuth.ts`, `apps/mobile/src/mobileGitHubOAuth.test.ts`, `apps/mobile/src/mobileGitHubOAuthFlow.ts`, `apps/mobile/src/mobileGitHubOAuthFlow.test.ts`, and `apps/mobile/src/mobileNativeGitHubOAuthSession.ts` scored `10`.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after mobile GitHub OAuth boundary.
+- `pnpm --filter @tolaria/mobile test -- src/mobileGitAuthentication.test.ts src/mobileGitCredentialStateForVault.test.ts src/mobileGitSyncRuntimePlan.test.ts src/mobileGitHubOAuthFlow.test.ts src/mobileGitHubOAuth.test.ts` passed after wiring Connect to mobile auth: 37 files / 126 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after wiring Connect to mobile auth.
+- CodeScene after wiring Connect to mobile auth: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/MobileGitSyncStatusCard.tsx`, `apps/mobile/src/useMobileGitSyncFlow.ts`, `apps/mobile/src/mobileGitAuthentication.ts`, `apps/mobile/src/mobileGitAuthentication.test.ts`, `apps/mobile/src/mobileGitCredentialStateForVault.ts`, `apps/mobile/src/mobileGitCredentialStateForVault.test.ts`, and `apps/mobile/src/mobileGitHubOAuthEnvironment.ts` scored `10`; `apps/mobile/src/mobileGitSyncRuntimePlan.ts` returned no scorable code and no findings.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after wiring Connect to mobile auth.
 
 ## Risks / Watch Items
 

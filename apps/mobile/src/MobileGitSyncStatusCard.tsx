@@ -1,11 +1,17 @@
 import { GitBranch, WarningCircle } from 'phosphor-react-native'
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { mobileGitSyncStatusView, type MobileGitSyncStatusTone } from './mobileGitSyncStatus'
 import type { MobileGitSyncPlan } from './mobileGitSyncPlan'
 import { styles } from './styles'
 import { colors } from './theme'
 
-export function MobileGitSyncStatusCard({ plan }: { plan: MobileGitSyncPlan }) {
+export function MobileGitSyncStatusCard({
+  onPrimaryAction,
+  plan,
+}: {
+  onPrimaryAction?: () => void
+  plan: MobileGitSyncPlan
+}) {
   const status = mobileGitSyncStatusView(plan)
   if (!status) {
     return null
@@ -20,7 +26,15 @@ export function MobileGitSyncStatusCard({ plan }: { plan: MobileGitSyncPlan }) {
         <Text style={styles.gitSyncStatusLabel}>{status.label}</Text>
         <Text style={styles.gitSyncStatusDetail}>{status.detail}</Text>
       </View>
-      {status.actionLabel ? <Text style={styles.gitSyncStatusAction}>{status.actionLabel}</Text> : null}
+      {status.actionLabel ? (
+        <Pressable
+          accessibilityLabel={status.actionLabel}
+          onPress={onPrimaryAction}
+          style={({ pressed }) => pressed ? styles.pressed : null}
+        >
+          <Text style={styles.gitSyncStatusAction}>{status.actionLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   )
 }
