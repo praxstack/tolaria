@@ -20,7 +20,7 @@ Use an Expo native module named `TolariaGit` as the JavaScript-facing native Git
 
 The JavaScript app imports `expo-modules-core` directly and resolves `TolariaGit` through `requireOptionalNativeModule`. `createNativeMobileGitTransport` binds to the module when it exposes both `pull` and `push`; otherwise it returns the explicit unavailable-module failure already used by the sync UI.
 
-The native request stays narrow: vault id, app-managed vault directory name, and remote URL. Credentials remain behind SecureStore/OAuth/native Git credential callbacks; remote URLs must not contain tokens.
+The native request stays narrow: vault id, app-managed vault directory name, remote URL, remote host, and required auth strategy. Credentials remain behind SecureStore/OAuth/native Git credential callbacks; remote URLs must not contain tokens.
 
 ## Consequences
 

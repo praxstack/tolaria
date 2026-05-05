@@ -9,6 +9,8 @@ export type MobileGitNativeModule = {
 }
 
 export type MobileGitNativeRequest = {
+  authStrategy: string
+  remoteHost: string
   remoteUrl: string
   vaultDirectoryName: string
   vaultId: string
@@ -53,6 +55,8 @@ async function runNativeGitOperation({
 function nativeRequest(request: MobileGitTransportRequest): MobileGitNativeRequest {
   const vaultConfig = createMobileVaultConfigFromMetadata(request.vault)
   return {
+    authStrategy: request.remote.authStrategy,
+    remoteHost: request.remote.host,
     remoteUrl: request.remote.url,
     vaultDirectoryName: vaultConfig.storage.directoryName,
     vaultId: request.vault.id,

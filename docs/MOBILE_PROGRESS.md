@@ -105,6 +105,7 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Centralized mobile editor HTML entity decoding and added numeric entity / non-breaking-space support for paragraph, code, image/link, and table serialization.
 - Added the optional Expo native-module resolver for `TolariaGit`, so the JavaScript Git transport automatically binds to future development builds that include the native module and keeps the current unavailable-module failure everywhere else.
 - Created [ADR-0115](./adr/0115-expo-native-module-boundary-for-mobile-git.md) for the mobile Git native module discovery boundary.
+- Added remote host and auth strategy to the native Git transport request so native Git can select credential callbacks without reparsing remote URLs.
 
 ## Next Action
 
@@ -403,6 +404,10 @@ Continue Phase 4 with editor durability:
 - CodeScene after adding the optional `TolariaGit` native module resolver: `apps/mobile/src/mobileNativeGitModule.ts`, `apps/mobile/src/mobileNativeGitModule.test.ts`, `apps/mobile/src/mobileExpoNativeGitModule.ts`, `apps/mobile/src/mobileNativeGitTransport.ts`, and `apps/mobile/src/MobileApp.tsx` scored `10`.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after adding the optional `TolariaGit` native module resolver.
 - `pnpm test -- src/App.test.tsx --silent` passed after extending the flaky desktop Git setup dialog wait that was blocking verified mobile commits in the full hook: 34 tests.
+- `pnpm --filter @tolaria/mobile test -- src/mobileNativeGitTransport.test.ts src/mobileNativeGitModule.test.ts` passed after adding remote host/auth strategy to native Git requests: 46 files / 152 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after adding remote host/auth strategy to native Git requests.
+- CodeScene after adding remote host/auth strategy to native Git requests: `apps/mobile/src/mobileNativeGitTransport.ts` and `apps/mobile/src/mobileNativeGitTransport.test.ts` scored `10`.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after adding remote host/auth strategy to native Git requests; Metro recovered from a cache deserialize warning by doing a full crawl.
 
 ## Risks / Watch Items
 

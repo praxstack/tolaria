@@ -30,6 +30,8 @@ describe('native mobile git transport', () => {
 
     expect(requests).toEqual([
       {
+        authStrategy: 'githubOAuth',
+        remoteHost: 'github.com',
         remoteUrl: 'https://github.com/refactoringhq/tolaria.git',
         vaultDirectoryName: 'personal-journal',
         vaultId: 'personal',
