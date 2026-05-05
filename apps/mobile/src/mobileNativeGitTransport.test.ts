@@ -31,6 +31,7 @@ describe('native mobile git transport', () => {
     expect(requests).toEqual([
       {
         remoteUrl: 'https://github.com/refactoringhq/tolaria.git',
+        vaultDirectoryName: 'personal-journal',
         vaultId: 'personal',
       },
     ])

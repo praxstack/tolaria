@@ -100,6 +100,7 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Added the first mobile Git transport execution boundary behind the existing sync/auth plan, including explicit pull/push routing and a visible unavailable-transport failure until the native Git implementation lands.
 - Hardened TenTap link serialization so safe HTTP, mailto, and relative links persist while unsafe link destinations block draft persistence.
 - Added the first native mobile Git transport adapter contract, wiring the app to a native-module-shaped boundary that currently fails clearly until the real implementation is present.
+- Added the app-managed vault directory name to the native Git transport request so the future native module can locate the repository without deriving paths from display names.
 
 ## Next Action
 
@@ -381,6 +382,10 @@ Continue Phase 4 with editor durability:
 - `pnpm --filter @tolaria/mobile typecheck` passed after adding the native Git transport adapter contract.
 - CodeScene after adding the native Git transport adapter contract: `apps/mobile/src/MobileApp.tsx`, `apps/mobile/src/mobileNativeGitTransport.ts`, and `apps/mobile/src/mobileNativeGitTransport.test.ts` scored `10`.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after adding the native Git transport adapter contract; Metro recovered from a cache deserialize warning by doing a full crawl.
+- `pnpm --filter @tolaria/mobile test -- src/mobileNativeGitTransport.test.ts src/mobileVaultMetadata.test.ts src/mobileVaultConfig.test.ts` passed after adding the vault directory name to native Git transport requests: 44 files / 148 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after adding the vault directory name to native Git transport requests.
+- CodeScene after adding the vault directory name to native Git transport requests: `apps/mobile/src/mobileNativeGitTransport.ts` and `apps/mobile/src/mobileNativeGitTransport.test.ts` scored `10`.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after adding the vault directory name to native Git transport requests; Metro recovered from a cache deserialize warning by doing a full crawl.
 
 ## Risks / Watch Items
 
