@@ -8,7 +8,7 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 
 - Branch: `codex/mobile`
 - Active phase: Phase 4 - Editor V1
-- Active slice: Properties panel persistence and editor durability
+- Active slice: Core flow coverage and editor durability
 - Push policy: commit locally; do not push unless explicitly requested
 - Validation target: iPad/iOS simulator first
 
@@ -80,12 +80,13 @@ This file is the resumable working log for Tolaria mobile. The strategy and road
 - Added a mobile frontmatter save boundary that updates persisted note metadata through the vault storage driver and exposes the same path through the demo vault facade for future properties UI calls.
 - Wired the iPad/mobile properties panel to the frontmatter save boundary for type, status, icon, date, and tags; successful saves reload projected notes from app-local storage, and large iPads now show the right properties column.
 - Expanded supported TenTap HTML serialization to include blockquotes, fenced code blocks with language classes, strikethrough, and an unsupported inline-tag guard so image/table output stays blocked until explicitly handled.
+- Added a deterministic mobile core-flow smoke test over app-local storage that covers create, open, edit/save, property update, and delete through the same repository/storage/editor/frontmatter boundaries used by the app.
 
 ## Next Action
 
 Continue Phase 4 with editor durability:
 
-1. Add simulator interaction coverage for create/open/edit/autosave/delete using a development-client path or another route that avoids Expo Go's overlay controls.
+1. Add a native development-client simulator route so the same core flows can be exercised without Expo Go's overlay controls.
 2. Continue TenTap Markdown serialization coverage for attachments/images, tables, and any editor output observed in simulator QA.
 3. Replace the first property chips with richer desktop-compatible pickers once the mobile metadata schema is finalized.
 
@@ -290,6 +291,11 @@ Continue Phase 4 with editor durability:
 - CodeScene after expanded TenTap serialization: `apps/mobile/src/mobileEditorHtmlMarkdown.ts`, `apps/mobile/src/mobileEditorDraft.test.ts`, and `apps/mobile/src/mobileEditorDraftSave.test.ts` scored `10`.
 - `pnpm --filter @tolaria/mobile test` passed after expanded TenTap serialization: 26 files / 86 tests.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after expanded TenTap serialization.
+- `pnpm --filter @tolaria/mobile test -- src/mobileCoreFlowSmoke.test.ts` passed after core flow smoke coverage: 27 files / 87 tests.
+- `pnpm --filter @tolaria/mobile typecheck` passed after core flow smoke coverage.
+- CodeScene after core flow smoke coverage: `apps/mobile/src/mobileCoreFlowSmoke.test.ts` scored `10`.
+- `pnpm --filter @tolaria/mobile test` passed after core flow smoke coverage: 27 files / 87 tests.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export` passed after core flow smoke coverage.
 
 ## Risks / Watch Items
 
