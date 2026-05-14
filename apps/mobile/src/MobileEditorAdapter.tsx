@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, View } from 'react-native'
 import type { WebViewMessageEvent } from 'react-native-webview'
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor'
 import { MobileEditorWikilinkSuggestions } from './MobileEditorWikilinkSuggestions'
-import { parseEditorMessage } from './mobileEditorMessages'
+import { parseEditorMessage, type MobileEditorWikilinkFrame } from './mobileEditorMessages'
 import type { MobileNote } from './mobileNoteProjection'
 import { createMobileEditorDraft, type MobileEditorDraft } from './mobileEditorDraft'
 import {
@@ -31,6 +31,7 @@ export function MobileEditorAdapter({
   const document = useMemo(() => createMobileEditorDocument(note), [note])
   const initialContent = useMemo(() => createMobileEditorHtml(document), [document])
   const [wikilinkQuery, setWikilinkQuery] = useState<string | null>(null)
+  const [wikilinkFrame, setWikilinkFrame] = useState<MobileEditorWikilinkFrame | null>(null)
   const draftTargetRef = useRef({ note, onDraftChange })
   useEffect(() => {
     draftTargetRef.current = { note, onDraftChange }
@@ -56,6 +57,7 @@ export function MobileEditorAdapter({
     }
     if (message.type === 'wikilinkQuery') {
       setWikilinkQuery(message.query)
+      setWikilinkFrame(message.frame)
       return
     }
     if (message.type === 'listIndent') {
@@ -84,10 +86,12 @@ export function MobileEditorAdapter({
       </View>
       <MobileEditorWikilinkSuggestions
         excludeNoteId={note.id}
+        frame={wikilinkFrame}
         notes={notes}
         onSelectNote={(targetNote) => {
           editor.insertWikilink({ label: targetNote.title, target: targetNote.id })
           setWikilinkQuery(null)
+          setWikilinkFrame(null)
         }}
         query={wikilinkQuery}
       />

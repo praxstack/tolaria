@@ -505,3 +505,13 @@ Continue Phase 4 as a quality remediation pass before new feature work:
 - `pnpm --filter @tolaria/mobile typecheck` passed.
 - `pnpm --filter @tolaria/mobile test -- src/mobileEditorMessages.test.ts src/mobileShortcutCommands.test.ts src/mobileEditorDraft.test.ts` passed; the mobile test runner executed 61 files / 200 tests.
 - `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export-tab-indent` passed.
+
+## 2026-05-14 Wikilink Autocomplete Follow-Up
+
+- Treated `[[` as an active empty wikilink query so suggestions appear immediately after the second bracket.
+- Added WebView cursor geometry to wikilink query messages and anchored the suggestion menu below the active editor line instead of at the bottom of the document.
+- Changed rich wikilink insertion to focus the TenTap editor, replace the active trigger range, and insert a real Tiptap link mark targeting `tolaria-note:`.
+- Added message parsing coverage for empty wikilink queries with geometry and raw autocomplete coverage for the empty `[[` trigger.
+- `pnpm --filter @tolaria/mobile typecheck` passed.
+- `pnpm --filter @tolaria/mobile test -- src/mobileEditorMessages.test.ts src/mobileWikilinkAutocomplete.test.ts` passed; the mobile test runner executed 61 files / 202 tests.
+- `pnpm --filter @tolaria/mobile exec expo export --platform ios --output-dir /tmp/tolaria-mobile-export-wikilink-autocomplete` passed.

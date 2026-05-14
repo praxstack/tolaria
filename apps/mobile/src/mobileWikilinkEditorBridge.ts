@@ -57,6 +57,8 @@ function insertWikilink({
   label: string
   target: string
 }) {
+  editor.commands.focus()
+
   const range = activeWikilinkRange(editor)
   if (!range) {
     return false
@@ -64,9 +66,8 @@ function insertWikilink({
 
   return editor
     .chain()
-    .focus()
     .deleteRange(range)
-    .insertContent(`<a href="${wikilinkHref(target)}">${escapeHtml(label)}</a>`)
+    .insertContent(wikilinkTextNode({ label, target }))
     .run()
 }
 
@@ -94,11 +95,19 @@ function wikilinkHref(target: string) {
   return `tolaria-note:${encodeURIComponent(target.trim())}`
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+function wikilinkTextNode({
+  label,
+  target,
+}: {
+  label: string
+  target: string
+}) {
+  return {
+    marks: [{
+      attrs: { href: wikilinkHref(target) },
+      type: 'link',
+    }],
+    text: label,
+    type: 'text',
+  }
 }

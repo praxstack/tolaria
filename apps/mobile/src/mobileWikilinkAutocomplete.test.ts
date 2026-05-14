@@ -4,6 +4,12 @@ import type { MobileNote } from './mobileNoteProjection'
 
 describe('mobile wikilink autocomplete', () => {
   it('detects an active wikilink trigger before the cursor', () => {
+    expect(activeMobileWikilinkQuery({ cursor: 6, markdown: 'See [[' })).toEqual({
+      end: 6,
+      query: '',
+      start: 4,
+    })
+
     expect(activeMobileWikilinkQuery({ cursor: 12, markdown: 'See [[mobile' })).toEqual({
       end: 12,
       query: 'mobile',

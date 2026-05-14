@@ -55,16 +55,46 @@ export const mobileEditorSetupScript = `
     var prefix = String(selection.anchorNode.textContent || "").slice(0, selection.anchorOffset);
     var start = prefix.lastIndexOf("[[");
     if (start < 0) return null;
-    return cleanWikilinkQuery(prefix.slice(start + 2));
+    var query = cleanWikilinkQuery(prefix.slice(start + 2));
+    if (query === null) return null;
+    return {
+      frame: wikilinkQueryFrame(selection),
+      query: query
+    };
   }
   function cleanWikilinkQuery(query) {
     return query.indexOf("]]") >= 0 || query.indexOf("\\n") >= 0 ? null : query;
   }
   function emitWikilinkQuery() {
+    var activeQuery = activeWikilinkQuery();
     postEditorMessage({
       type: "wikilinkQuery",
-      query: activeWikilinkQuery()
+      frame: activeQuery ? activeQuery.frame : null,
+      query: activeQuery ? activeQuery.query : null
     });
+  }
+  function wikilinkQueryFrame(selection) {
+    var range = selection.getRangeAt(0).cloneRange();
+    var rect = range.getBoundingClientRect();
+    if (hasVisibleFrame(rect)) {
+      return {
+        bottom: rect.bottom,
+        left: rect.left
+      };
+    }
+    return fallbackWikilinkQueryFrame(selection);
+  }
+  function fallbackWikilinkQueryFrame(selection) {
+    var container = selection.anchorNode && selection.anchorNode.parentElement;
+    var rect = container && container.getBoundingClientRect && container.getBoundingClientRect();
+    return {
+      bottom: rect ? rect.bottom : 0,
+      left: rect ? rect.left : 0
+    };
+  }
+  function hasVisibleFrame(rect) {
+    if (!rect) return false;
+    return Boolean(rect.bottom || rect.left);
   }
   function postEditorMessage(message) {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(message));

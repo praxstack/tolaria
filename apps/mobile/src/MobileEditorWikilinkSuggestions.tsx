@@ -1,15 +1,18 @@
 import { useMemo } from 'react'
 import { Pressable, Text, View } from 'react-native'
+import type { MobileEditorWikilinkFrame } from './mobileEditorMessages'
 import type { MobileNote } from './mobileNoteProjection'
 import { mobileNoteSuggestions } from './mobileWikilinkAutocomplete'
 import { styles } from './styles'
 
 export function MobileEditorWikilinkSuggestions({
+  frame,
   excludeNoteId,
   notes,
   onSelectNote,
   query,
 }: {
+  frame: MobileEditorWikilinkFrame | null
   excludeNoteId: string
   notes: MobileNote[]
   onSelectNote: (note: MobileNote) => void
@@ -21,12 +24,12 @@ export function MobileEditorWikilinkSuggestions({
       : mobileNoteSuggestions({ excludeNoteId, notes, query })
   }, [excludeNoteId, notes, query])
 
-  if (!query || suggestions.length === 0) {
+  if (query === null || suggestions.length === 0) {
     return null
   }
 
   return (
-    <View style={styles.rawEditorSuggestionMenu}>
+    <View style={[styles.rawEditorSuggestionMenu, suggestionMenuPosition(frame)]}>
       {suggestions.map((suggestion) => (
         <Pressable
           key={suggestion.id}
@@ -39,4 +42,16 @@ export function MobileEditorWikilinkSuggestions({
       ))}
     </View>
   )
+}
+
+function suggestionMenuPosition(frame: MobileEditorWikilinkFrame | null) {
+  if (!frame) {
+    return null
+  }
+
+  return {
+    bottom: undefined,
+    left: Math.max(16, frame.left),
+    top: Math.max(16, frame.bottom + 8),
+  }
 }
