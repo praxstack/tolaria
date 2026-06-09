@@ -4,6 +4,7 @@ import { mobileColors, mobileSpace, mobileType } from './tokens'
 
 export function MobileListRow({
   chips,
+  leading,
   meta,
   onPress,
   selected = false,
@@ -12,6 +13,7 @@ export function MobileListRow({
   trailing,
 }: {
   chips?: ReactNode
+  leading?: ReactNode
   meta?: string
   onPress?: () => void
   selected?: boolean
@@ -30,6 +32,7 @@ export function MobileListRow({
       ]}
     >
       <View style={styles.header}>
+        {leading}
         <Text numberOfLines={1} style={styles.title}>{title}</Text>
         {trailing}
       </View>
@@ -46,6 +49,8 @@ const styles = StyleSheet.create({
   base: {
     borderBottomColor: mobileColors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: 'transparent',
+    borderLeftWidth: 3,
     paddingHorizontal: mobileSpace.lg,
     paddingVertical: mobileSpace.md,
   },
@@ -53,6 +58,7 @@ const styles = StyleSheet.create({
     marginTop: mobileSpace.md,
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: mobileSpace.sm,
   },
   header: {
@@ -70,7 +76,6 @@ const styles = StyleSheet.create({
   selected: {
     backgroundColor: mobileColors.selected,
     borderLeftColor: mobileColors.primary,
-    borderLeftWidth: 3,
   },
   subtitle: {
     marginTop: mobileSpace.sm,

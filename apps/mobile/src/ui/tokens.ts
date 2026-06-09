@@ -8,6 +8,7 @@ export const mobileColors = {
   danger: '#E53E3E',
   dangerSoft: '#E53E3E1A',
   editor: '#FFFFFF',
+  graySoft: '#F1F1EF',
   green: '#38A169',
   greenSoft: '#38A1691A',
   orange: '#D9730D',
@@ -16,6 +17,7 @@ export const mobileColors = {
   primarySoft: '#155DFF18',
   purple: '#805AD5',
   purpleSoft: '#805AD51A',
+  redSoft: '#E53E3E1A',
   selected: '#E8F4FE',
   selectedStrong: '#D8ECFE',
   sidebar: '#F7F6F3',
@@ -43,6 +45,7 @@ export const mobileRadius = {
 } as const
 
 export const mobileType = {
+  micro: 10,
   caption: 12,
   body: 14,
   bodyLarge: 16,

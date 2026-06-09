@@ -34,6 +34,7 @@ const styles = StyleSheet.create({
   value: {
     flex: 1,
     alignItems: 'flex-end',
+    minWidth: 0,
   },
   valueText: {
     color: mobileColors.text,

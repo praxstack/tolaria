@@ -1,7 +1,7 @@
 import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native'
 import { mobileColors, mobileRadius, mobileSpace, mobileType } from './tokens'
 
-type MobileChipTone = 'blue' | 'green' | 'orange' | 'purple'
+type MobileChipTone = 'blue' | 'gray' | 'green' | 'orange' | 'purple' | 'red'
 
 export function MobileChip({
   label,
@@ -12,7 +12,7 @@ export function MobileChip({
   style?: StyleProp<TextStyle>
   tone?: MobileChipTone
 }) {
-  return <Text style={[styles.base, toneStyles[tone], style]}>{label}</Text>
+  return <Text numberOfLines={1} style={[styles.base, toneStyles[tone], style]}>{label}</Text>
 }
 
 const styles = StyleSheet.create({
@@ -35,6 +35,10 @@ const toneStyles = StyleSheet.create({
     backgroundColor: mobileColors.greenSoft,
     color: mobileColors.green,
   },
+  gray: {
+    backgroundColor: mobileColors.graySoft,
+    color: mobileColors.textMuted,
+  },
   orange: {
     backgroundColor: mobileColors.orangeSoft,
     color: mobileColors.orange,
@@ -42,5 +46,9 @@ const toneStyles = StyleSheet.create({
   purple: {
     backgroundColor: mobileColors.purpleSoft,
     color: mobileColors.purple,
+  },
+  red: {
+    backgroundColor: mobileColors.redSoft,
+    color: mobileColors.danger,
   },
 })
