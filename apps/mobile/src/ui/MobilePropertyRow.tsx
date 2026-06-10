@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   valueText: {
     color: mobileColors.text,
     fontSize: mobileType.body,
-    fontWeight: '600',
+    fontWeight: '500',
     textAlign: 'right',
   },
 })

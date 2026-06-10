@@ -631,7 +631,7 @@ const layoutStyles = StyleSheet.create({
   syncStatusText: {
     color: mobileColors.text,
     fontSize: mobileType.body,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   syncDetailText: {
     color: mobileColors.textMuted,
@@ -653,7 +653,7 @@ const sharedStyles = StyleSheet.create({
     backgroundColor: mobileColors.graySoft,
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '800',
+    fontWeight: '600',
     paddingHorizontal: mobileSpace.sm,
     paddingVertical: mobileSpace.xs,
   },
@@ -675,7 +675,7 @@ const sidebarStyles = StyleSheet.create({
     backgroundColor: mobileColors.graySoft,
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '700',
+    fontWeight: '600',
     paddingHorizontal: mobileSpace.xs,
     paddingVertical: mobileSpace.xs,
     textAlign: 'center',
@@ -699,21 +699,22 @@ const sidebarStyles = StyleSheet.create({
     flex: 1,
     color: mobileColors.text,
     fontSize: mobileType.body,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   itemTextActive: {
     color: mobileColors.primary,
+    fontWeight: '600',
   },
   sectionCount: {
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   sectionTitle: {
     flex: 1,
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   sectionTitleRow: {
     minHeight: 32,
@@ -727,7 +728,7 @@ const sidebarStyles = StyleSheet.create({
     flex: 1,
     color: mobileColors.text,
     fontSize: mobileType.body,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 })
 
@@ -753,10 +754,11 @@ const folderTreeStyles = StyleSheet.create({
     flex: 1,
     color: mobileColors.text,
     fontSize: mobileType.body,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   rowTextActive: {
     color: mobileColors.primary,
+    fontWeight: '600',
   },
   tree: {
     gap: mobileSpace.xs,
@@ -786,7 +788,7 @@ const noteListStyles = StyleSheet.create({
   emptyTitle: {
     color: mobileColors.text,
     fontSize: mobileType.title,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   panel: {
@@ -809,12 +811,12 @@ const noteListStyles = StyleSheet.create({
     flex: 1,
     color: mobileColors.text,
     fontSize: mobileType.body,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   toolbarSubtitle: {
     color: mobileColors.textMuted,
     fontSize: mobileType.caption,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   toolbarTitleBlock: {
     minWidth: 0,
@@ -856,7 +858,7 @@ const editorStyles = StyleSheet.create({
   emptyTitle: {
     color: mobileColors.textMuted,
     fontSize: mobileType.title,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   panel: {
@@ -870,14 +872,14 @@ const editorStyles = StyleSheet.create({
   },
   title: {
     color: mobileColors.text,
-    fontSize: mobileType.hero,
-    fontWeight: '800',
-    lineHeight: 40,
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 34,
     marginBottom: mobileSpace.xl,
   },
   titleCompact: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 26,
+    lineHeight: 32,
   },
 })
 
@@ -901,7 +903,7 @@ const propertyStyles = StyleSheet.create({
   emptyTitle: {
     color: mobileColors.text,
     fontSize: mobileType.title,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   fullWidthButton: {
@@ -935,7 +937,7 @@ const propertyStyles = StyleSheet.create({
   relationshipText: {
     flex: 1,
     fontSize: mobileType.body,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   relationshipValues: {
     alignItems: 'stretch',

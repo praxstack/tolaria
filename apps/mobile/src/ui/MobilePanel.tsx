@@ -22,7 +22,7 @@ export function MobileToolbar({
 }
 
 export function MobileToolbarTitle({ title }: { title: string }) {
-  return <Text className="font-bold text-foreground" numberOfLines={1} style={styles.title}>{title}</Text>
+  return <Text className="font-semibold text-foreground" numberOfLines={1} style={styles.title}>{title}</Text>
 }
 
 export function MobileToolbarSpacer() {
@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: mobileColors.text,
-    fontSize: mobileType.title,
-    fontWeight: '700',
+    fontSize: mobileType.bodyLarge,
+    fontWeight: '600',
   },
   toolbar: {
     minHeight: 56,

@@ -115,11 +115,11 @@ function PhoneSidebarDrawer({
       </View>
       <View style={[phoneStyles.drawerPanel, { width: drawerWidth }]}>
         <CircleButton accessibilityLabel={mobileText('command.group.note')} dark>
-          <DotsThree color={phoneColors.drawerMuted} size={30} weight="bold" />
+          <DotsThree color={phoneColors.drawerMuted} size={24} weight="bold" />
         </CircleButton>
         <View style={phoneStyles.drawerNav}>
-          <PhoneSidebarItem active icon={<FileText color={phoneColors.drawerText} size={22} />} label={mobileCopy.inbox} />
-          <PhoneSidebarItem icon={<Archive color={phoneColors.drawerMuted} size={22} />} label={mobileCopy.archive} />
+          <PhoneSidebarItem active icon={<FileText color={phoneColors.drawerActiveText} size={18} />} label={mobileCopy.inbox} />
+          <PhoneSidebarItem icon={<Archive color={phoneColors.drawerMuted} size={18} />} label={mobileCopy.archive} />
           {scenario.sidebarSections.map((section) => (
             <PhoneSidebarSection key={section.id} section={section} />
           ))}
@@ -137,9 +137,9 @@ function PhoneSidebarSection({ section }: { section: FixtureSidebarSection }) {
       {section.folders?.map((folder) => (
         <PhoneSidebarItem
           key={folder.id}
-          icon={folder.active ? <FolderOpen color={phoneColors.drawerText} size={22} weight="fill" /> : <FolderOpen color={phoneColors.drawerMuted} size={22} />}
+          icon={folder.active ? <FolderOpen color={phoneColors.drawerActiveText} size={18} weight="fill" /> : <FolderOpen color={phoneColors.drawerMuted} size={18} />}
           label={folder.name}
-          trailing={folder.children.length > 0 ? <CaretRight color={phoneColors.drawerMuted} size={20} /> : null}
+          trailing={folder.children.length > 0 ? <CaretRight color={phoneColors.drawerMuted} size={16} /> : null}
         />
       ))}
     </View>
@@ -190,7 +190,7 @@ function PhoneEditor({
         <Text style={phoneStyles.editorTitle}>{note.title}</Text>
         {bullets.map((item) => (
           <View key={item} style={phoneStyles.editorBulletRow}>
-            <Text style={phoneStyles.editorBullet}>*</Text>
+            <Text style={phoneStyles.editorBullet}>•</Text>
             <Text style={phoneStyles.editorText}>{item}</Text>
           </View>
         ))}
@@ -214,8 +214,8 @@ function CircleButton({
     <Button
       accessibilityLabel={accessibilityLabel}
       className={cn(
-        'h-[62px] w-[62px] rounded-full bg-white p-0 shadow-lg shadow-black/10 active:opacity-75 [&_svg]:!h-[30px] [&_svg]:!w-[30px]',
-        dark ? 'border border-[#343A3A] bg-[#222727] shadow-none' : null,
+        'h-[52px] w-[52px] rounded-full bg-white p-0 shadow-md shadow-black/10 active:opacity-75 [&_svg]:!h-[24px] [&_svg]:!w-[24px]',
+        dark ? 'border border-[#E9E9E7] bg-white shadow-none' : null,
       )}
       onPress={onPress}
       size="icon"
@@ -245,10 +245,11 @@ function typeColor(tone: FixtureNote['typeTone']) {
 }
 
 const phoneColors = {
-  drawer: '#202424',
-  drawerCard: '#424848',
-  drawerMuted: '#B7BBBB',
-  drawerText: '#F6F7F5',
+  drawer: mobileColors.sidebar,
+  drawerActiveText: mobileColors.primary,
+  drawerCard: mobileColors.selected,
+  drawerMuted: mobileColors.textMuted,
+  drawerText: mobileColors.text,
 }
 
 const sharedPhoneStyles = StyleSheet.create({
@@ -269,12 +270,12 @@ const sharedPhoneStyles = StyleSheet.create({
 
 const drawerPhoneStyles = StyleSheet.create({
   drawerItem: {
-    minHeight: 58,
+    minHeight: 42,
     alignItems: 'center',
     flexDirection: 'row',
-    gap: mobileSpace.lg,
-    borderRadius: mobileRadius.lg,
-    paddingHorizontal: mobileSpace.xl,
+    gap: mobileSpace.md,
+    borderRadius: mobileRadius.md,
+    paddingHorizontal: mobileSpace.md,
   },
   drawerItemActive: {
     backgroundColor: phoneColors.drawerCard,
@@ -282,21 +283,24 @@ const drawerPhoneStyles = StyleSheet.create({
   drawerItemText: {
     flex: 1,
     color: phoneColors.drawerMuted,
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: mobileType.bodyLarge,
+    fontWeight: '500',
   },
   drawerItemTextActive: {
-    color: phoneColors.drawerText,
+    color: phoneColors.drawerActiveText,
+    fontWeight: '600',
   },
   drawerNav: {
-    marginTop: 42,
+    marginTop: mobileSpace.xl,
     gap: mobileSpace.sm,
   },
   drawerPanel: {
     flex: 1,
     backgroundColor: phoneColors.drawer,
+    borderRightColor: mobileColors.border,
+    borderRightWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: mobileSpace.lg,
-    paddingTop: 58,
+    paddingTop: 52,
   },
   drawerPreview: {
     bottom: 0,
@@ -316,8 +320,8 @@ const drawerPhoneStyles = StyleSheet.create({
 
 const editorPhoneStyles = StyleSheet.create({
   editorActions: {
-    minWidth: 118,
-    minHeight: 62,
+    minWidth: 104,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -332,7 +336,7 @@ const editorPhoneStyles = StyleSheet.create({
   editorBullet: {
     color: mobileColors.primary,
     fontSize: mobileType.bodyLarge,
-    lineHeight: 31,
+    lineHeight: 27,
   },
   editorBulletRow: {
     flexDirection: 'row',
@@ -348,37 +352,37 @@ const editorPhoneStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: mobileSpace.xl,
-    paddingTop: 58,
+    paddingTop: 44,
     paddingBottom: mobileSpace.xl,
   },
   editorText: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: 23,
-    lineHeight: 35,
+    fontSize: mobileType.bodyLarge,
+    lineHeight: 27,
   },
   editorTitle: {
     color: mobileColors.text,
-    fontSize: 42,
-    fontWeight: '700',
-    lineHeight: 50,
-    marginBottom: 44,
+    fontSize: 22,
+    fontWeight: '600',
+    lineHeight: 30,
+    marginBottom: mobileSpace.xxl,
   },
 })
 
 const listPhoneStyles = StyleSheet.create({
   header: {
-    minHeight: 116,
+    minHeight: 96,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: mobileSpace.xl,
-    paddingTop: 46,
+    paddingTop: 36,
   },
   headerTitle: {
     color: mobileColors.text,
-    fontSize: 25,
-    fontWeight: '700',
+    fontSize: mobileType.bodyLarge,
+    fontWeight: '600',
   },
   headerTitleGroup: {
     alignItems: 'center',
@@ -390,7 +394,7 @@ const listPhoneStyles = StyleSheet.create({
   },
   noteDate: {
     color: mobileColors.textMuted,
-    fontSize: 16,
+    fontSize: mobileType.caption,
     marginTop: mobileSpace.lg,
   },
   noteRow: {
@@ -400,16 +404,16 @@ const listPhoneStyles = StyleSheet.create({
   },
   noteSnippet: {
     color: mobileColors.textMuted,
-    fontSize: 21,
-    lineHeight: 31,
+    fontSize: mobileType.bodyLarge,
+    lineHeight: 24,
     marginTop: mobileSpace.sm,
   },
   noteTitle: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: 21,
-    fontWeight: '800',
-    lineHeight: 28,
+    fontSize: mobileType.bodyLarge,
+    fontWeight: '600',
+    lineHeight: 23,
   },
   noteTitleRow: {
     alignItems: 'center',

@@ -33,7 +33,7 @@ export function MobileButton({
       variant={buttonVariant}
     >
       {icon}
-      <Text className={cn('text-sm font-semibold', labelClassNames[variant])} numberOfLines={1}>{label}</Text>
+      <Text className={cn('text-sm font-medium', labelClassNames[variant])} numberOfLines={1}>{label}</Text>
     </Button>
   )
 }

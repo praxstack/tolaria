@@ -88,6 +88,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: mobileColors.text,
     fontSize: mobileType.bodyLarge,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 })
