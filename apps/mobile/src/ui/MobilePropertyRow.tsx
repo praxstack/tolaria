@@ -20,12 +20,12 @@ export function MobilePropertyRow({
 
 const styles = StyleSheet.create({
   label: {
-    width: 86,
+    width: 78,
     color: mobileColors.textMuted,
-    fontSize: mobileType.body,
+    fontSize: mobileType.caption,
   },
   row: {
-    minHeight: 44,
+    minHeight: 32,
     alignItems: 'center',
     flexDirection: 'row',
     gap: mobileSpace.sm,
@@ -39,8 +39,8 @@ const styles = StyleSheet.create({
   },
   valueText: {
     color: mobileColors.text,
-    fontSize: mobileType.body,
-    fontWeight: '500',
+    fontSize: mobileType.caption,
+    fontWeight: '400',
     textAlign: 'right',
   },
 })

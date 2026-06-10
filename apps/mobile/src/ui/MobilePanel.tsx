@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: mobileColors.text,
-    fontSize: mobileType.bodyLarge,
+    fontSize: mobileType.body,
     fontWeight: '600',
   },
   toolbar: {

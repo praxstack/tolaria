@@ -3,7 +3,6 @@ import {
   Archive,
   CaretDown,
   CaretRight,
-  DotsThree,
   Folder,
   FileText,
   FolderOpen,
@@ -37,6 +36,7 @@ import { MobileListRow } from '../ui/MobileListRow'
 import { MobilePanel, MobileToolbar, MobileToolbarSpacer, MobileToolbarTitle } from '../ui/MobilePanel'
 import { MobilePropertyRow } from '../ui/MobilePropertyRow'
 import { mobileColors, mobileRadius, mobileSpace, mobileType } from '../ui/tokens'
+import { TabletEditorPanel } from './TabletEditorPanel'
 
 export function TabletWorkspaceMock({
   scenario = workspaceScenarios.default,
@@ -60,7 +60,7 @@ export function TabletWorkspaceMock({
           subtitle={scenario.noteListSubtitle}
           onSelectNote={setSelectedNoteId}
         />
-        <EditorPanel compact={compactTablet} note={selectedNote} bullets={scenario.editorBullets} />
+        <TabletEditorPanel blocks={scenario.editorBlocks} compact={compactTablet} note={selectedNote} bullets={scenario.editorBullets} />
         <PropertiesPanel compact={compactTablet} note={selectedNote} />
       </View>
       <SyncStatusBar sync={scenario.sync} />
@@ -169,55 +169,6 @@ function NoteListPanel({
   )
 }
 
-function EditorPanel({
-  bullets,
-  compact,
-  note,
-}: {
-  bullets: string[]
-  compact: boolean
-  note: FixtureNote | null
-}) {
-  if (!note) {
-    return (
-      <MobilePanel style={editorStyles.panel}>
-        <MobileToolbar>
-          <FileText color={mobileColors.textMuted} size={18} />
-          <MobileToolbarTitle title={mobileText('inspector.empty.noNoteSelected')} />
-        </MobileToolbar>
-        <View style={editorStyles.emptyState}>
-          <Text style={editorStyles.emptyTitle}>{mobileText('editor.empty.selectNote')}</Text>
-        </View>
-      </MobilePanel>
-    )
-  }
-
-  return (
-    <MobilePanel style={editorStyles.panel}>
-      <MobileToolbar>
-        <FileText color={mobileColors.textMuted} size={18} />
-        <MobileToolbarTitle title={note.title} />
-        <MobileChip label={note.workspace} tone="gray" />
-        <MobileIconButton accessibilityLabel={mobileText('command.note.addFavorite')}>
-          <Star color={note.favorite ? mobileColors.primary : mobileColors.textMuted} size={18} weight={note.favorite ? 'fill' : 'regular'} />
-        </MobileIconButton>
-        <MobileIconButton accessibilityLabel={mobileText('command.group.note')}>
-          <DotsThree color={mobileColors.textMuted} size={20} weight="bold" />
-        </MobileIconButton>
-      </MobileToolbar>
-      <ScrollView contentContainerStyle={[editorStyles.content, compact ? editorStyles.contentCompact : null]}>
-        <Text style={[editorStyles.title, compact ? editorStyles.titleCompact : null]}>{note.title}</Text>
-        {bullets.map((item) => (
-          <View key={item} style={editorStyles.bulletRow}>
-            <Text style={editorStyles.bullet}>•</Text>
-            <Text style={editorStyles.text}>{item}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </MobilePanel>
-  )
-}
-
 function PropertiesPanel({
   compact,
   note,
@@ -242,7 +193,6 @@ function PropertiesPanel({
               <TagWrap labels={note.tags} />
             </PropertySection>
             <MobilePropertyRow label="Links" value={`${note.links}`} />
-            <SectionTitle label="Relationships" />
             {note.relationships.map((relationship) => (
               <PropertySection
                 key={`${relationship.kind}-${relationship.label ?? relationship.values.map((value) => value.title).join('-')}`}
@@ -314,7 +264,7 @@ function RelationshipValues({ values }: { values: FixtureRelationshipValue[] }) 
     <View style={propertyStyles.relationshipValues}>
       {values.map((value) => (
         <View key={`${value.type}-${value.title}`} style={[propertyStyles.relationshipRow, relationshipToneStyles[value.typeTone]]}>
-          <TypeIcon type={value.type} tone={value.typeTone} size={14} />
+          <TypeIcon type={value.type} tone={value.typeTone} size={12} />
           <Text numberOfLines={1} style={[propertyStyles.relationshipText, relationshipTextToneStyles[value.typeTone]]}>{value.title}</Text>
           <View style={propertyStyles.relationshipRemove}>
             <X color={noteTypeColor(value.typeTone)} size={11} weight="bold" />
@@ -649,13 +599,13 @@ const sharedStyles = StyleSheet.create({
   },
   workspaceBadge: {
     overflow: 'hidden',
-    borderRadius: mobileRadius.md,
+    borderRadius: mobileRadius.pill,
     backgroundColor: mobileColors.graySoft,
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '600',
-    paddingHorizontal: mobileSpace.sm,
-    paddingVertical: mobileSpace.xs,
+    fontWeight: '400',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
 })
 
@@ -669,15 +619,15 @@ const sidebarStyles = StyleSheet.create({
     padding: mobileSpace.sm,
   },
   count: {
-    minWidth: 30,
+    minWidth: 22,
+    height: 18,
     overflow: 'hidden',
-    borderRadius: mobileRadius.md,
+    borderRadius: mobileRadius.pill,
     backgroundColor: mobileColors.graySoft,
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '600',
-    paddingHorizontal: mobileSpace.xs,
-    paddingVertical: mobileSpace.xs,
+    fontWeight: '400',
+    paddingHorizontal: 6,
     textAlign: 'center',
   },
   countActive: {
@@ -698,7 +648,7 @@ const sidebarStyles = StyleSheet.create({
   itemText: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: mobileType.body,
+    fontSize: 13,
     fontWeight: '500',
   },
   itemTextActive: {
@@ -708,13 +658,14 @@ const sidebarStyles = StyleSheet.create({
   sectionCount: {
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   sectionTitle: {
     flex: 1,
     color: mobileColors.textMuted,
     fontSize: mobileType.micro,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   sectionTitleRow: {
     minHeight: 32,
@@ -753,7 +704,7 @@ const folderTreeStyles = StyleSheet.create({
   rowText: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: mobileType.body,
+    fontSize: 13,
     fontWeight: '500',
   },
   rowTextActive: {
@@ -828,65 +779,11 @@ const noteListStyles = StyleSheet.create({
   },
 })
 
-const editorStyles = StyleSheet.create({
-  bullet: {
-    color: mobileColors.primary,
-    fontSize: 20,
-    lineHeight: 30,
-  },
-  bulletRow: {
-    flexDirection: 'row',
-    gap: mobileSpace.md,
-    marginBottom: mobileSpace.lg,
-  },
-  content: {
-    alignSelf: 'center',
-    maxWidth: 700,
-    paddingHorizontal: mobileSpace.xxl,
-    paddingVertical: 40,
-    width: '100%',
-  },
-  contentCompact: {
-    paddingHorizontal: mobileSpace.xl,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: mobileSpace.xxl,
-  },
-  emptyTitle: {
-    color: mobileColors.textMuted,
-    fontSize: mobileType.title,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  panel: {
-    flex: 1,
-  },
-  text: {
-    flex: 1,
-    color: mobileColors.text,
-    fontSize: mobileType.bodyLarge,
-    lineHeight: 26,
-  },
-  title: {
-    color: mobileColors.text,
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 34,
-    marginBottom: mobileSpace.xl,
-  },
-  titleCompact: {
-    fontSize: 26,
-    lineHeight: 32,
-  },
-})
-
 const propertyStyles = StyleSheet.create({
   content: {
     flexGrow: 1,
-    padding: mobileSpace.lg,
+    paddingHorizontal: mobileSpace.md,
+    paddingVertical: mobileSpace.sm,
   },
   emptyState: {
     flex: 1,
@@ -907,7 +804,7 @@ const propertyStyles = StyleSheet.create({
     textAlign: 'center',
   },
   fullWidthButton: {
-    marginTop: mobileSpace.lg,
+    marginTop: mobileSpace.sm,
   },
   panel: {
     borderLeftWidth: StyleSheet.hairlineWidth,
@@ -917,18 +814,18 @@ const propertyStyles = StyleSheet.create({
     width: 280,
   },
   relationshipRow: {
-    minHeight: 34,
+    minHeight: 28,
     alignItems: 'center',
     flexDirection: 'row',
-    gap: mobileSpace.sm,
+    gap: mobileSpace.xs,
     borderRadius: mobileRadius.md,
-    paddingHorizontal: mobileSpace.md,
+    paddingHorizontal: mobileSpace.sm,
     paddingVertical: mobileSpace.xs,
     width: '100%',
   },
   relationshipRemove: {
-    minHeight: 18,
-    minWidth: 18,
+    minHeight: 16,
+    minWidth: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: mobileRadius.pill,
@@ -936,23 +833,23 @@ const propertyStyles = StyleSheet.create({
   },
   relationshipText: {
     flex: 1,
-    fontSize: mobileType.body,
-    fontWeight: '600',
+    fontSize: mobileType.caption,
+    fontWeight: '400',
   },
   relationshipValues: {
     alignItems: 'stretch',
-    gap: mobileSpace.sm,
+    gap: mobileSpace.xs,
   },
   sectionLabel: {
     color: mobileColors.textMuted,
-    fontSize: mobileType.body,
+    fontSize: mobileType.caption,
   },
   sectionRow: {
-    minHeight: 44,
+    minHeight: 34,
     borderBottomColor: mobileColors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: mobileSpace.sm,
-    paddingVertical: mobileSpace.md,
+    paddingVertical: mobileSpace.sm,
   },
   sectionValue: {
     minWidth: 0,

@@ -34,7 +34,7 @@ export function MobileListRow({
     >
       <View style={styles.header}>
         {leading}
-        <Text numberOfLines={1} style={styles.title}>{title}</Text>
+        <Text numberOfLines={1} style={[styles.title, selected ? styles.titleSelected : null]}>{title}</Text>
         {trailing}
       </View>
       <Text numberOfLines={2} style={styles.subtitle}>{subtitle}</Text>
@@ -81,13 +81,16 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: mobileSpace.sm,
     color: mobileColors.textMuted,
-    fontSize: mobileType.body,
-    lineHeight: 20,
+    fontSize: mobileType.caption,
+    lineHeight: 18,
   },
   title: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: mobileType.bodyLarge,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  titleSelected: {
     fontWeight: '600',
   },
 })

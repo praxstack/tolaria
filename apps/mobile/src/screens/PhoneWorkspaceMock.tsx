@@ -187,7 +187,9 @@ function PhoneEditor({
         </View>
       </View>
       <ScrollView contentContainerStyle={phoneStyles.editorContent}>
-        <Text style={phoneStyles.editorTitle}>{note.title}</Text>
+        <View style={phoneStyles.editorTitleBlock}>
+          <Text style={phoneStyles.editorTitle}>{note.title}</Text>
+        </View>
         {bullets.map((item) => (
           <View key={item} style={phoneStyles.editorBulletRow}>
             <Text style={phoneStyles.editorBullet}>•</Text>
@@ -283,7 +285,7 @@ const drawerPhoneStyles = StyleSheet.create({
   drawerItemText: {
     flex: 1,
     color: phoneColors.drawerMuted,
-    fontSize: mobileType.bodyLarge,
+    fontSize: 15,
     fontWeight: '500',
   },
   drawerItemTextActive: {
@@ -335,13 +337,14 @@ const editorPhoneStyles = StyleSheet.create({
   },
   editorBullet: {
     color: mobileColors.primary,
-    fontSize: mobileType.bodyLarge,
-    lineHeight: 27,
+    fontSize: 24,
+    lineHeight: 23,
+    minWidth: 24,
   },
   editorBulletRow: {
     flexDirection: 'row',
-    gap: mobileSpace.lg,
-    marginBottom: mobileSpace.lg,
+    gap: 6,
+    marginBottom: mobileSpace.sm,
   },
   editorContent: {
     paddingHorizontal: mobileSpace.xl,
@@ -358,15 +361,20 @@ const editorPhoneStyles = StyleSheet.create({
   editorText: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: mobileType.bodyLarge,
-    lineHeight: 27,
+    fontSize: 15,
+    lineHeight: 23,
   },
   editorTitle: {
     color: mobileColors.text,
-    fontSize: 22,
-    fontWeight: '600',
-    lineHeight: 30,
-    marginBottom: mobileSpace.xxl,
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 38,
+  },
+  editorTitleBlock: {
+    borderBottomColor: mobileColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: mobileSpace.xl,
+    paddingBottom: mobileSpace.lg,
   },
 })
 
@@ -404,16 +412,16 @@ const listPhoneStyles = StyleSheet.create({
   },
   noteSnippet: {
     color: mobileColors.textMuted,
-    fontSize: mobileType.bodyLarge,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     marginTop: mobileSpace.sm,
   },
   noteTitle: {
     flex: 1,
     color: mobileColors.text,
-    fontSize: mobileType.bodyLarge,
-    fontWeight: '600',
-    lineHeight: 23,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 22,
   },
   noteTitleRow: {
     alignItems: 'center',

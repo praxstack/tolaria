@@ -15,8 +15,8 @@ export function MobileChip({
   tone?: MobileChipTone
 }) {
   return (
-    <Badge className={cn('rounded-md border-transparent px-2 py-1', chipClassNames[tone])} style={style} variant="secondary">
-      <Text className={cn('text-xs font-medium leading-none', chipTextClassNames[tone])} numberOfLines={1}>{label}</Text>
+    <Badge className={cn('rounded-full border-transparent px-1.5 py-0.5', chipClassNames[tone])} style={style} variant="secondary">
+      <Text className={cn('text-[11px] font-normal leading-none', chipTextClassNames[tone])} numberOfLines={1}>{label}</Text>
     </Badge>
   )
 }

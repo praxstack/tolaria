@@ -70,7 +70,22 @@ export type FixtureSyncStatus = {
   minutesAgo?: number
 }
 
+export type FixtureEditorInline = {
+  bold?: boolean
+  code?: boolean
+  italic?: boolean
+  text: string
+}
+
+export type FixtureEditorBlock =
+  | { content: FixtureEditorInline[]; kind: 'paragraph' }
+  | { kind: 'heading'; level: 2 | 3; text: string }
+  | { items: FixtureEditorInline[][]; kind: 'bullets' }
+  | { content: FixtureEditorInline[]; kind: 'quote' }
+  | { headers: string[]; kind: 'table'; rows: string[][] }
+
 export type WorkspaceScenario = {
+  editorBlocks: FixtureEditorBlock[]
   editorBullets: string[]
   id: WorkspaceScenarioId
   noteListSubtitle: string
@@ -92,6 +107,92 @@ export const fixtureEditorBullets = [
   'The current narrative routes every workflow through an LLM surface.',
   'Tolaria should keep writing, relationships, and properties visible together.',
   'The mobile UI should match desktop semantics before phone-specific reduction.',
+]
+
+export const fixtureEditorBlocks: FixtureEditorBlock[] = [
+  {
+    kind: 'paragraph',
+    content: [
+      { text: 'Tolaria should keep ' },
+      { bold: true, text: 'writing, relationships, and properties' },
+      { text: ' visible together before we reduce the interface for smaller screens.' },
+    ],
+  },
+  {
+    kind: 'heading',
+    level: 2,
+    text: 'Mobile parity notes',
+  },
+  {
+    kind: 'bullets',
+    items: [
+      [
+        { text: 'Start from desktop semantics, then adapt only for touch and navigation.' },
+      ],
+      [
+        { text: 'Use ' },
+        { code: true, text: 'muted' },
+        { text: ' text for previews, section labels, dates, and lower-priority chrome.' },
+      ],
+      [
+        { italic: true, text: 'Relationship values stay typed, colored, and full-width.' },
+      ],
+    ],
+  },
+  {
+    kind: 'quote',
+    content: [
+      { text: 'Desktop parity is the baseline; mobile convention is an explicit exception.' },
+    ],
+  },
+  {
+    headers: ['Surface', 'Desktop source', 'Mobile target'],
+    kind: 'table',
+    rows: [
+      ['Sidebar', 'SidebarGroupHeader', 'muted 10px groups'],
+      ['Note list', 'NoteItem', '13px titles, 12px previews'],
+      ['Inspector', 'RelationshipsPanel', 'full-width typed relationships'],
+    ],
+  },
+]
+
+const longTitleEditorBlocks: FixtureEditorBlock[] = [
+  {
+    kind: 'paragraph',
+    content: [
+      { text: 'This note intentionally uses a title long enough to pressure the row, toolbar, and editor heading.' },
+    ],
+  },
+  {
+    kind: 'bullets',
+    items: [
+      [{ text: 'Truncate in narrow chrome.' }],
+      [{ text: 'Wrap only inside the editor content area.' }],
+    ],
+  },
+]
+
+const propertyHeavyEditorBlocks: FixtureEditorBlock[] = [
+  {
+    kind: 'paragraph',
+    content: [
+      { text: 'Property-heavy notes should preserve scanability even when relationships contain several typed groups.' },
+    ],
+  },
+  {
+    kind: 'heading',
+    level: 3,
+    text: 'Inspector pressure',
+  },
+  {
+    kind: 'table',
+    headers: ['Property', 'Expected rendering'],
+    rows: [
+      ['Tags', 'wrap under the label'],
+      ['Belongs to', 'typed full-width rows'],
+      ['Has', 'multiple values without a global heading'],
+    ],
+  },
 ]
 
 export const fixtureNotes: FixtureNote[] = [
@@ -376,6 +477,7 @@ export const defaultWorkspaceScenarioId: WorkspaceScenarioId = 'default'
 
 export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> = {
   default: {
+    editorBlocks: fixtureEditorBlocks,
     editorBullets: fixtureEditorBullets,
     id: 'default',
     noteListSubtitle: '7 open notes',
@@ -385,6 +487,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     sync: { kind: 'synced', minutesAgo: 2 },
   },
   'folder-tree': {
+    editorBlocks: fixtureEditorBlocks,
     editorBullets: fixtureEditorBullets,
     id: 'folder-tree',
     noteListSubtitle: '7 open notes',
@@ -394,6 +497,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     sync: { kind: 'synced', minutesAgo: 8 },
   },
   'empty-inbox': {
+    editorBlocks: fixtureEditorBlocks,
     editorBullets: fixtureEditorBullets,
     id: 'empty-inbox',
     noteListSubtitle: '0 open notes',
@@ -403,6 +507,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     sync: { kind: 'pullRequired' },
   },
   'long-title': {
+    editorBlocks: longTitleEditorBlocks,
     editorBullets: [
       'This note intentionally uses a title long enough to pressure the row, toolbar, and editor heading.',
       'The title should truncate in narrow slots and wrap only inside the editor content area.',
@@ -415,6 +520,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     sync: { kind: 'synced', minutesAgo: 1 },
   },
   'property-heavy': {
+    editorBlocks: propertyHeavyEditorBlocks,
     editorBullets: [
       'Property-heavy notes should preserve scanability even when relationships contain several typed groups.',
       'The add-property and add-relationship affordances must remain visible without becoming floating actions.',

@@ -6,7 +6,6 @@ import { cn } from './utils'
 
 const textVariants = cva(
   cn(
-    'text-foreground text-base',
     Platform.select({
       web: 'select-text',
     }),
@@ -64,17 +63,20 @@ type TextProps = React.ComponentProps<typeof RNText> &
 function Text({
   asChild = false,
   className,
+  style,
   variant = 'default',
   ...props
 }: TextProps) {
   const textClass = React.useContext(TextClassContext)
   const Component = asChild ? Slot : RNText
+  const defaultClassName = style === undefined ? 'text-foreground text-base' : undefined
 
   return (
     <Component
       aria-level={variant ? ariaLevelByVariant[variant] : undefined}
-      className={cn(textVariants({ variant }), textClass, className)}
+      className={cn(defaultClassName, textVariants({ variant }), textClass, className)}
       role={variant ? roleByVariant[variant] : undefined}
+      style={style}
       {...props}
     />
   )

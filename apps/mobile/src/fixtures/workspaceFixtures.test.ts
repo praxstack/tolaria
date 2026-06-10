@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fixtureEditorBullets, fixtureNotes, workspaceScenarioForId, workspaceScenarios } from './workspaceFixtures'
+import { fixtureEditorBlocks, fixtureEditorBullets, fixtureNotes, workspaceScenarioForId, workspaceScenarios } from './workspaceFixtures'
 
 describe('workspaceFixtures', () => {
   it('keeps the tablet UI lab anchored on a selected essay note', () => {
@@ -8,6 +8,7 @@ describe('workspaceFixtures', () => {
       type: 'Essay',
     })
     expect(fixtureEditorBullets).toHaveLength(3)
+    expect(fixtureEditorBlocks.map((block) => block.kind)).toContain('table')
   })
 
   it('exposes pressure scenarios for screenshot QA', () => {
