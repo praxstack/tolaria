@@ -75,6 +75,8 @@ The screenshot suite also contains objective parity assertions for tablet landsc
 - toolbar icon actions reverting to oversized mobile card buttons
 - sync footer becoming an oversized mobile bar instead of the 30px desktop status bar
 
+The same Playwright suite also compares the primary tablet-landscape screen against a committed pixel baseline and checks that mobile parity constants still match desktop `src/index.css` and `src/theme.json`.
+
 The default screenshot matrix is:
 
 | Target | Viewport | Purpose |

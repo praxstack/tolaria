@@ -60,6 +60,8 @@ The tablet landscape parity test now checks these computed-style contracts:
 | Toolbar actions | 24px transparent action boxes, 4px radius, no card-like background |
 | Sync footer | 30px height, sidebar background, 8px horizontal padding, 12px muted status text |
 
+The same Playwright suite also runs a source-drift check against desktop `src/index.css` and `src/theme.json`, plus a tablet-landscape pixel baseline for the primary iPad reference screen.
+
 ## Phone Screens
 
 | Surface | Desktop source | Required alignment |

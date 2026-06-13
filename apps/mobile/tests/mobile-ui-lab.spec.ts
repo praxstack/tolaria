@@ -206,6 +206,18 @@ test.describe('mobile UI lab screenshots', () => {
     await assertDesktopParitySources()
   })
 
+  test('matches the tablet landscape pixel baseline', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'tablet-landscape', 'Pixel baseline is scoped to the primary iPad reference layout.')
+
+    await page.goto('/')
+
+    await expect(page).toHaveScreenshot('tablet-landscape-parity-baseline.png', {
+      animations: 'disabled',
+      fullPage: true,
+      maxDiffPixelRatio: 0.002,
+    })
+  })
+
   test('hides and reveals tablet chrome with horizontal swipe gestures', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-landscape', 'Tablet chrome gestures are exercised in the full-width tablet layout.')
 
