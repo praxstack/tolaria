@@ -146,7 +146,6 @@ function SidebarItem({
       onPress={onPress}
       style={[
         styles.item,
-        nativeItemStyle,
         sidebarItemPadding(Boolean(count)),
         active ? { backgroundColor: activeBackgroundColor } : null,
       ]}
@@ -329,7 +328,6 @@ const styles = {
 } as const
 
 const nativeRowStyles = StyleSheet.create({
-  item: { minHeight: 32 },
   sectionTitleRow: { minHeight: 30 },
 })
 
@@ -338,7 +336,6 @@ const nativeTextStyles = StyleSheet.create({
   sectionTitle: { lineHeight: 14 },
 })
 
-const nativeItemStyle = Platform.OS === 'web' ? null : nativeRowStyles.item
 const nativeItemTextStyle = Platform.OS === 'web' ? null : nativeTextStyles.itemText
 const nativeSectionTitleRowStyle = Platform.OS === 'web' ? null : nativeRowStyles.sectionTitleRow
 const nativeSectionTitleTextStyle = Platform.OS === 'web' ? null : nativeTextStyles.sectionTitle
