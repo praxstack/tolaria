@@ -64,6 +64,13 @@ export const mobileParityInventory = [
     surface: 'Workspace sidebar',
   },
   {
+    assertions: ['sidebar count computed styles'],
+    contracts: ['desktopSidebarParity'],
+    desktopSource: 'SidebarCountPill',
+    mobileFile: 'src/components/workspace/MobileSidebarCountPill.tsx',
+    surface: 'Sidebar note counts',
+  },
+  {
     assertions: ['note list computed styles and selection click'],
     contracts: ['desktopNoteItemParity', 'desktopPanelParity', 'desktopToolbarParity'],
     desktopSource: 'NoteListHeader and NoteItem',

@@ -12,7 +12,7 @@ import {
   Tag,
   Tray,
 } from 'phosphor-react-native'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Text } from '../ui/text'
 import { mobileCopy, mobileText } from '../../i18n/mobileText'
 import { MobileIconButton } from '../../ui/MobileIconButton'
@@ -25,6 +25,7 @@ import type {
   MobileSidebarIcon,
   MobileSidebarSection,
 } from '../../workspace/mobileWorkspaceModel'
+import { MobileSidebarCountPill } from './MobileSidebarCountPill'
 import { noteTypeColor, noteTypeSoftColor } from './mobileWorkspaceTone'
 
 export type MobileSidebarFolderSelection = {
@@ -131,6 +132,7 @@ function SidebarItem({
       onPress={onPress}
       style={({ pressed }) => [
         styles.item,
+        nativeItemStyle,
         sidebarItemPadding(Boolean(count)),
         active ? { backgroundColor: activeBackgroundColor } : null,
         pressed ? styles.itemPressed : null,
@@ -139,8 +141,14 @@ function SidebarItem({
     >
       <View style={styles.itemContent}>
         {icon}
-        <Text numberOfLines={1} style={[styles.itemText, active ? { color: activeColor } : null]} testID={`sidebar-item-${label.toLowerCase().replaceAll(' ', '-')}-label`}>{label}</Text>
-        {count ? <Text style={[styles.count, active ? { backgroundColor: activeColor, color: mobileColors.textInverse } : null]} testID={`sidebar-item-${label.toLowerCase().replaceAll(' ', '-')}-count`}>{count}</Text> : null}
+        <Text numberOfLines={1} style={[styles.itemText, nativeItemTextStyle, active ? { color: activeColor } : null]} testID={`sidebar-item-${label.toLowerCase().replaceAll(' ', '-')}-label`}>{label}</Text>
+        {count ? (
+          <MobileSidebarCountPill
+            activeColor={active ? activeColor : undefined}
+            testID={`sidebar-item-${label.toLowerCase().replaceAll(' ', '-')}-count`}
+            value={count}
+          />
+        ) : null}
       </View>
     </Pressable>
   )
@@ -157,12 +165,12 @@ function SectionTitle({
 }) {
   return (
     <View
-      style={[styles.sectionTitleRow, count ? styles.sectionTitleRowWithCount : styles.sectionTitleRowRegular]}
+      style={[styles.sectionTitleRow, nativeSectionTitleRowStyle, count ? styles.sectionTitleRowWithCount : styles.sectionTitleRowRegular]}
       testID={`sidebar-section-title-${sectionId}`}
     >
       <CaretDown color={mobileColors.textMuted} size={11} />
-      <Text style={styles.sectionTitle} testID={`sidebar-section-title-text-${sectionId}`}>{label}</Text>
-      {count ? <Text style={styles.sectionCount} testID={`sidebar-section-count-${sectionId}`}>{count}</Text> : null}
+      <Text style={[styles.sectionTitle, nativeSectionTitleTextStyle]} testID={`sidebar-section-title-text-${sectionId}`}>{label}</Text>
+      {count ? <MobileSidebarCountPill compact testID={`sidebar-section-count-${sectionId}`} value={count} /> : null}
     </View>
   )
 }
@@ -213,6 +221,7 @@ function FolderTreeRow({
         onPress={() => onSelectFolder?.({ id: folder.id, name: folder.name })}
         style={({ pressed }) => [
           folderTreeStyles.row,
+          nativeFolderTreeRowStyle,
           active ? folderTreeStyles.rowActive : null,
           pressed ? folderTreeStyles.rowPressed : null,
           folderTreeIndent(depth),
@@ -221,7 +230,7 @@ function FolderTreeRow({
         <View style={folderTreeStyles.rowContent}>
           <FolderTreeCaret expanded={folder.expanded} hasChildren={hasChildren} />
           <FolderTreeIcon active={active} expanded={folder.expanded} />
-          <Text numberOfLines={1} style={[folderTreeStyles.rowText, active ? folderTreeStyles.rowTextActive : null]}>{folder.name}</Text>
+          <Text numberOfLines={1} style={[folderTreeStyles.rowText, nativeFolderTreeTextStyle, active ? folderTreeStyles.rowTextActive : null]}>{folder.name}</Text>
         </View>
       </Pressable>
       {folder.expanded && hasChildren ? (
@@ -322,44 +331,9 @@ function sidebarSectionLabel(id: string, fallback: string) {
   return fallback
 }
 
-const styles = StyleSheet.create({
-  content: {
-    padding: 0,
-  },
-  count: {
-    minWidth: desktopSidebarParity.countPillMinWidth,
-    height: desktopSidebarParity.countPillHeight,
-    overflow: 'hidden',
-    borderRadius: desktopSidebarParity.countPillRadius,
-    backgroundColor: mobileColors.graySoft,
-    color: mobileColors.textMuted,
-    fontSize: desktopSidebarParity.countPillTextSize,
-    fontWeight: '400',
-    paddingHorizontal: desktopSidebarParity.countPillPaddingHorizontal,
-    textAlign: 'center',
-  },
-  groupSection: {
-    paddingHorizontal: desktopSidebarParity.sectionHorizontalPadding,
-  },
-  item: {
-    justifyContent: 'center',
-    borderRadius: desktopSidebarParity.itemRadius,
-    width: '100%',
-  },
-  itemContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: desktopSidebarParity.itemGap,
-  },
-  itemPressed: {
-    backgroundColor: mobileColors.control,
-  },
-  itemText: {
-    flex: 1,
-    color: mobileColors.text,
-    fontSize: desktopSidebarParity.itemTextSize,
-    fontWeight: '500',
-  },
+const panelStyles = StyleSheet.create({
+  content: { padding: 0 },
+  groupSection: { paddingHorizontal: desktopSidebarParity.sectionHorizontalPadding },
   panel: {
     alignSelf: 'stretch',
     width: desktopPanelParity.sidebarWidth,
@@ -373,22 +347,36 @@ const styles = StyleSheet.create({
     paddingRight: desktopSidebarParity.topNavPadding.right,
     paddingTop: desktopSidebarParity.topNavPadding.top,
   },
-  section: {
-    borderBottomColor: mobileColors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  section: { borderBottomColor: mobileColors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+  vaultTitle: {
+    flex: 1,
+    color: mobileColors.text,
+    fontSize: mobileType.body,
+    fontWeight: '600',
   },
-  sectionCount: {
-    minWidth: desktopSidebarParity.countPillCompactMinWidth,
-    height: desktopSidebarParity.countPillCompactHeight,
-    overflow: 'hidden',
-    borderRadius: desktopSidebarParity.countPillRadius,
-    backgroundColor: mobileColors.graySoft,
-    color: mobileColors.textMuted,
-    fontSize: desktopSidebarParity.countPillTextSize,
-    fontWeight: '400',
-    paddingHorizontal: desktopSidebarParity.countPillPaddingHorizontal,
-    textAlign: 'center',
+})
+
+const itemStyles = StyleSheet.create({
+  item: {
+    justifyContent: 'center',
+    borderRadius: desktopSidebarParity.itemRadius,
+    width: '100%',
   },
+  itemContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: desktopSidebarParity.itemGap,
+  },
+  itemPressed: { backgroundColor: mobileColors.control },
+  itemText: {
+    flex: 1,
+    color: mobileColors.text,
+    fontSize: desktopSidebarParity.itemTextSize,
+    fontWeight: '500',
+  },
+})
+
+const sectionTitleStyles = StyleSheet.create({
   sectionTitle: {
     flex: 1,
     color: mobileColors.textMuted,
@@ -413,21 +401,28 @@ const styles = StyleSheet.create({
     paddingRight: desktopSidebarParity.groupHeaderPadding.withCount.right,
     paddingTop: desktopSidebarParity.groupHeaderPadding.withCount.top,
   },
-  vaultTitle: {
-    flex: 1,
-    color: mobileColors.text,
-    fontSize: mobileType.body,
-    fontWeight: '600',
-  },
 })
 
-const folderTreeStyles = StyleSheet.create({
+const styles = {
+  ...panelStyles,
+  ...itemStyles,
+  ...sectionTitleStyles,
+} as const
+
+const folderTreeLayoutStyles = StyleSheet.create({
   caretSpacer: {
     width: 11,
   },
   children: {
     position: 'relative',
   },
+  tree: {
+    gap: 2,
+    paddingBottom: desktopSidebarParity.sectionContentPaddingBottom,
+  },
+})
+
+const folderTreeRowStyles = StyleSheet.create({
   row: {
     justifyContent: 'center',
     borderRadius: desktopSidebarParity.itemRadius,
@@ -436,32 +431,59 @@ const folderTreeStyles = StyleSheet.create({
     paddingTop: desktopSidebarParity.itemPadding.regular.top,
     width: '100%',
   },
-  rowContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: desktopSidebarParity.folderIconGap,
-  },
+})
+
+const folderTreeStateStyles = StyleSheet.create({
   rowActive: {
     backgroundColor: mobileColors.primarySoft,
   },
   rowPressed: {
     backgroundColor: mobileColors.graySoft,
   },
+})
+
+const folderTreeContentStyles = StyleSheet.create({
+  rowContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: desktopSidebarParity.folderIconGap,
+  },
+})
+
+const folderTreeTextStyles = StyleSheet.create({
   rowText: {
     flex: 1,
     color: mobileColors.text,
     fontSize: desktopSidebarParity.itemTextSize,
     fontWeight: '500',
   },
-  rowTextActive: {
-    color: mobileColors.primary,
-    fontWeight: '600',
-  },
-  tree: {
-    gap: 2,
-    paddingBottom: desktopSidebarParity.sectionContentPaddingBottom,
-  },
+  rowTextActive: { color: mobileColors.primary, fontWeight: '600' },
 })
+
+const folderTreeStyles = {
+  ...folderTreeLayoutStyles,
+  ...folderTreeRowStyles,
+  ...folderTreeStateStyles,
+  ...folderTreeContentStyles,
+  ...folderTreeTextStyles,
+} as const
+
+const nativeStyles = StyleSheet.create({
+  folderRow: { minHeight: 28 },
+  folderText: { lineHeight: 18 },
+  item: { minHeight: 28 },
+  itemText: { lineHeight: 18 },
+  sectionTitle: { lineHeight: 14 },
+  sectionTitleRow: { minHeight: 26 },
+})
+
+const nativeFolderTreeRowStyle = Platform.OS === 'web' ? null : nativeStyles.folderRow
+const nativeFolderTreeTextStyle = Platform.OS === 'web' ? null : nativeStyles.folderText
+const nativeItemStyle = Platform.OS === 'web' ? null : nativeStyles.item
+const nativeItemTextStyle = Platform.OS === 'web' ? null : nativeStyles.itemText
+const nativeSectionTitleRowStyle = Platform.OS === 'web' ? null : nativeStyles.sectionTitleRow
+const nativeSectionTitleTextStyle = Platform.OS === 'web' ? null : nativeStyles.sectionTitle
+
 
 function sidebarItemPadding(hasCount: boolean) {
   const padding = hasCount ? desktopSidebarParity.itemPadding.withCount : desktopSidebarParity.itemPadding.regular
