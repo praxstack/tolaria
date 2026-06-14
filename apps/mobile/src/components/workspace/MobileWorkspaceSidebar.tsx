@@ -468,21 +468,24 @@ const folderTreeStyles = {
   ...folderTreeTextStyles,
 } as const
 
-const nativeStyles = StyleSheet.create({
-  folderRow: { minHeight: 28 },
-  folderText: { lineHeight: 18 },
-  item: { minHeight: 28 },
-  itemText: { lineHeight: 18 },
-  sectionTitle: { lineHeight: 14 },
-  sectionTitleRow: { minHeight: 26 },
+const nativeRowStyles = StyleSheet.create({
+  folderRow: { marginVertical: 1, minHeight: 34 },
+  item: { marginVertical: 2, minHeight: 38 },
+  sectionTitleRow: { marginTop: 4, minHeight: 34 },
 })
 
-const nativeFolderTreeRowStyle = Platform.OS === 'web' ? null : nativeStyles.folderRow
-const nativeFolderTreeTextStyle = Platform.OS === 'web' ? null : nativeStyles.folderText
-const nativeItemStyle = Platform.OS === 'web' ? null : nativeStyles.item
-const nativeItemTextStyle = Platform.OS === 'web' ? null : nativeStyles.itemText
-const nativeSectionTitleRowStyle = Platform.OS === 'web' ? null : nativeStyles.sectionTitleRow
-const nativeSectionTitleTextStyle = Platform.OS === 'web' ? null : nativeStyles.sectionTitle
+const nativeTextStyles = StyleSheet.create({
+  folderText: { lineHeight: 18 },
+  itemText: { lineHeight: 18 },
+  sectionTitle: { lineHeight: 14 },
+})
+
+const nativeFolderTreeRowStyle = Platform.OS === 'web' ? null : nativeRowStyles.folderRow
+const nativeFolderTreeTextStyle = Platform.OS === 'web' ? null : nativeTextStyles.folderText
+const nativeItemStyle = Platform.OS === 'web' ? null : nativeRowStyles.item
+const nativeItemTextStyle = Platform.OS === 'web' ? null : nativeTextStyles.itemText
+const nativeSectionTitleRowStyle = Platform.OS === 'web' ? null : nativeRowStyles.sectionTitleRow
+const nativeSectionTitleTextStyle = Platform.OS === 'web' ? null : nativeTextStyles.sectionTitle
 
 
 function sidebarItemPadding(hasCount: boolean) {
