@@ -73,8 +73,8 @@ The same Playwright suite also runs a source-drift check against desktop `src/in
 
 ## Current Intentional Gaps
 
-- Fixture screens are still storage-free; they validate UI structure, visual parity, and in-process editing behavior before mobile disk persistence is wired.
+- Fixture screens are still storage-free; they validate UI structure, visual parity, and in-process editing behavior without touching disk.
 - Local-vault screenshots are generated at test time. They exercise large-vault metadata, real type colors, real relationship keys, lazy note hydration, and markdown body pressure without committing vault content.
-- Tablet action sheets are clickable and tested against the editable snapshot. Create/property/relationship/body edits now emit repository write plans, but native on-device disk persistence is not wired yet.
+- Tablet action sheets are clickable and tested against the editable snapshot. Create/property/relationship/body edits emit repository write plans; explicit `source=native-vault` mode persists those writes through Expo FileSystem, while fixture and host-vault QA remain deterministic.
 - Phone navigation is represented as discrete states for screenshot QA. Gestures and native navigation transitions will come after the visual language is stable.
 - Mobile wrappers are thin Tolaria wrappers over RNR-style primitives so the eventual implementation can swap in more RNR coverage without changing Tolaria-specific tokens and semantics.

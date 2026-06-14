@@ -10,7 +10,12 @@ export function MobileUiLab() {
   const searchParams = useMobileUiSearchParams()
   const scenarioId = currentScenarioId(searchParams)
   const source = currentSnapshotSource(searchParams)
-  const repositoryRequest = { scenarioId, source }
+  const repositoryRequest = {
+    scenarioId,
+    source,
+    vaultLabel: currentVaultLabel(searchParams),
+    vaultRootUri: currentVaultRootUri(searchParams),
+  }
   const layoutProbe = layoutProbeEnabled(searchParams)
   const snapshot = readOnlyWorkspaceRepository.readSnapshot(repositoryRequest)
   const workspaceKey = mobileWorkspaceKey({ layoutProbe, scenarioId, snapshot, source })
@@ -43,7 +48,16 @@ function currentPhoneState(searchParams: URLSearchParams): PhoneWorkspaceState {
 }
 
 function currentSnapshotSource(searchParams: URLSearchParams): NonNullable<ReadOnlyWorkspaceRequest['source']> {
+  if (searchParams.get('source') === 'native-vault') return 'native'
   return searchParams.get('source') === 'host-vault' ? 'host' : 'fixture'
+}
+
+function currentVaultRootUri(searchParams: URLSearchParams): string | null {
+  return searchParams.get('vaultUri') || envValue('EXPO_PUBLIC_TOLARIA_NATIVE_VAULT_URI')
+}
+
+function currentVaultLabel(searchParams: URLSearchParams): string | null {
+  return searchParams.get('vaultLabel') || envValue('EXPO_PUBLIC_TOLARIA_NATIVE_VAULT_LABEL')
 }
 
 function layoutProbeEnabled(searchParams: URLSearchParams) {
@@ -61,14 +75,29 @@ function mobileWorkspaceKey({
   snapshot: ReturnType<typeof readOnlyWorkspaceRepository.readSnapshot>
   source: ReturnType<typeof currentSnapshotSource>
 }) {
+  const sourceInfo = snapshot.source
+
   return [
     source,
-    scenarioId ?? 'default',
-    layoutProbe ? 'probe' : 'view',
-    snapshot.source?.kind ?? 'fixture',
-    snapshot.source?.totalNotes ?? snapshot.notes.length,
-    snapshot.notes[0]?.id ?? 'empty',
+    scenarioIdOrDefault(scenarioId),
+    layoutProbeMode(layoutProbe),
+    sourceInfo ? sourceInfo.kind : 'fixture',
+    sourceInfo ? sourceInfo.label : 'Tolaria Vault',
+    sourceInfo ? sourceInfo.totalNotes : snapshot.notes.length,
+    firstNoteId(snapshot),
   ].join(':')
+}
+
+function scenarioIdOrDefault(scenarioId: string | null) {
+  return scenarioId ?? 'default'
+}
+
+function layoutProbeMode(layoutProbe: boolean) {
+  return layoutProbe ? 'probe' : 'view'
+}
+
+function firstNoteId(snapshot: ReturnType<typeof readOnlyWorkspaceRepository.readSnapshot>) {
+  return snapshot.notes[0]?.id ?? 'empty'
 }
 
 function useMobileUiSearchParams() {
@@ -113,6 +142,10 @@ function searchFromUrl(url: string | null) {
 }
 
 function envFlagEnabled(name: string) {
+  return envValue(name) === '1'
+}
+
+function envValue(name: string) {
   const processGlobal = globalThis as { process?: { env?: Record<string, string | undefined> } }
-  return processGlobal.process?.env?.[name] === '1'
+  return processGlobal.process?.env?.[name] ?? null
 }

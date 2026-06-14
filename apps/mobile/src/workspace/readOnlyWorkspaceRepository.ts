@@ -1,10 +1,14 @@
 import { workspaceScenarioForId } from '../fixtures/workspaceFixtures'
 import type { MobileNote, MobileWorkspaceSnapshot } from './mobileWorkspaceModel'
 import type { MobileWorkspaceWrite } from './mobileWorkspaceEditing'
+import { expoWorkspaceFileSystem } from './expoWorkspaceFileSystem'
+import { createFileSystemWorkspaceRepository } from './fileSystemWorkspaceRepository'
 
 export type ReadOnlyWorkspaceRequest = {
   scenarioId?: string | null
-  source?: 'fixture' | 'host'
+  source?: 'fixture' | 'host' | 'native'
+  vaultLabel?: string | null
+  vaultRootUri?: string | null
 }
 
 export type ReadOnlyWorkspaceRepository = {
@@ -24,13 +28,21 @@ export const HOST_WORKSPACE_SNAPSHOT_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_SN
 export const HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_NOTE_CONTENTS__'
 export const HOST_WORKSPACE_WRITES_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_WRITES__'
 
+const nativeWorkspaceRepository = createFileSystemWorkspaceRepository(expoWorkspaceFileSystem)
+
 export const readOnlyWorkspaceRepository: ReadOnlyWorkspaceRepository = {
   persistWrites: async (writes, request) => {
-    if (request?.source !== 'host') return
-    persistHostWrites(writes)
+    if (request?.source === 'host') {
+      persistHostWrites(writes)
+    } else if (request?.source === 'native') {
+      await nativeWorkspaceRepository.persistWrites(writes, request)
+    }
   },
   readNoteContent: async (note, request) => {
     if (note.rawContent !== undefined) return note.rawContent
+    if (request?.source === 'native') {
+      return nativeWorkspaceRepository.readNoteContent(note, request)
+    }
     if (request?.source !== 'host') return null
 
     return hostNoteContent(note)
@@ -38,6 +50,9 @@ export const readOnlyWorkspaceRepository: ReadOnlyWorkspaceRepository = {
   readSnapshot: (request) => {
     if (request?.source === 'host') {
       return readHostWorkspaceSnapshot() ?? fixtureReadOnlyWorkspaceRepository.readSnapshot(request)
+    }
+    if (request?.source === 'native') {
+      return nativeWorkspaceRepository.readSnapshot(request)
     }
 
     return fixtureReadOnlyWorkspaceRepository.readSnapshot(request)

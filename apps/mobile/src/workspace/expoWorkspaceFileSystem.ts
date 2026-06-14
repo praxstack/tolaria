@@ -1,0 +1,100 @@
+import type { Directory, File, Paths } from 'expo-file-system'
+import type { LocalVaultFile } from './localVaultSnapshot'
+import { normalizedWorkspaceRelativePath, type WorkspaceFileSystem } from './fileSystemWorkspaceRepository'
+
+type ExpoFileSystemModule = {
+  Directory: typeof Directory
+  File: typeof File
+  Paths: typeof Paths
+}
+type DirectoryName = string
+type RelativeVaultPath = string
+type RootUri = string
+
+declare const require: (moduleName: string) => ExpoFileSystemModule
+
+let expoFileSystemModule: ExpoFileSystemModule | null = null
+
+export const expoWorkspaceFileSystem: WorkspaceFileSystem = {
+  defaultRootUri: () => {
+    const { Directory, Paths } = expoFileSystem()
+    return new Directory(Paths.document, 'Tolaria Vault').uri
+  },
+  readTextFile: (rootUri, relativePath) => {
+    const normalizedPath = normalizedWorkspaceRelativePath(relativePath)
+    if (!normalizedPath) return null
+
+    const file = workspaceFile(expoFileSystem(), rootUri, normalizedPath)
+    return file.exists ? file.textSync() : null
+  },
+  readVaultFiles: (rootUri) => {
+    const module = expoFileSystem()
+    const root = new module.Directory(rootUri)
+    if (!root.exists) return []
+
+    return readDirectoryFiles(module, root, '')
+  },
+  writeTextFile: (rootUri, relativePath, content) => {
+    const normalizedPath = normalizedWorkspaceRelativePath(relativePath)
+    if (!normalizedPath) return
+
+    const file = workspaceFile(expoFileSystem(), rootUri, normalizedPath)
+    file.parentDirectory.create({ idempotent: true, intermediates: true })
+    if (!file.exists) file.create({ intermediates: true })
+    file.write(content, { encoding: 'utf8' })
+  },
+}
+
+function expoFileSystem(): ExpoFileSystemModule {
+  expoFileSystemModule ??= require('expo-file-system')
+  return expoFileSystemModule
+}
+
+function readDirectoryFiles(
+  module: ExpoFileSystemModule,
+  directory: Directory,
+  currentRelativePath: RelativeVaultPath,
+): LocalVaultFile[] {
+  const files: LocalVaultFile[] = []
+
+  for (const entry of directory.list()) {
+    const relativePath = joinedRelativePath(currentRelativePath, entry.name)
+    if (entry instanceof module.Directory && shouldReadDirectory(entry.name)) {
+      files.push(...readDirectoryFiles(module, entry, relativePath))
+    } else if (entry instanceof module.File && shouldReadFile(relativePath)) {
+      files.push(localVaultFile(entry, relativePath))
+    }
+  }
+
+  return files
+}
+
+function localVaultFile(file: File, relativePath: RelativeVaultPath): LocalVaultFile {
+  const info = file.info()
+  const content = file.textSync()
+
+  return {
+    absolutePath: file.uri,
+    content,
+    createdAt: info.creationTime ?? file.creationTime ?? null,
+    modifiedAt: info.modificationTime ?? file.modificationTime ?? null,
+    relativePath,
+    size: info.size ?? content.length,
+  }
+}
+
+function workspaceFile(module: ExpoFileSystemModule, rootUri: RootUri, relativePath: RelativeVaultPath): File {
+  return new module.File(rootUri, ...relativePath.split('/'))
+}
+
+function joinedRelativePath(parent: RelativeVaultPath, name: DirectoryName): RelativeVaultPath {
+  return parent ? `${parent}/${name}` : name
+}
+
+function shouldReadFile(relativePath: RelativeVaultPath): boolean {
+  return relativePath.endsWith('.md') || /^views\/[^/]+\.ya?ml$/u.test(relativePath)
+}
+
+function shouldReadDirectory(name: DirectoryName): boolean {
+  return !name.startsWith('.') && name !== 'node_modules'
+}
