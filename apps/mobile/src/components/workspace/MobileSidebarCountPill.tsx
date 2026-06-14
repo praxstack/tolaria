@@ -1,11 +1,14 @@
 import { Platform, StyleSheet, View } from 'react-native'
 import { Text } from '../ui/text'
+import { probeProps, type MobileLayoutProbe } from '../../qa/mobileLayoutProbe'
 import { desktopSidebarParity } from '../../ui/desktopParity'
 import { mobileColors } from '../../ui/tokens'
 
 type MobileSidebarCountPillProps = {
   activeColor?: string
   compact?: boolean
+  layoutProbe?: MobileLayoutProbe
+  metricId?: string
   testID: string
   value: string
 }
@@ -13,14 +16,35 @@ type MobileSidebarCountPillProps = {
 function NativeCountPill({
   activeColor,
   compact = false,
+  layoutProbe,
+  metricId,
   testID,
   value,
 }: MobileSidebarCountPillProps) {
   return (
-    <View style={[compact ? nativeStyles.compact : nativeStyles.count, activeColor ? { backgroundColor: activeColor } : null]} testID={testID}>
-      <Text style={[nativeStyles.text, activeColor ? nativeStyles.activeText : null]}>{value}</Text>
+    <View
+      {...countPillProbeProps(layoutProbe, metricId, 'container')}
+      style={[compact ? nativeStyles.compact : nativeStyles.count, activeColor ? { backgroundColor: activeColor } : null]}
+      testID={testID}
+    >
+      <Text
+        {...countPillProbeProps(layoutProbe, metricId, 'text')}
+        style={[nativeStyles.text, activeColor ? nativeStyles.activeText : null]}
+      >
+        {value}
+      </Text>
     </View>
   )
+}
+
+function countPillProbeProps(
+  layoutProbe: MobileLayoutProbe | undefined,
+  metricId: string | undefined,
+  segment: 'container' | 'text',
+) {
+  if (!layoutProbe || !metricId) return {}
+
+  return probeProps(layoutProbe, `${metricId}.${segment}`)
 }
 
 function WebCountPill({

@@ -23,6 +23,8 @@ export type TabletPanel = 'noteList' | 'properties' | 'sidebar'
 export type TabletReadOnlyForm = {
   createTitle: ReadOnlyFormValue
   editingViewId: ReadOnlyFormValue
+  folderPath: ReadOnlyFormValue
+  noteType: ReadOnlyFormValue
   propertyName: ReadOnlyFormValue
   propertyValue: ReadOnlyFormValue
   relationshipName: ReadOnlyFormValue
@@ -44,6 +46,8 @@ export type TabletWorkspaceChromeProps = {
   notes: MobileNote[]
   onAddProperty: () => void
   onAddRelationship: () => void
+  onChangeNoteType: () => void
+  onChangeNoteTypeInputChange: (value: ReadOnlyFormValue) => void
   onCloseAction: () => void
   onCopyDeepLink: () => void
   onCreateNote: () => void
@@ -51,8 +55,12 @@ export type TabletWorkspaceChromeProps = {
   onCreateView: () => void
   onDeleteView: () => void
   onDeleteProperty: (noteId: NoteId, key: string) => void
+  onFolderPathChange: (value: ReadOnlyFormValue) => void
+  onMoveNoteToFolder: () => void
+  onOpenChangeNoteType: () => void
   onOpenCreateNote: () => void
   onOpenCreateView: () => void
+  onOpenMoveNoteToFolder: () => void
   onOpenViewActions: (selection: MobileSidebarItemSelection) => void
   onOpenMoreActions: () => void
   onOpenSearch: () => void

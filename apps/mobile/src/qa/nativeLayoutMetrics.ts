@@ -23,9 +23,31 @@ type SidebarPadding = {
   top: number
 }
 
+type CountPillLayout = {
+  compact?: boolean
+  id: string
+}
+
+type LayoutExpectation = {
+  actual: number | null
+  expected: number
+  id: string
+  message: string
+}
+
+type MetricExpectation = {
+  id: string
+  message: string
+  metric: NativeLayoutMetric | undefined
+}
+
 const metricPrefix = 'TOLARIA_MOBILE_LAYOUT_METRIC'
 const layoutTolerance = 1.5
 export const nativeSidebarMetricContract = {
+  countPill: {
+    compactHeight: 18,
+    height: 20,
+  },
   folderRowContentInset: 12,
   folderRowIndent: 25,
   itemPadding: {
@@ -57,20 +79,22 @@ export function latestNativeLayoutMetrics(metrics: NativeLayoutMetric[]): Native
 
 export function assertNativeSidebarLayoutMetrics(metrics: NativeLayoutMetricMap): NativeLayoutAssertionFailure[] {
   return [
-    ...assertSidebarItemLayout(metrics, 'sidebar.item.inbox', nativeSidebarMetricContract.itemPadding.withCount),
-    ...assertSidebarItemLayout(metrics, 'sidebar.item.all-notes', nativeSidebarMetricContract.itemPadding.withCount),
-    ...assertSidebarItemLayout(metrics, 'sidebar.item.personal-journal', nativeSidebarMetricContract.itemPadding.regular),
-    ...assertSidebarItemLayout(metrics, 'sidebar.item.essays', nativeSidebarMetricContract.itemPadding.withCount),
+    ...assertSidebarItemLayout({ id: 'sidebar.item.inbox', metrics, padding: nativeSidebarMetricContract.itemPadding.withCount }),
+    ...assertSidebarItemLayout({ id: 'sidebar.item.all-notes', metrics, padding: nativeSidebarMetricContract.itemPadding.withCount }),
+    ...assertSidebarItemLayout({ id: 'sidebar.item.personal-journal', metrics, padding: nativeSidebarMetricContract.itemPadding.regular }),
+    ...assertSidebarItemLayout({ id: 'sidebar.item.essays', metrics, padding: nativeSidebarMetricContract.itemPadding.withCount }),
     ...assertStackedRows(metrics, ['sidebar.item.inbox', 'sidebar.item.all-notes', 'sidebar.item.archive']),
-    ...assertSectionTitleLayout(metrics, 'favorites', 'sidebar.item.personal-journal.row'),
-    ...assertSectionTitleLayout(metrics, 'types', 'sidebar.item.essays.row'),
-    ...assertSectionTitleLayout(metrics, 'folders', 'sidebar.folderTree.root'),
-    ...assertFolderLayout(metrics, 'sidebar.folder.writing', nativeSidebarMetricContract.folderRowContentInset),
-    ...assertFolderLayout(
+    ...assertSectionTitleLayout({ firstContentMetricId: 'sidebar.item.personal-journal.row', metrics, sectionId: 'favorites' }),
+    ...assertSectionTitleLayout({ firstContentMetricId: 'sidebar.item.essays.row', metrics, sectionId: 'types' }),
+    ...assertSectionTitleLayout({ firstContentMetricId: 'sidebar.folderTree.root', metrics, sectionId: 'folders' }),
+    ...assertFolderLayout({ expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset, id: 'sidebar.folder.writing', metrics }),
+    ...assertFolderLayout({
+      expectedLeftInset:
+        nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent,
+      id: 'sidebar.folder.tolaria-mobile',
       metrics,
-      'sidebar.folder.tolaria-mobile',
-      nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent,
-    ),
+    }),
+    ...assertCountPillLayouts(metrics),
   ]
 }
 
@@ -80,38 +104,68 @@ function assertStackedRows(metrics: NativeLayoutMetricMap, ids: string[]): Nativ
     const current = metrics[`${id}.row`]
 
     return [
-      ...expectMetric(previous, ids[index], 'previous row is captured before checking sidebar row stacking'),
-      ...expectMetric(current, id, 'row is captured before checking sidebar row stacking'),
-      ...expectAtLeast(
-        previous && current ? current.y - previous.y - previous.height : null,
-        0,
+      ...expectMetric({
+        id: ids[index],
+        message: 'previous row is captured before checking sidebar row stacking',
+        metric: previous,
+      }),
+      ...expectMetric({
         id,
-        'row starts after the previous sidebar row',
-      ),
+        message: 'row is captured before checking sidebar row stacking',
+        metric: current,
+      }),
+      ...expectAtLeast({
+        actual: previous && current ? current.y - previous.y - previous.height : null,
+        expected: 0,
+        id,
+        message: 'row starts after the previous sidebar row',
+      }),
     ]
   })
 }
 
-function assertSectionTitleLayout(
-  metrics: NativeLayoutMetricMap,
-  sectionId: string,
-  firstContentMetricId: string,
-): NativeLayoutAssertionFailure[] {
+function assertSectionTitleLayout({
+  firstContentMetricId,
+  metrics,
+  sectionId,
+}: {
+  firstContentMetricId: string
+  metrics: NativeLayoutMetricMap
+  sectionId: string
+}): NativeLayoutAssertionFailure[] {
   const id = `sidebar.section.${sectionId}`
   const titleRow = metrics[`${id}.row`]
   const firstContent = metrics[firstContentMetricId]
 
   return [
-    ...expectMetric(titleRow, id, 'section title row is captured before checking native sidebar spacing'),
-    ...expectMetric(firstContent, firstContentMetricId, 'first section content is captured before checking native sidebar spacing'),
-    ...expectClose(titleRow?.x ?? null, nativeSidebarMetricContract.sectionHorizontalPadding, id, 'section title keeps desktop section inset'),
-    ...expectAtLeast(titleRow?.height ?? null, nativeSidebarMetricContract.sectionTitleMinHeight, id, 'section title keeps desktop header height'),
-    ...expectAtLeast(
-      titleRow && firstContent ? firstContent.y - titleRow.y - titleRow.height : null,
-      0,
-      firstContentMetricId,
-      'first row starts after the sidebar section title',
-    ),
+    ...expectMetric({
+      id,
+      message: 'section title row is captured before checking native sidebar spacing',
+      metric: titleRow,
+    }),
+    ...expectMetric({
+      id: firstContentMetricId,
+      message: 'first section content is captured before checking native sidebar spacing',
+      metric: firstContent,
+    }),
+    ...expectClose({
+      actual: titleRow?.x ?? null,
+      expected: nativeSidebarMetricContract.sectionHorizontalPadding,
+      id,
+      message: 'section title keeps desktop section inset',
+    }),
+    ...expectAtLeast({
+      actual: titleRow?.height ?? null,
+      expected: nativeSidebarMetricContract.sectionTitleMinHeight,
+      id,
+      message: 'section title keeps desktop header height',
+    }),
+    ...expectAtLeast({
+      actual: titleRow && firstContent ? firstContent.y - titleRow.y - titleRow.height : null,
+      expected: 0,
+      id: firstContentMetricId,
+      message: 'first row starts after the sidebar section title',
+    }),
   ]
 }
 
@@ -124,77 +178,142 @@ export function formatNativeLayoutAssertionFailures(failures: NativeLayoutAssert
     .join('\n')
 }
 
-function assertSidebarItemLayout(
-  metrics: NativeLayoutMetricMap,
-  id: string,
-  padding: SidebarPadding,
-): NativeLayoutAssertionFailure[] {
+function assertSidebarItemLayout({
+  id,
+  metrics,
+  padding,
+}: {
+  id: string
+  metrics: NativeLayoutMetricMap
+  padding: SidebarPadding
+}): NativeLayoutAssertionFailure[] {
   const row = metrics[`${id}.row`]
   const content = metrics[`${id}.content`]
 
   return [
-    ...expectMetric(row, id, 'row is captured before checking native padding'),
-    ...expectMetric(content, id, 'content is captured before checking native padding'),
-    ...expectClose(row?.x ?? null, nativeSidebarMetricContract.sectionHorizontalPadding, id, 'row keeps desktop section inset'),
-    ...expectClose(content?.x ?? null, padding.left, id, 'content keeps desktop left padding'),
-    ...expectClose(
-      row && content ? row.width - content.x - content.width : null,
-      padding.right,
+    ...expectMetric({ id, message: 'row is captured before checking native padding', metric: row }),
+    ...expectMetric({ id, message: 'content is captured before checking native padding', metric: content }),
+    ...expectClose({
+      actual: row?.x ?? null,
+      expected: nativeSidebarMetricContract.sectionHorizontalPadding,
       id,
-      'content keeps desktop right padding',
-    ),
-    ...expectClose(
-      row && content ? row.height - content.height : null,
-      padding.top + padding.bottom,
+      message: 'row keeps desktop section inset',
+    }),
+    ...expectClose({
+      actual: content?.x ?? null,
+      expected: padding.left,
       id,
-      'row keeps desktop vertical padding',
-    ),
+      message: 'content keeps desktop left padding',
+    }),
+    ...expectClose({
+      actual: row && content ? row.width - content.x - content.width : null,
+      expected: padding.right,
+      id,
+      message: 'content keeps desktop right padding',
+    }),
+    ...expectClose({
+      actual: row && content ? row.height - content.height : null,
+      expected: padding.top + padding.bottom,
+      id,
+      message: 'row keeps desktop vertical padding',
+    }),
   ]
 }
 
-function assertFolderLayout(
-  metrics: NativeLayoutMetricMap,
-  id: string,
-  expectedLeftInset: number,
-): NativeLayoutAssertionFailure[] {
+function assertFolderLayout({
+  expectedLeftInset,
+  id,
+  metrics,
+}: {
+  expectedLeftInset: number
+  id: string
+  metrics: NativeLayoutMetricMap
+}): NativeLayoutAssertionFailure[] {
   const row = metrics[`${id}.row`]
   const content = metrics[`${id}.content`]
 
   return [
-    ...expectMetric(row, id, 'row is captured before checking native folder layout'),
-    ...expectMetric(content, id, 'content is captured before checking native folder layout'),
-    ...expectClose(content?.x ?? null, expectedLeftInset, id, 'folder content keeps desktop indentation'),
-    ...expectAtLeast(row?.height ?? null, 28, id, 'folder row keeps a tappable hit area'),
+    ...expectMetric({ id, message: 'row is captured before checking native folder layout', metric: row }),
+    ...expectMetric({ id, message: 'content is captured before checking native folder layout', metric: content }),
+    ...expectClose({
+      actual: content?.x ?? null,
+      expected: expectedLeftInset,
+      id,
+      message: 'folder content keeps desktop indentation',
+    }),
+    ...expectAtLeast({
+      actual: row?.height ?? null,
+      expected: 28,
+      id,
+      message: 'folder row keeps a tappable hit area',
+    }),
   ]
 }
 
-function expectMetric(
-  metric: NativeLayoutMetric | undefined,
-  id: string,
-  message: string,
+function assertCountPillLayouts(metrics: NativeLayoutMetricMap): NativeLayoutAssertionFailure[] {
+  return [
+    ...assertCountPillLayout(metrics, { id: 'sidebar.item.inbox.count' }),
+    ...assertCountPillLayout(metrics, { id: 'sidebar.item.all-notes.count' }),
+    ...assertCountPillLayout(metrics, { id: 'sidebar.item.essays.count' }),
+    ...assertCountPillLayout(metrics, { compact: true, id: 'sidebar.section.types.count' }),
+  ]
+}
+
+function assertCountPillLayout(
+  metrics: NativeLayoutMetricMap,
+  { compact = false, id }: CountPillLayout,
 ): NativeLayoutAssertionFailure[] {
+  const container = metrics[`${id}.container`]
+  const text = metrics[`${id}.text`]
+  const expectedHeight = compact
+    ? nativeSidebarMetricContract.countPill.compactHeight
+    : nativeSidebarMetricContract.countPill.height
+
+  return [
+    ...expectMetric({ id, message: 'count pill container is captured before checking native alignment', metric: container }),
+    ...expectMetric({ id, message: 'count pill text is captured before checking native alignment', metric: text }),
+    ...expectClose({
+      actual: container?.height ?? null,
+      expected: expectedHeight,
+      id,
+      message: 'count pill keeps desktop height',
+    }),
+    ...expectClose({
+      actual: text ? text.y + text.height / 2 : null,
+      expected: expectedHeight / 2,
+      id,
+      message: 'count text is vertically centered inside native pill',
+    }),
+  ]
+}
+
+function expectMetric({
+  id,
+  message,
+  metric,
+}: MetricExpectation): NativeLayoutAssertionFailure[] {
   if (metric) return []
 
   return [{ actual: null, expected: 1, id, message }]
 }
 
-function expectClose(
-  actual: number | null,
-  expected: number,
-  id: string,
-  message: string,
-): NativeLayoutAssertionFailure[] {
+function expectClose({
+  actual,
+  expected,
+  id,
+  message,
+}: LayoutExpectation): NativeLayoutAssertionFailure[] {
   if (actual !== null && Math.abs(actual - expected) <= layoutTolerance) return []
 
   return [{ actual, expected, id, message }]
 }
 
-function expectAtLeast(
-  actual: number | null,
-  expected: number,
-  id: string,
-  message: string,
-): NativeLayoutAssertionFailure[] {
+function expectAtLeast({
+  actual,
+  expected,
+  id,
+  message,
+}: LayoutExpectation): NativeLayoutAssertionFailure[] {
   if (actual !== null && actual >= expected) return []
 
   return [{ actual, expected, id, message }]

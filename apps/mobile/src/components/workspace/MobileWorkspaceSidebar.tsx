@@ -275,6 +275,8 @@ function SidebarItem(props: SidebarItemProps) {
         {count ? (
           <MobileSidebarCountPill
             activeColor={active ? activeColor : undefined}
+            layoutProbe={layoutProbe}
+            metricId={`${metricId}.count`}
             testID={`sidebar-item-${slug}-count`}
             value={count}
           />
@@ -313,7 +315,15 @@ function SectionTitle({
       >
         {label}
       </Text>
-      {count ? <MobileSidebarCountPill compact testID={`sidebar-section-count-${sectionId}`} value={count} /> : null}
+      {count ? (
+        <MobileSidebarCountPill
+          compact
+          layoutProbe={layoutProbe}
+          metricId={`${metricId}.count`}
+          testID={`sidebar-section-count-${sectionId}`}
+          value={count}
+        />
+      ) : null}
       {onCreate ? (
         <MobileIconButton
           accessibilityLabel={mobileText('sidebar.action.createView')}

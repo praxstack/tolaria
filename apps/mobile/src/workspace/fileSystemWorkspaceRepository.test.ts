@@ -87,13 +87,17 @@ type: Project
     })
   })
 
-  it('deletes saved-view files through relative vault paths', async () => {
+  it('deletes note and saved-view files through relative vault paths', async () => {
     const fileSystem = fakeWorkspaceFileSystem({
+      'Writing/Workflow.md': '# Workflow\n\n',
       'views/mobile-view.yml': 'name: Mobile View\nfilters:\n  all: []\n',
     })
     const repository = createFileSystemWorkspaceRepository(fileSystem)
 
     await repository.persistWrites([{
+      kind: 'deleteNote',
+      path: 'Writing/Workflow.md',
+    }, {
       kind: 'deleteView',
       path: 'views/mobile-view.yml',
     }], { source: 'native', vaultRootUri: 'file:///vault' })

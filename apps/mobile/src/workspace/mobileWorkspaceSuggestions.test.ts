@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { workspaceScenarioForId } from '../fixtures/workspaceFixtures'
 import { applyMobileWorkspaceEdit } from './mobileWorkspaceEditing'
 import {
+  mobileFolderSuggestions,
   mobilePropertyKeySuggestions,
   mobilePropertyValueSuggestions,
   mobileRelationshipKeySuggestions,
+  mobileTypeSuggestions,
   mobileViewFieldSuggestions,
   mobileViewValueSuggestions,
 } from './mobileWorkspaceSuggestions'
@@ -43,6 +45,15 @@ describe('mobile workspace suggestions', () => {
 
     expect(suggestions.slice(0, 3)).toEqual(['belongs_to', 'related_to', 'has'])
     expect(mobileRelationshipKeySuggestions(workspaceScenarioForId('default').notes, 'ment')).toEqual(['Mentions'])
+  })
+
+  it('suggests retargeting types and folders excluding the selected note destination', () => {
+    const notes = workspaceScenarioForId('default').notes
+    const selectedNote = notes[2] ?? null
+
+    expect(mobileTypeSuggestions(notes, selectedNote, '')).toEqual(['Essay', 'Procedure'])
+    expect(mobileFolderSuggestions(notes, selectedNote, '')).toEqual(['Tolaria/Mobile UI'])
+    expect(mobileFolderSuggestions(notes, selectedNote, 'mobile')).toEqual(['Tolaria/Mobile UI'])
   })
 
   it('suggests desktop saved-view fields and values from notes', () => {

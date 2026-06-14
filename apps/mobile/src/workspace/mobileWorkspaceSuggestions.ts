@@ -8,6 +8,7 @@ type SuggestionText = string
 type NormalizedSuggestionKey = string
 type ViewField = string
 type ViewFieldValue = string
+type FolderPath = string
 
 const DESKTOP_SUGGESTED_PROPERTY_KEYS = ['Status', 'Date', 'URL'] as const
 const DESKTOP_SUGGESTED_RELATIONSHIP_KEYS = ['belongs_to', 'related_to', 'has'] as const
@@ -48,6 +49,26 @@ export function mobileRelationshipKeySuggestions(
   query: SuggestionQuery,
 ): RelationshipKey[] {
   return visibleSuggestions(relationshipKeyCandidates(notes), query)
+}
+
+export function mobileTypeSuggestions(
+  notes: MobileNote[],
+  selectedNote: MobileNote | null,
+  query: SuggestionQuery,
+): string[] {
+  const currentType = selectedNote?.type.trim().toLowerCase()
+  return visibleSuggestions(notes.map((note) => note.type), query)
+    .filter((type) => type.toLowerCase() !== currentType)
+}
+
+export function mobileFolderSuggestions(
+  notes: MobileNote[],
+  selectedNote: MobileNote | null,
+  query: SuggestionQuery,
+): FolderPath[] {
+  const currentFolder = folderPathForNote(selectedNote)
+  return visibleSuggestions(notes.map(folderPathForNote).filter(isFolderPath), query)
+    .filter((folderPath) => folderPath !== currentFolder)
 }
 
 export function mobileViewFieldSuggestions(
@@ -93,6 +114,15 @@ function relationshipKeyCandidates(notes: MobileNote[]): RelationshipKey[] {
     ...DESKTOP_SUGGESTED_RELATIONSHIP_KEYS,
     ...notes.flatMap((note) => note.relationships.map(relationshipFrontmatterKey)),
   ]
+}
+
+function folderPathForNote(note: MobileNote | null): FolderPath {
+  const path = note?.path ?? note?.id ?? ''
+  return path.split('/').slice(0, -1).join('/')
+}
+
+function isFolderPath(value: FolderPath): value is FolderPath {
+  return value.trim().length > 0
 }
 
 function viewFieldCandidates(notes: MobileNote[]): ViewField[] {

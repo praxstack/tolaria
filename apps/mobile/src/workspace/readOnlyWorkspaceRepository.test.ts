@@ -88,7 +88,10 @@ describe('fixtureReadOnlyWorkspaceRepository', () => {
   })
 
   it('persists host writes into the injected content map and write log', async () => {
-    const noteContents: Record<string, string> = { 'views/old.yml': 'name: Old\n' }
+    const noteContents: Record<string, string> = {
+      'Notes/Old.md': '# Old\n',
+      'views/old.yml': 'name: Old\n',
+    }
     const writes: unknown[] = []
     Reflect.set(globalThis, HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY, noteContents)
     Reflect.set(globalThis, HOST_WORKSPACE_WRITES_GLOBAL_KEY, writes)
@@ -98,6 +101,9 @@ describe('fixtureReadOnlyWorkspaceRepository', () => {
       kind: 'saveNote',
       path: 'updated.md',
     }, {
+      kind: 'deleteNote',
+      path: 'Notes/Old.md',
+    }, {
       kind: 'deleteView',
       path: 'views/old.yml',
     }], { source: 'host' })
@@ -105,6 +111,7 @@ describe('fixtureReadOnlyWorkspaceRepository', () => {
     expect(noteContents).toEqual({ 'updated.md': '# Updated\n' })
     expect(writes).toEqual([
       { content: '# Updated\n', kind: 'saveNote', path: 'updated.md' },
+      { kind: 'deleteNote', path: 'Notes/Old.md' },
       { kind: 'deleteView', path: 'views/old.yml' },
     ])
 

@@ -16,6 +16,7 @@ test.describe('mobile UI lab interactions', () => {
     await page.goto('/')
     await searchAndSelectRelease(page)
     await toggleFavorite(page)
+    await retargetSelectedRelease(page)
     await createMobileQaDraft(page)
     await createSavedViewFromSidebar(page)
     await addDatePropertyFromSuggestion(page)
@@ -65,6 +66,32 @@ async function searchAndSelectRelease(page: PageLike) {
 async function toggleFavorite(page: PageLike) {
   await page.getByTestId('editor-favorite-action').click()
   await expect(page.getByLabel('Remove from Favorites')).toBeVisible()
+}
+
+async function retargetSelectedRelease(page: PageLike) {
+  await page.getByTestId('editor-more-action').click()
+  await expect(page.getByTestId('workspace-action-change-note-type')).toBeVisible()
+  await page.getByTestId('workspace-action-change-note-type').click()
+  await expect(page.getByTestId('workspace-change-type-input')).toBeVisible()
+  await page.getByTestId('workspace-change-type-suggestion-procedure').click()
+  await page.getByTestId('workspace-action-sheet-changeNoteType').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
+  await expect(page.getByTestId('property-row-type')).toContainText('Procedure')
+
+  await page.getByTestId('editor-more-action').click()
+  await expect(page.getByTestId('workspace-action-move-note-folder')).toBeVisible()
+  await page.getByTestId('workspace-action-move-note-folder').click()
+  await expect(page.getByTestId('workspace-move-folder-input')).toBeVisible()
+  await page.getByTestId('workspace-move-folder-suggestion-tolaria-mobile-ui').click()
+  await page.getByTestId('workspace-action-sheet-moveNoteToFolder').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
+
+  await page.getByTestId('editor-more-action').click()
+  await page.getByTestId('workspace-action-copy-deep-link').click()
+  await expect(page.evaluate((key) => {
+    const attempts = (window as unknown as Record<string, unknown>)[key]
+    return Array.isArray(attempts) ? attempts.at(-1) : null
+  }, mobileClipboardAttemptsGlobalKey)).resolves.toBe('tolaria://tv/Tolaria/Mobile%20UI/v2026-05-02.md')
 }
 
 async function createMobileQaDraft(page: PageLike) {

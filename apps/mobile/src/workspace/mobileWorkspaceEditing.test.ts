@@ -103,6 +103,78 @@ describe('applyMobileWorkspaceEdit', () => {
     expect(refs ?? []).not.toContain(ref)
   })
 
+  it('changes note type through the desktop type frontmatter key', () => {
+    const base = workspaceScenarioForId('default')
+    const editableNote = {
+      ...base.notes[0],
+      rawContent: '# Workflow Orchestration Essay\n\nChange my type.\n',
+    }
+    const result = applyMobileWorkspaceEditWithWrites({ ...base, notes: [editableNote, ...base.notes.slice(1)] }, {
+      noteId: 'workflow-orchestration',
+      type: 'changeNoteType',
+      value: 'Procedure',
+    })
+    const note = result.snapshot.notes.find((candidate) => candidate.id === 'workflow-orchestration')
+
+    expect(note).toMatchObject({
+      type: 'Procedure',
+    })
+    expect(note?.rawContent).toContain('type: Procedure')
+    expect(result.writes).toEqual([{
+      content: expect.stringContaining('type: Procedure'),
+      kind: 'saveNote',
+      path: 'Tolaria/Mobile UI/Workflow Orchestration Essay.md',
+    }])
+  })
+
+  it('moves notes to another folder by changing the relative path and planning delete plus save writes', () => {
+    const base = workspaceScenarioForId('default')
+    const editableNote = {
+      ...base.notes[0],
+      rawContent: '# Workflow Orchestration Essay\n\nMove me.\n',
+    }
+    const result = applyMobileWorkspaceEditWithWrites({ ...base, notes: [editableNote, ...base.notes.slice(1)] }, {
+      folderPath: 'Writing/Essays',
+      noteId: 'workflow-orchestration',
+      type: 'moveNoteToFolder',
+    })
+    const note = result.snapshot.notes.find((candidate) => candidate.id === 'workflow-orchestration')
+
+    expect(note?.path).toBe('Writing/Essays/Workflow Orchestration Essay.md')
+    expect(result.snapshot.selectedNoteId).toBe('workflow-orchestration')
+    expect(result.writes).toEqual([
+      { kind: 'deleteNote', path: 'Tolaria/Mobile UI/Workflow Orchestration Essay.md' },
+      {
+        content: expect.stringContaining('# Workflow Orchestration Essay'),
+        kind: 'saveNote',
+        path: 'Writing/Essays/Workflow Orchestration Essay.md',
+      },
+    ])
+  })
+
+  it('retargets path-backed note ids when a local-vault note moves folders', () => {
+    const base = workspaceScenarioForId('default')
+    const pathBackedNote = {
+      ...base.notes[0],
+      id: 'Tolaria/Mobile UI/Workflow Orchestration Essay.md',
+    }
+    const result = applyMobileWorkspaceEditWithWrites({
+      ...base,
+      notes: [pathBackedNote, ...base.notes.slice(1)],
+      selectedNoteId: pathBackedNote.id,
+    }, {
+      folderPath: '/Writing/Essays/',
+      noteId: pathBackedNote.id,
+      type: 'moveNoteToFolder',
+    })
+
+    expect(result.snapshot.selectedNoteId).toBe('Writing/Essays/Workflow Orchestration Essay.md')
+    expect(result.snapshot.notes[0]).toMatchObject({
+      id: 'Writing/Essays/Workflow Orchestration Essay.md',
+      path: 'Writing/Essays/Workflow Orchestration Essay.md',
+    })
+  })
+
   it('normalizes built-in relationship labels to desktop frontmatter keys', () => {
     const snapshot = applyMobileWorkspaceEdit(workspaceScenarioForId('default'), {
       key: 'Related to',

@@ -12,6 +12,10 @@ import { desktopSidebarParity } from '../ui/desktopParity'
 describe('native layout metrics', () => {
   it('keeps the native metric contract synced with desktop sidebar parity tokens', () => {
     expect(nativeSidebarMetricContract).toEqual({
+      countPill: {
+        compactHeight: desktopSidebarParity.countPillCompactHeight,
+        height: desktopSidebarParity.countPillHeight,
+      },
       folderRowContentInset: desktopSidebarParity.folderRowContentInset,
       folderRowIndent: desktopSidebarParity.folderRowIndent,
       itemPadding: desktopSidebarParity.itemPadding,
@@ -48,6 +52,7 @@ describe('native layout metrics', () => {
       sectionMetric('types'),
       itemMetric('sidebar.item.essays', { hasCount: true, y: 30 }),
       sectionMetric('folders'),
+      countPillMetric('sidebar.section.types.count', { compact: true }),
       folderTreeRootMetric(30),
       folderMetric('sidebar.folder.writing', 12, 30),
       folderMetric('sidebar.folder.tolaria-mobile', 37),
@@ -65,7 +70,9 @@ describe('native layout metrics', () => {
       itemMetric('sidebar.item.personal-journal', { hasCount: false, y: 16 }),
       sectionMetric('types'),
       itemMetric('sidebar.item.essays', { hasCount: true, y: 30 }),
+      countPillMetric('sidebar.item.essays.count', { textY: 0 }),
       sectionMetric('folders'),
+      countPillMetric('sidebar.section.types.count', { compact: true }),
       folderTreeRootMetric(30),
       folderMetric('sidebar.folder.writing', 0, 30),
       folderMetric('sidebar.folder.tolaria-mobile', 37),
@@ -80,6 +87,7 @@ describe('native layout metrics', () => {
     expect(formatted).toContain('sidebar.section.favorites: section title keeps desktop header height')
     expect(formatted).toContain('sidebar.item.personal-journal.row: first row starts after the sidebar section title')
     expect(formatted).toContain('sidebar.item.all-notes: row starts after the previous sidebar row')
+    expect(formatted).toContain('sidebar.item.essays.count: count text is vertically centered inside native pill')
   })
 })
 
@@ -117,6 +125,39 @@ function itemMetric(
       width: contentWidth,
       x: 12,
       y: hasCount ? 6 : 7,
+    },
+    ...(hasCount ? countPillMetric(`${id}.count`) : []),
+  ]
+}
+
+function countPillMetric(
+  id: string,
+  {
+    compact = false,
+    textY = compact ? 2 : 3,
+  }: {
+    compact?: boolean
+    textY?: number
+  } = {},
+): NativeLayoutMetric[] {
+  const height = compact ? desktopSidebarParity.countPillCompactHeight : desktopSidebarParity.countPillHeight
+
+  return [
+    {
+      height,
+      id: `${id}.container`,
+      platform: 'ios',
+      width: 22,
+      x: 202,
+      y: 0,
+    },
+    {
+      height: 14,
+      id: `${id}.text`,
+      platform: 'ios',
+      width: 18,
+      x: 2,
+      y: textY,
     },
   ]
 }

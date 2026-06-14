@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { Archive, FilePlus, LinkSimple, Star } from 'phosphor-react-native'
+import { Archive, FilePlus, FolderOpen, LinkSimple, Star, Tag } from 'phosphor-react-native'
 import { Text } from '../ui/text'
 import { mobileText } from '../../i18n/mobileText'
 import { MobileButton } from '../../ui/MobileButton'
@@ -14,7 +14,9 @@ import type { MobileNote, MobileViewFilterGroup } from '../../workspace/mobileWo
 import {
   mobilePropertyKeySuggestions,
   mobilePropertyValueSuggestions,
+  mobileFolderSuggestions,
   mobileRelationshipKeySuggestions,
+  mobileTypeSuggestions,
 } from '../../workspace/mobileWorkspaceSuggestions'
 import { MobileTypeIcon } from './MobileWorkspaceIcons'
 import { MobileViewFilterBuilder } from './MobileViewFilterBuilder'
@@ -24,22 +26,32 @@ import { chipTone, statusTone, tagTone } from './mobileWorkspaceTone'
 export type MobileWorkspaceAction =
   | 'addProperty'
   | 'addRelationship'
+  | 'changeNoteType'
   | 'createNote'
   | 'createView'
   | 'editView'
   | 'moreActions'
+  | 'moveNoteToFolder'
   | 'search'
 
 type MobileWorkspaceActionSheetProps = {
   action: MobileWorkspaceAction
   createTitle: string
+  folderPath: string
   notes: MobileNote[]
+  noteType: string
+  onChangeNoteType: () => void
+  onChangeNoteTypeInputChange: (value: string) => void
   onClose: () => void
   onCreateNote: () => void
   onCreateTitleChange: (value: string) => void
   onCopyDeepLink: () => void
   onCreateView: () => void
   onDeleteView: () => void
+  onFolderPathChange: (value: string) => void
+  onMoveNoteToFolder: () => void
+  onOpenChangeNoteType: () => void
+  onOpenMoveNoteToFolder: () => void
   onPropertyNameChange: (value: string) => void
   onPropertyValueChange: (value: string) => void
   onRelationshipNameChange: (value: string) => void
@@ -78,13 +90,21 @@ type SingleTextFieldConfig = {
 export function MobileWorkspaceActionSheet({
   action,
   createTitle,
+  folderPath,
   notes,
+  noteType,
+  onChangeNoteType,
+  onChangeNoteTypeInputChange,
   onClose,
   onCreateNote,
   onCreateTitleChange,
   onCopyDeepLink,
   onCreateView,
   onDeleteView,
+  onFolderPathChange,
+  onMoveNoteToFolder,
+  onOpenChangeNoteType,
+  onOpenMoveNoteToFolder,
   onPropertyNameChange,
   onPropertyValueChange,
   onRelationshipNameChange,
@@ -118,13 +138,21 @@ export function MobileWorkspaceActionSheet({
         <ActionContent
           action={action}
           createTitle={createTitle}
+          folderPath={folderPath}
           notes={notes}
+          noteType={noteType}
+          onChangeNoteType={onChangeNoteType}
+          onChangeNoteTypeInputChange={onChangeNoteTypeInputChange}
           onClose={onClose}
           onCreateNote={onCreateNote}
           onCreateTitleChange={onCreateTitleChange}
           onCopyDeepLink={onCopyDeepLink}
           onCreateView={onCreateView}
           onDeleteView={onDeleteView}
+          onFolderPathChange={onFolderPathChange}
+          onMoveNoteToFolder={onMoveNoteToFolder}
+          onOpenChangeNoteType={onOpenChangeNoteType}
+          onOpenMoveNoteToFolder={onOpenMoveNoteToFolder}
           onPropertyNameChange={onPropertyNameChange}
           onPropertyValueChange={onPropertyValueChange}
           onRelationshipNameChange={onRelationshipNameChange}
@@ -157,10 +185,14 @@ function ActionContent(props: MobileWorkspaceActionSheetProps) {
       return <AddPropertyContent {...props} />
     case 'addRelationship':
       return <AddRelationshipContent {...props} />
+    case 'changeNoteType':
+      return <ChangeNoteTypeContent {...props} />
     case 'createNote':
     case 'createView':
     case 'editView':
       return <SingleTextFieldContent config={singleTextFieldConfig(props)} />
+    case 'moveNoteToFolder':
+      return <MoveNoteToFolderContent {...props} />
     case 'search':
       return <SearchContent {...props} />
     default:
@@ -169,6 +201,8 @@ function ActionContent(props: MobileWorkspaceActionSheetProps) {
           note={props.selectedNote}
           onClose={props.onClose}
           onCopyDeepLink={props.onCopyDeepLink}
+          onOpenChangeNoteType={props.onOpenChangeNoteType}
+          onOpenMoveNoteToFolder={props.onOpenMoveNoteToFolder}
           onSetArchived={props.onSetArchived}
         />
       )
@@ -438,15 +472,87 @@ function AddRelationshipContent({
   )
 }
 
+function ChangeNoteTypeContent({
+  noteType,
+  notes,
+  onChangeNoteType,
+  onChangeNoteTypeInputChange,
+  onClose,
+  selectedNote,
+}: MobileWorkspaceActionSheetProps) {
+  const suggestions = mobileTypeSuggestions(notes, selectedNote, noteType)
+
+  return (
+    <View style={styles.content}>
+      <MobileTextInput
+        autoFocus
+        label={mobileText('command.note.changeType')}
+        placeholder={mobileText('inspector.properties.searchTypes')}
+        testID="workspace-change-type-input"
+        value={noteType}
+        onChangeText={onChangeNoteTypeInputChange}
+      />
+      <MobileWorkspaceSuggestionList
+        labels={suggestions}
+        testID="workspace-change-type-suggestions"
+        testIDPrefix="workspace-change-type-suggestion"
+        onSelect={onChangeNoteTypeInputChange}
+      />
+      <SheetFooter>
+        <MobileButton label={mobileText('common.cancel')} variant="ghost" onPress={onClose} />
+        <MobileButton disabled={noteType.trim().length === 0} label={mobileText('common.save')} variant="primary" onPress={onChangeNoteType} />
+      </SheetFooter>
+    </View>
+  )
+}
+
+function MoveNoteToFolderContent({
+  folderPath,
+  notes,
+  onClose,
+  onFolderPathChange,
+  onMoveNoteToFolder,
+  selectedNote,
+}: MobileWorkspaceActionSheetProps) {
+  const suggestions = mobileFolderSuggestions(notes, selectedNote, folderPath)
+
+  return (
+    <View style={styles.content}>
+      <MobileTextInput
+        autoFocus
+        label={mobileText('command.note.moveToFolder')}
+        placeholder={mobileText('sidebar.folder.name')}
+        testID="workspace-move-folder-input"
+        value={folderPath}
+        onChangeText={onFolderPathChange}
+      />
+      <MobileWorkspaceSuggestionList
+        labels={suggestions}
+        testID="workspace-move-folder-suggestions"
+        testIDPrefix="workspace-move-folder-suggestion"
+        onSelect={onFolderPathChange}
+      />
+      <SheetFooter>
+        <MobileButton label={mobileText('common.cancel')} variant="ghost" onPress={onClose} />
+        <MobileButton disabled={folderPath.trim().length === 0} label={mobileText('common.save')} variant="primary" onPress={onMoveNoteToFolder} />
+      </SheetFooter>
+    </View>
+  )
+}
+
 function MoreActionsContent({
   note,
   onClose,
   onCopyDeepLink,
+  onOpenChangeNoteType,
+  onOpenMoveNoteToFolder,
   onSetArchived,
 }: {
   note: MobileNote | null
   onClose: () => void
   onCopyDeepLink: () => void
+  onOpenChangeNoteType: () => void
+  onOpenMoveNoteToFolder: () => void
   onSetArchived: (archived: boolean) => void
 }) {
   const archiveLabel = mobileText(note?.archived ? 'command.note.unarchiveNote' : 'command.note.archiveNote')
@@ -463,6 +569,22 @@ function MoreActionsContent({
             onSetArchived(!note.archived)
             onClose()
           }}
+        />
+      ) : null}
+      {note ? (
+        <ActionRow
+          icon={<Tag color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} />}
+          label={mobileText('command.note.changeType')}
+          testID="workspace-action-change-note-type"
+          onPress={onOpenChangeNoteType}
+        />
+      ) : null}
+      {note ? (
+        <ActionRow
+          icon={<FolderOpen color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} />}
+          label={mobileText('command.note.moveToFolder')}
+          testID="workspace-action-move-note-folder"
+          onPress={onOpenMoveNoteToFolder}
         />
       ) : null}
       <ActionRow
@@ -546,13 +668,19 @@ function relationshipSuggestions(notes: MobileNote[], query: string) {
 }
 
 function actionTitle(action: MobileWorkspaceAction) {
-  if (action === 'search') return mobileText('noteList.searchAction')
-  if (action === 'createNote') return mobileText('command.note.newNote')
-  if (action === 'createView') return mobileText('viewDialog.title.create')
-  if (action === 'editView') return mobileText('viewDialog.title.edit')
-  if (action === 'addProperty') return mobileText('inspector.properties.addProperty')
-  if (action === 'addRelationship') return mobileText('inspector.relationship.addRelationship').replace(/^\+\s*/, '')
-  return mobileText('editor.toolbar.moreActions')
+  return actionTitleByAction[action]()
+}
+
+const actionTitleByAction: Record<MobileWorkspaceAction, () => string> = {
+  addProperty: () => mobileText('inspector.properties.addProperty'),
+  addRelationship: () => mobileText('inspector.relationship.addRelationship').replace(/^\+\s*/, ''),
+  changeNoteType: () => mobileText('command.note.changeType'),
+  createNote: () => mobileText('command.note.newNote'),
+  createView: () => mobileText('viewDialog.title.create'),
+  editView: () => mobileText('viewDialog.title.edit'),
+  moreActions: () => mobileText('editor.toolbar.moreActions'),
+  moveNoteToFolder: () => mobileText('command.note.moveToFolder'),
+  search: () => mobileText('noteList.searchAction'),
 }
 
 const styles = StyleSheet.create({

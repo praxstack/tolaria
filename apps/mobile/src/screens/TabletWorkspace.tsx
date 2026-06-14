@@ -155,12 +155,18 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
 
 function WorkspaceActionSheetHost(props: TabletWorkspaceChromeProps & { suggestionNotes: MobileNote[] }) {
   const {
+    onChangeNoteType,
+    onChangeNoteTypeInputChange,
     onCloseAction,
     onCopyDeepLink,
     onCreateNote,
     onCreateTitleChange,
     onCreateView,
     onDeleteView,
+    onFolderPathChange,
+    onMoveNoteToFolder,
+    onOpenChangeNoteType,
+    onOpenMoveNoteToFolder,
     onPropertyNameChange,
     onPropertyValueChange,
     onRelationshipNameChange,
@@ -185,7 +191,9 @@ function WorkspaceActionSheetHost(props: TabletWorkspaceChromeProps & { suggesti
     <MobileWorkspaceActionSheet
       action={openAction}
       createTitle={readOnlyForm.createTitle}
+      folderPath={readOnlyForm.folderPath}
       notes={suggestionNotes}
+      noteType={readOnlyForm.noteType}
       propertyName={readOnlyForm.propertyName}
       propertyValue={readOnlyForm.propertyValue}
       relationshipName={readOnlyForm.relationshipName}
@@ -193,12 +201,18 @@ function WorkspaceActionSheetHost(props: TabletWorkspaceChromeProps & { suggesti
       searchQuery={searchQuery}
       selectedNote={selectedNote}
       viewFilters={readOnlyForm.viewFilters}
+      onChangeNoteType={onChangeNoteType}
+      onChangeNoteTypeInputChange={onChangeNoteTypeInputChange}
       onClose={onCloseAction}
       onCopyDeepLink={onCopyDeepLink}
       onCreateNote={onCreateNote}
       onCreateTitleChange={onCreateTitleChange}
       onCreateView={onCreateView}
       onDeleteView={onDeleteView}
+      onFolderPathChange={onFolderPathChange}
+      onMoveNoteToFolder={onMoveNoteToFolder}
+      onOpenChangeNoteType={onOpenChangeNoteType}
+      onOpenMoveNoteToFolder={onOpenMoveNoteToFolder}
       onPropertyNameChange={onPropertyNameChange}
       onPropertyValueChange={onPropertyValueChange}
       onRelationshipNameChange={onRelationshipNameChange}

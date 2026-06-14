@@ -51,7 +51,7 @@ function persistWorkspaceWrite(
   const relativePath = normalizedWorkspaceRelativePath(write.path)
   if (!relativePath) return
 
-  if (write.kind === 'deleteView') {
+  if (write.kind === 'deleteNote' || write.kind === 'deleteView') {
     fileSystem.deleteTextFile(rootUri, relativePath)
     return
   }

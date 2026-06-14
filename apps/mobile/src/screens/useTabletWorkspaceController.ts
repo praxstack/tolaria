@@ -26,6 +26,8 @@ import type { TabletSidebarSelection } from './tabletWorkspaceNavigation'
 const emptyReadOnlyForm: TabletReadOnlyForm = {
   createTitle: '',
   editingViewId: '',
+  folderPath: '',
+  noteType: '',
   propertyName: '',
   propertyValue: '',
   relationshipName: '',
@@ -73,6 +75,7 @@ export function useTabletWorkspaceController({
   })
   const propertyActions = propertyWorkspaceActions({ applyEdit, readOnlyForm, saveSelectedEdit, updateReadOnlyForm })
   const relationshipActions = relationshipWorkspaceActions({ applyEdit, readOnlyForm, saveSelectedEdit, updateReadOnlyForm })
+  const retargetActions = retargetWorkspaceActions({ readOnlyForm, saveSelectedEdit, updateReadOnlyForm })
   const editorActions = editorWorkspaceActions({
     applyEdit,
     repositoryRequest,
@@ -97,6 +100,7 @@ export function useTabletWorkspaceController({
     ...editorActions,
     ...propertyActions,
     ...relationshipActions,
+    ...retargetActions,
     openAction,
     readOnlyForm,
     searchQuery,
@@ -292,6 +296,14 @@ function actionSheetWorkspaceActions({
       updateReadOnlyForm,
     }),
     onOpenMoreActions: () => setOpenAction('moreActions'),
+    onOpenChangeNoteType: () => openChangeNoteType({
+      setOpenAction,
+      updateReadOnlyForm,
+    }),
+    onOpenMoveNoteToFolder: () => openMoveNoteToFolder({
+      setOpenAction,
+      updateReadOnlyForm,
+    }),
     onOpenSearch: () => setOpenAction('search'),
     onOpenViewActions: (selection: MobileSidebarItemSelection) => openViewActions({
       selection,
@@ -383,6 +395,31 @@ function relationshipWorkspaceActions({
   }
 }
 
+function retargetWorkspaceActions({
+  readOnlyForm,
+  saveSelectedEdit,
+  updateReadOnlyForm,
+}: {
+  readOnlyForm: TabletReadOnlyForm
+  saveSelectedEdit: SaveSelectedEdit
+  updateReadOnlyForm: ReadOnlyFormUpdater
+}) {
+  return {
+    onChangeNoteType: () => saveSelectedEdit((noteId) => ({
+      noteId,
+      type: 'changeNoteType',
+      value: readOnlyForm.noteType,
+    })),
+    onChangeNoteTypeInputChange: (value: string) => updateReadOnlyForm('noteType', value),
+    onFolderPathChange: (value: string) => updateReadOnlyForm('folderPath', value),
+    onMoveNoteToFolder: () => saveSelectedEdit((noteId) => ({
+      folderPath: readOnlyForm.folderPath,
+      noteId,
+      type: 'moveNoteToFolder',
+    })),
+  }
+}
+
 function editorWorkspaceActions({
   applyEdit,
   repositoryRequest,
@@ -416,6 +453,28 @@ function editorWorkspaceActions({
     onUpdateNoteContent: (noteId: string, content: string) => applyEdit({ content, noteId, type: 'updateNoteContent' }),
     onUpdateNoteTitle: (noteId: string, title: string) => applyEdit({ noteId, title, type: 'renameNoteTitle' }),
   }
+}
+
+function openChangeNoteType({
+  setOpenAction,
+  updateReadOnlyForm,
+}: {
+  setOpenAction: SetOpenAction
+  updateReadOnlyForm: ReadOnlyFormUpdater
+}) {
+  updateReadOnlyForm('noteType', '')
+  setOpenAction('changeNoteType')
+}
+
+function openMoveNoteToFolder({
+  setOpenAction,
+  updateReadOnlyForm,
+}: {
+  setOpenAction: SetOpenAction
+  updateReadOnlyForm: ReadOnlyFormUpdater
+}) {
+  updateReadOnlyForm('folderPath', '')
+  setOpenAction('moveNoteToFolder')
 }
 
 function openCreateView({

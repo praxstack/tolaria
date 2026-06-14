@@ -42,6 +42,7 @@ type FrontmatterKey = string
 type MarkdownContent = string
 type NoteId = string
 type NoteTitle = string
+type FolderPath = string
 type WikilinkRef = string
 type WikilinkTarget = string
 
@@ -54,16 +55,20 @@ export type MobileWorkspaceEdit =
   | { key: FrontmatterKey; noteId: NoteId; type: 'deleteProperty' }
   | { key: FrontmatterKey; noteId: NoteId; targetTitle: NoteTitle; type: 'addRelationship' }
   | { key: FrontmatterKey; noteId: NoteId; ref: WikilinkRef; type: 'removeRelationship' }
+  | { noteId: NoteId; type: 'changeNoteType'; value: NoteTitle }
+  | { folderPath: FolderPath; noteId: NoteId; type: 'moveNoteToFolder' }
   | { noteId: NoteId; type: 'toggleFavorite' }
   | { archived: boolean; noteId: NoteId; type: 'setArchived' }
   | { definition: MobileViewDefinition; type: 'createView' }
   | { definition: MobileViewDefinition; viewId: string; type: 'updateView' }
   | { viewId: string; type: 'deleteView' }
 type MobileViewEdit = Extract<MobileWorkspaceEdit, { type: 'createView' | 'deleteView' | 'updateView' }>
-type MobileNoteEdit = Exclude<MobileWorkspaceEdit, MobileViewEdit | { type: 'createNote' }>
+type MobileSnapshotEdit = Extract<MobileWorkspaceEdit, { type: 'moveNoteToFolder' }>
+type MobileNoteEdit = Exclude<MobileWorkspaceEdit, MobileSnapshotEdit | MobileViewEdit | { type: 'createNote' }>
 
 export type MobileWorkspaceWrite =
   | { content: MarkdownContent; kind: 'createNote'; path: string }
+  | { kind: 'deleteNote'; path: string }
   | { content: MarkdownContent; kind: 'saveNote'; path: string }
   | { content: MarkdownContent; kind: 'saveView'; path: string }
   | { kind: 'deleteView'; path: string }
@@ -89,6 +94,10 @@ const mobileNoteEditHandlers: Record<MobileNoteEdit['type'], MobileNoteEditHandl
   addRelationship: ({ editableNote, notes }, edit) => {
     if (edit.type !== 'addRelationship') return editableNote
     return addRelationship(editableNote, notes, edit.key, edit.targetTitle)
+  },
+  changeNoteType: ({ editableNote }, edit) => {
+    if (edit.type !== 'changeNoteType') return editableNote
+    return changeNoteType(editableNote, edit.value)
   },
   deleteProperty: ({ editableNote }, edit) => {
     if (edit.type !== 'deleteProperty') return editableNote
@@ -147,6 +156,9 @@ export function applyMobileWorkspaceEditWithWrites(
   }
   if (edit.type === 'deleteView') {
     return deleteMobileView(snapshot, edit.viewId)
+  }
+  if (edit.type === 'moveNoteToFolder') {
+    return moveNoteToFolder(snapshot, edit)
   }
 
   const notePool = workspaceNotePool(snapshot)
@@ -272,6 +284,71 @@ function removeRelationship(
     fallback: note,
     rawContent: writeFrontmatterValue(note.rawContent, key, nextRefs.length > 0 ? nextRefs : null),
   }).note
+}
+
+function changeNoteType(note: EditableNoteInput, value: NoteTitle): MobileNote {
+  const nextType = value.trim()
+  if (!nextType || nextType === note.type) return note
+
+  return deriveEditedNote(note, writeFrontmatterValue(note.rawContent, 'type', nextType))
+}
+
+function moveNoteToFolder(
+  snapshot: MobileWorkspaceSnapshot,
+  edit: Extract<MobileWorkspaceEdit, { type: 'moveNoteToFolder' }>,
+): MobileWorkspaceEditResult {
+  const previousNote = workspaceNoteById(snapshot, edit.noteId)
+  const folderPath = normalizedFolderPath(edit.folderPath)
+  if (!previousNote || !folderPath) return { snapshot, writes: [] }
+
+  const nextNote = movedNote(previousNote, folderPath)
+  if (nextNote === previousNote) return { snapshot, writes: [] }
+
+  const nextNotes = snapshot.notes.map((note) => note.id === previousNote.id ? nextNote : note)
+  const nextAllNotes = snapshot.allNotes?.map((note) => note.id === previousNote.id ? nextNote : note)
+  const nextSelectedNoteId = snapshot.selectedNoteId === previousNote.id ? nextNote.id : snapshot.selectedNoteId
+  const nextSnapshot = rebuildSnapshot(
+    { ...snapshot, allNotes: nextAllNotes, selectedNoteId: nextSelectedNoteId },
+    nextNotes,
+    nextAllNotes,
+  )
+
+  return {
+    snapshot: nextSnapshot,
+    writes: moveNoteWrites(previousNote, nextNote),
+  }
+}
+
+function movedNote(note: MobileNote, folderPath: FolderPath): MobileNote {
+  const previousPath = noteWritePath(note)
+  const filename = noteFilename(previousPath)
+  const nextPath = `${folderPath}/${filename}`
+  if (nextPath === previousPath) return note
+
+  return {
+    ...note,
+    id: note.id === previousPath ? nextPath : note.id,
+    path: nextPath,
+  }
+}
+
+function moveNoteWrites(previousNote: MobileNote, nextNote: MobileNote): MobileWorkspaceWrite[] {
+  const previousPath = noteWritePath(previousNote)
+  const nextPath = noteWritePath(nextNote)
+  if (previousPath === nextPath || nextNote.rawContent === undefined) return []
+
+  return [
+    { kind: 'deleteNote', path: previousPath },
+    { content: nextNote.rawContent, kind: 'saveNote', path: nextPath },
+  ]
+}
+
+function noteFilename(path: string): string {
+  return path.split('/').filter(Boolean).at(-1) ?? path
+}
+
+function normalizedFolderPath(folderPath: FolderPath): FolderPath {
+  return folderPath.trim().replace(/^\/+|\/+$/g, '')
 }
 
 function rebuildSnapshot(
