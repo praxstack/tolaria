@@ -106,6 +106,13 @@ _organized: false
       label: 'Client Work',
       listPropertiesDisplay: ['Priority', 'belongs_to'],
       order: 2,
+      properties: {
+        Priority: 'Medium',
+        has: 'Milestone',
+      },
+      relationships: {
+        depends_on: ['[[project-template]]'],
+      },
       sort: 'property:Priority:asc',
       tone: 'red',
     })
@@ -208,6 +215,10 @@ sort: "property:Priority:asc"
 _list_properties_display:
   - Priority
   - belongs_to
+Priority: Medium
+has: Milestone
+depends_on:
+  - [[project-template]]
 ---
 # Project
 `),

@@ -43,6 +43,8 @@ That file records the source values for the current iPad surface:
 | `desktopEditorParity` | `theme.json`, `EditorTheme.css` | `TabletEditorPanel` |
 | `desktopPanelParity` | desktop split-pane widths and 52px chrome | tablet sidebar, note list, editor, properties |
 
+The mobile snapshot also carries Type-note schema metadata into `MobileTypeDefinition.properties` and `MobileTypeDefinition.relationships`. `MobilePropertiesPanel` uses that schema to render the same missing type-derived property and relationship slots that the desktop inspector derives from Type entries, followed by the desktop suggested slots (`Status`, `Date`, `URL`, `belongs_to`, `related_to`, `has`). Placeholder rows must open the normal add-property or add-relationship sheet with the key prefilled; they must not create a separate mobile-only editing path.
+
 ## Fast QA Loop
 
 Routine mobile UI work on `mobile-ui-foundation` uses the scoped checks:

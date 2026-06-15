@@ -8,7 +8,13 @@ import { MobilePanel, MobileToolbar, MobileToolbarTitle } from '../../ui/MobileP
 import { MobilePropertyRow } from '../../ui/MobilePropertyRow'
 import { desktopPanelParity, desktopPropertyParity, desktopRelationshipParity } from '../../ui/desktopParity'
 import { mobileColors, mobileRadius, mobileSpace, mobileType } from '../../ui/tokens'
-import type { MobileNote, MobileProperty, MobilePropertyValue, MobileRelationship, MobileTone } from '../../workspace/mobileWorkspaceModel'
+import type { MobileNote, MobileProperty, MobilePropertyValue, MobileRelationship, MobileTone, MobileTypeDefinitions } from '../../workspace/mobileWorkspaceModel'
+import {
+  mobileInspectorPropertySlots,
+  mobileInspectorRelationshipSlots,
+  type MobileInspectorPropertySlot,
+  type MobileInspectorRelationshipSlot,
+} from '../../workspace/mobileInspectorSchema'
 import { MobileTypeIcon } from './MobileWorkspaceIcons'
 import { chipTone, noteTypeColor, noteTypeSoftColor, statusTone, tagTone } from './mobileWorkspaceTone'
 
@@ -22,16 +28,18 @@ export function MobilePropertiesPanel({
   onOpenChangeNoteType,
   onRemoveRelationship,
   onSelectNote,
+  typeDefinitions,
 }: {
   compact: boolean
   note: MobileNote | null
-  onAddProperty: () => void
-  onAddRelationship: () => void
+  onAddProperty: (key?: string) => void
+  onAddRelationship: (key?: string) => void
   onDeleteProperty: (noteId: string, key: string) => void
   onEditProperty: (noteId: string, key: string, value: MobilePropertyValue) => void
   onOpenChangeNoteType: () => void
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
   onSelectNote: (noteId: string) => void
+  typeDefinitions?: MobileTypeDefinitions
 }) {
   return (
     <MobilePanel style={[panelStyles.panel, compact ? panelStyles.panelCompact : null]} testID="properties-panel">
@@ -49,6 +57,7 @@ export function MobilePropertiesPanel({
             onOpenChangeNoteType={onOpenChangeNoteType}
             onRemoveRelationship={onRemoveRelationship}
             onSelectNote={onSelectNote}
+            typeDefinitions={typeDefinitions}
           />
         ) : <PropertiesEmptyState />}
       </ScrollView>
@@ -65,16 +74,21 @@ function NoteProperties({
   onOpenChangeNoteType,
   onRemoveRelationship,
   onSelectNote,
+  typeDefinitions,
 }: {
   note: MobileNote
-  onAddProperty: () => void
-  onAddRelationship: () => void
+  onAddProperty: (key?: string) => void
+  onAddRelationship: (key?: string) => void
   onDeleteProperty: (noteId: string, key: string) => void
   onEditProperty: (noteId: string, key: string, value: MobilePropertyValue) => void
   onOpenChangeNoteType: () => void
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
   onSelectNote: (noteId: string) => void
+  typeDefinitions?: MobileTypeDefinitions
 }) {
+  const propertySlots = mobileInspectorPropertySlots(note, typeDefinitions)
+  const relationshipSlots = mobileInspectorRelationshipSlots(note, typeDefinitions)
+
   return (
     <>
       <MobilePropertyRow label="Type" testID="property-row-type" value={(
@@ -114,6 +128,13 @@ function NoteProperties({
           onEditProperty={onEditProperty}
         />
       ))}
+      {propertySlots.map((slot) => (
+        <PlaceholderPropertyRow
+          key={`${slot.source}:${slot.key}`}
+          slot={slot}
+          onPress={() => onAddProperty(slot.key)}
+        />
+      ))}
       {note.relationships.map((relationship) => (
         <PropertySection
           key={`${relationship.kind}-${relationship.label ?? relationship.values.map((value) => value.title).join('-')}`}
@@ -128,8 +149,15 @@ function NoteProperties({
           />
         </PropertySection>
       ))}
-      <PropertyActionRow label={mobileText('inspector.properties.addProperty')} testID="property-action-add-property" onPress={onAddProperty} />
-      <PropertyActionRow label={mobileText('inspector.relationship.addRelationship')} testID="property-action-add-relationship" onPress={onAddRelationship} />
+      {relationshipSlots.map((slot) => (
+        <PlaceholderRelationshipSection
+          key={`${slot.source}:${slot.key}`}
+          slot={slot}
+          onPress={() => onAddRelationship(slot.key)}
+        />
+      ))}
+      <PropertyActionRow label={mobileText('inspector.properties.addProperty')} testID="property-action-add-property" onPress={() => onAddProperty()} />
+      <PropertyActionRow label={mobileText('inspector.relationship.addRelationship')} testID="property-action-add-relationship" onPress={() => onAddRelationship()} />
     </>
   )
 }
@@ -216,18 +244,48 @@ function PropertiesEmptyState() {
   )
 }
 
+function PlaceholderPropertyRow({
+  onPress,
+  slot,
+}: {
+  onPress: () => void
+  slot: MobileInspectorPropertySlot
+}) {
+  const sourceSegment = slot.source === 'typeDerived' ? 'type-derived' : 'suggested'
+
+  return (
+    <Pressable
+      accessibilityLabel={slot.label}
+      accessibilityRole="button"
+      style={({ pressed }) => [propertyStyles.placeholderRow, pressed ? propertyStyles.editableValuePressed : null]}
+      testID={`property-placeholder-${sourceSegment}-${testIdSegment(slot.key)}`}
+      onPress={onPress}
+    >
+      <Text style={propertyStyles.placeholderLabel}>{slot.label}</Text>
+      <Text style={propertyStyles.placeholderValue}>{'\u2014'}</Text>
+    </Pressable>
+  )
+}
+
 function PropertySection({
   children,
   label,
+  labelVariant = 'default',
   testID,
 }: {
   children: ReactNode
   label: string
+  labelVariant?: 'default' | 'placeholder'
   testID?: string
 }) {
   return (
     <View style={propertyStyles.sectionRow} testID={testID}>
-      <Text style={propertyStyles.sectionLabel} testID={testID ? `${testID}-label` : undefined}>{label}</Text>
+      <Text
+        style={[propertyStyles.sectionLabel, labelVariant === 'placeholder' ? propertyStyles.placeholderLabel : null]}
+        testID={testID ? `${testID}-label` : undefined}
+      >
+        {label}
+      </Text>
       <View style={propertyStyles.sectionValue} testID={testID ? `${testID}-value` : undefined}>{children}</View>
     </View>
   )
@@ -254,6 +312,38 @@ function PropertyActionRow({
       </View>
       <View style={actionStyles.value} />
     </Pressable>
+  )
+}
+
+function PlaceholderRelationshipSection({
+  onPress,
+  slot,
+}: {
+  onPress: () => void
+  slot: MobileInspectorRelationshipSlot
+}) {
+  const sourceSegment = slot.source === 'typeDerived' ? 'type-derived' : 'suggested'
+  const testID = `relationship-placeholder-${sourceSegment}-${testIdSegment(slot.key)}`
+
+  return (
+    <PropertySection label={slot.label} labelVariant="placeholder" testID={testID}>
+      <Pressable
+        accessibilityLabel={mobileText('inspector.relationship.add')}
+        accessibilityRole="button"
+        style={({ pressed }) => [propertyStyles.placeholderButton, pressed ? propertyStyles.editableValuePressed : null]}
+        testID={`${testID}-add`}
+        onPress={onPress}
+      >
+        <View style={actionStyles.label}>
+          <View style={actionStyles.iconSlot}>
+            <Plus color={mobileColors.textFaint} size={14} />
+          </View>
+          <Text numberOfLines={1} style={[actionStyles.text, propertyStyles.placeholderButtonText]}>
+            {mobileText('inspector.relationship.add')}
+          </Text>
+        </View>
+      </Pressable>
+    </PropertySection>
   )
 }
 
@@ -428,7 +518,44 @@ const propertyStyles = StyleSheet.create({
     paddingVertical: mobileSpace.sm,
   },
   sectionValue: {
+    alignSelf: 'stretch',
     minWidth: 0,
+  },
+  placeholderButton: {
+    minHeight: desktopPropertyParity.rowMinHeight,
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    gap: mobileSpace.xs,
+    borderRadius: desktopPropertyParity.actionRowRadius,
+    paddingHorizontal: desktopPropertyParity.rowPaddingHorizontal,
+    width: '100%',
+  },
+  placeholderButtonText: {
+    minWidth: 0,
+    flex: 1,
+    color: mobileColors.textFaint,
+    fontSize: desktopPropertyParity.labelTextSize,
+  },
+  placeholderLabel: {
+    color: mobileColors.textFaint,
+    fontSize: desktopPropertyParity.labelTextSize,
+  },
+  placeholderRow: {
+    minHeight: desktopPropertyParity.rowMinHeight,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: mobileSpace.sm,
+    borderBottomColor: mobileColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: desktopPropertyParity.rowPaddingHorizontal,
+  },
+  placeholderValue: {
+    minWidth: 0,
+    flex: 1,
+    color: mobileColors.textFaint,
+    fontSize: mobileType.caption,
+    textAlign: 'right',
   },
   editableText: {
     minWidth: 0,

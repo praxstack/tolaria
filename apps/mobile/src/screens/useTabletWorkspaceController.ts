@@ -43,6 +43,9 @@ const emptyReadOnlyForm: TabletReadOnlyForm = {
 
 type ApplyWorkspaceEdit = (edit: MobileWorkspaceEdit) => void
 type ReadOnlyFormUpdater = <Key extends keyof TabletReadOnlyForm>(key: Key, value: TabletReadOnlyForm[Key]) => void
+type ReadOnlyFormField = {
+  [Key in keyof TabletReadOnlyForm]: { key: Key; value: TabletReadOnlyForm[Key] }
+}[keyof TabletReadOnlyForm]
 type SaveSelectedEdit = (toEdit: (noteId: string) => MobileWorkspaceEdit) => void
 type SetOpenAction = (action: MobileWorkspaceAction | null) => void
 type TabletWorkspaceNavigation = ReturnType<typeof useTabletWorkspaceNavigation>
@@ -317,9 +320,11 @@ function actionSheetWorkspaceActions({
   updateReadOnlyForm: ReadOnlyFormUpdater
   workspaceSnapshot: MobileWorkspaceSnapshot
 }) {
+  const openAction = workspaceActionOpener({ setOpenAction, updateReadOnlyForm })
+
   return {
-    onAddProperty: () => setOpenAction('addProperty'),
-    onAddRelationship: () => setOpenAction('addRelationship'),
+    onAddProperty: (key?: string) => openAction('addProperty', addPropertyFields(key)),
+    onAddRelationship: (key?: string) => openAction('addRelationship', addRelationshipFields(key)),
     onCloseAction: closeAction,
     onOpenCreateNote: () => setOpenAction('createNote'),
     onOpenCreateView: () => openCreateView({
@@ -329,20 +334,11 @@ function actionSheetWorkspaceActions({
       updateReadOnlyForm,
     }),
     onOpenMoreActions: () => setOpenAction('moreActions'),
-    onOpenChangeNoteType: () => openChangeNoteType({
-      currentType: selectedNote?.type ?? '',
-      setOpenAction,
-      updateReadOnlyForm,
-    }),
-    onOpenMoveNoteToFolder: () => openMoveNoteToFolder({
-      setOpenAction,
-      updateReadOnlyForm,
-    }),
-    onOpenRenameNoteFile: () => openRenameNoteFile({
-      filenameStem: filenameStemForNote(selectedNote),
-      setOpenAction,
-      updateReadOnlyForm,
-    }),
+    onOpenChangeNoteType: () => openAction('changeNoteType', [{ key: 'noteType', value: selectedNote?.type ?? '' }]),
+    onOpenMoveNoteToFolder: () => openAction('moveNoteToFolder', [{ key: 'folderPath', value: '' }]),
+    onOpenRenameNoteFile: () => openAction('renameNoteFile', [
+      { key: 'filenameStem', value: filenameStemForNote(selectedNote) },
+    ]),
     onOpenSearch: () => setOpenAction('search'),
     onOpenViewActions: (selection: MobileSidebarItemSelection) => openViewActions({
       selection,
@@ -414,10 +410,12 @@ function propertyWorkspaceActions({
   setOpenAction: SetOpenAction
   updateReadOnlyForm: ReadOnlyFormUpdater
 }) {
+  const openAction = workspaceActionOpener({ setOpenAction, updateReadOnlyForm })
+
   return {
     onDeleteProperty: (noteId: string, key: string) => applyEdit({ key, noteId, type: 'deleteProperty' }),
     onEditProperty: (_noteId: string, key: string, value: MobilePropertyValue) => {
-      openEditProperty({ key, setOpenAction, updateReadOnlyForm, value })
+      openAction('editProperty', editPropertyFields(key, value))
     },
     onPropertyNameChange: (value: string) => updateReadOnlyForm('propertyName', value),
     onPropertyValueChange: (value: string) => updateReadOnlyForm('propertyValue', value),
@@ -526,64 +524,63 @@ function editorWorkspaceActions({
   }
 }
 
-function openChangeNoteType({
-  currentType,
-  setOpenAction,
-  updateReadOnlyForm,
-}: {
-  currentType: string
-  setOpenAction: SetOpenAction
-  updateReadOnlyForm: ReadOnlyFormUpdater
-}) {
-  updateReadOnlyForm('noteType', currentType)
-  setOpenAction('changeNoteType')
-}
-
-function openMoveNoteToFolder({
-  setOpenAction,
-  updateReadOnlyForm,
-}: {
-  setOpenAction: SetOpenAction
-  updateReadOnlyForm: ReadOnlyFormUpdater
-}) {
-  updateReadOnlyForm('folderPath', '')
-  setOpenAction('moveNoteToFolder')
-}
-
-function openRenameNoteFile({
-  filenameStem,
-  setOpenAction,
-  updateReadOnlyForm,
-}: {
-  filenameStem: string
-  setOpenAction: SetOpenAction
-  updateReadOnlyForm: ReadOnlyFormUpdater
-}) {
-  updateReadOnlyForm('filenameStem', filenameStem)
-  setOpenAction('renameNoteFile')
-}
-
 function filenameStemForNote(note: MobileNote | null): string {
   const path = note?.path ?? note?.id ?? ''
   const filename = path.split('/').filter(Boolean).at(-1) ?? path
   return filename.replace(/\.md$/u, '')
 }
 
-function openEditProperty({
-  key,
+function editPropertyFields(key: string, value: MobilePropertyValue): ReadOnlyFormField[] {
+  return [
+    { key: 'propertyName', value: key },
+    { key: 'propertyValue', value: propertyValueFormText(value) },
+    { key: 'propertyValueKind', value: propertyValueKind(key, value) },
+  ]
+}
+
+function addPropertyFields(key?: string): ReadOnlyFormField[] {
+  return [
+    { key: 'propertyName', value: key ?? '' },
+    { key: 'propertyValue', value: '' },
+    { key: 'propertyValueKind', value: 'string' },
+  ]
+}
+
+function addRelationshipFields(key?: string): ReadOnlyFormField[] {
+  return [
+    { key: 'relationshipName', value: key ?? '' },
+    { key: 'relationshipNoteTitle', value: '' },
+  ]
+}
+
+function workspaceActionOpener({
   setOpenAction,
   updateReadOnlyForm,
-  value,
 }: {
-  key: string
   setOpenAction: SetOpenAction
   updateReadOnlyForm: ReadOnlyFormUpdater
-  value: MobilePropertyValue
 }) {
-  updateReadOnlyForm('propertyName', key)
-  updateReadOnlyForm('propertyValue', propertyValueFormText(value))
-  updateReadOnlyForm('propertyValueKind', propertyValueKind(key, value))
-  setOpenAction('editProperty')
+  return (action: MobileWorkspaceAction, fields: ReadOnlyFormField[]) => openWorkspaceAction({
+    action,
+    fields,
+    setOpenAction,
+    updateReadOnlyForm,
+  })
+}
+
+function openWorkspaceAction({
+  action,
+  fields,
+  setOpenAction,
+  updateReadOnlyForm,
+}: {
+  action: MobileWorkspaceAction
+  fields: ReadOnlyFormField[]
+  setOpenAction: SetOpenAction
+  updateReadOnlyForm: ReadOnlyFormUpdater
+}) {
+  for (const { key, value } of fields) updateReadOnlyForm(key, value)
+  setOpenAction(action)
 }
 
 function openCreateView({

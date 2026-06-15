@@ -157,6 +157,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
             onOpenChangeNoteType={onOpenChangeNoteType}
             onSelectNote={onSelectNote}
             onRemoveRelationship={onRemoveRelationship}
+            typeDefinitions={snapshot.typeDefinitions}
           />
         </View>
       ) : <SwipeRail edge="right" swipeHandlers={gestures.propertiesRevealSwipe} />}

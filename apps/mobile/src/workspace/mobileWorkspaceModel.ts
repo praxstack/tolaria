@@ -56,6 +56,8 @@ export type MobileTypeDefinition = {
   label?: string | null
   listPropertiesDisplay?: string[]
   order?: number | null
+  properties?: Record<string, MobilePropertyValue>
+  relationships?: Record<string, string[]>
   sort?: string | null
   tone?: MobileTone | null
   visible?: boolean | null

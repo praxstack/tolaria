@@ -186,9 +186,17 @@ function typeDefinitionFromFrontmatter(frontmatter: LocalVaultFrontmatter): Mobi
       'listPropertiesDisplay',
     ]),
     order: frontmatterNumber(frontmatter, ['_order', 'order']),
+    properties: mobileTypeDefinitionProperties(frontmatter),
+    relationships: frontmatterRelationships(frontmatter),
     sort: frontmatterText(frontmatter, ['_sort', 'sort']),
     visible: frontmatterBoolean(frontmatter, ['visible']),
   }
+}
+
+function mobileTypeDefinitionProperties(frontmatter: LocalVaultFrontmatter): Record<string, MobilePropertyValue> {
+  return Object.fromEntries(
+    Object.entries(frontmatterProperties(frontmatter)).map(([key, value]) => [key, mobilePropertyValue(value)]),
+  )
 }
 
 function frontmatterValue(frontmatter: LocalVaultFrontmatter, keys: string[]) {

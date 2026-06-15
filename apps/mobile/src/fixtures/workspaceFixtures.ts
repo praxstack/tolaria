@@ -12,6 +12,7 @@ import type {
   MobileSavedView,
   MobileSyncStatus,
   MobileTone,
+  MobileTypeDefinitions,
   MobileWorkspaceSnapshot,
 } from '../workspace/mobileWorkspaceModel'
 
@@ -395,6 +396,21 @@ const fixtureViews: FixtureSavedView[] = [
   },
 ]
 
+const fixtureTypeDefinitions: MobileTypeDefinitions = {
+  Essay: {
+    properties: { Priority: 'Medium' },
+    tone: 'green',
+  },
+  Procedure: {
+    properties: { Cadence: 'Weekly' },
+    tone: 'purple',
+  },
+  Release: {
+    properties: { Date: '2026-05-02' },
+    tone: 'orange',
+  },
+}
+
 const folderTreePressureSections: FixtureSidebarSection[] = [
   ...defaultSidebarSections.filter((section) => section.id !== 'folders'),
   {
@@ -454,6 +470,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     selectedNoteId: fixtureNotes[0].id,
     sidebarSections: defaultSidebarSections,
     sync: { kind: 'synced', minutesAgo: 2 },
+    typeDefinitions: fixtureTypeDefinitions,
     views: fixtureViews,
   },
   'folder-tree': {
@@ -465,6 +482,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     selectedNoteId: fixtureNotes[1].id,
     sidebarSections: folderTreePressureSections,
     sync: { kind: 'synced', minutesAgo: 8 },
+    typeDefinitions: fixtureTypeDefinitions,
     views: fixtureViews,
   },
   'empty-inbox': {
@@ -476,6 +494,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     searchQuery: 'Inbox',
     sidebarSections: defaultSidebarSections,
     sync: { kind: 'pullRequired' },
+    typeDefinitions: fixtureTypeDefinitions,
     views: fixtureViews,
   },
   'long-title': {
@@ -490,6 +509,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     selectedNoteId: longTitleNote.id,
     sidebarSections: defaultSidebarSections,
     sync: { kind: 'synced', minutesAgo: 1 },
+    typeDefinitions: fixtureTypeDefinitions,
     views: fixtureViews,
   },
   'property-heavy': {
@@ -504,6 +524,7 @@ export const workspaceScenarios: Record<WorkspaceScenarioId, WorkspaceScenario> 
     selectedNoteId: propertyHeavyNote.id,
     sidebarSections: defaultSidebarSections,
     sync: { kind: 'conflict' },
+    typeDefinitions: fixtureTypeDefinitions,
     views: fixtureViews,
   },
 }

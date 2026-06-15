@@ -176,10 +176,9 @@ async function longPress(page: PageLike, testId: string) {
 }
 
 async function addDatePropertyFromSuggestion(page: PageLike) {
-  await page.getByTestId('property-action-add-property').click()
+  await expect(page.getByTestId('property-placeholder-suggested-date')).toBeVisible()
+  await page.getByTestId('property-placeholder-suggested-date').click()
   await expect(page.getByTestId('workspace-property-name-input')).toBeVisible()
-  await expect(page.getByTestId('workspace-property-key-suggestion-date')).toBeVisible()
-  await page.getByTestId('workspace-property-key-suggestion-date').click()
   await expect(page.getByTestId('workspace-property-name-input')).toHaveValue('Date')
   await page.getByTestId('workspace-property-value-input').fill('2026-06-14')
   await page.getByRole('button', { name: 'Save' }).click()
@@ -196,10 +195,9 @@ async function addDatePropertyFromSuggestion(page: PageLike) {
 }
 
 async function addRelationshipFromSuggestion(page: PageLike) {
-  await page.getByTestId('property-action-add-relationship').click()
+  await expect(page.getByTestId('relationship-placeholder-suggested-related-to-add')).toBeVisible()
+  await page.getByTestId('relationship-placeholder-suggested-related-to-add').click()
   await expect(page.getByTestId('workspace-relationship-name-input')).toBeVisible()
-  await expect(page.getByTestId('workspace-relationship-key-suggestion-related-to')).toBeVisible()
-  await page.getByTestId('workspace-relationship-key-suggestion-related-to').click()
   await expect(page.getByTestId('workspace-relationship-name-input')).toHaveValue('related_to')
   await page.getByTestId('workspace-relationship-note-title-input').fill('Open Source')
   await expect(page.getByTestId('workspace-relationship-note-suggestion-open-source-project')).toBeVisible()

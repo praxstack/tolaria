@@ -48,8 +48,8 @@ export type TabletWorkspaceChromeProps = {
   noteListSubtitle: NoteCountText
   noteListTitle: SidebarLabel
   notes: MobileNote[]
-  onAddProperty: () => void
-  onAddRelationship: () => void
+  onAddProperty: (key?: string) => void
+  onAddRelationship: (key?: string) => void
   onChangeNoteType: () => void
   onChangeNoteTypeInputChange: (value: ReadOnlyFormValue) => void
   onCloseAction: () => void

@@ -1,0 +1,182 @@
+import type {
+  MobileNote,
+  MobilePropertyValue,
+  MobileRelationship,
+  MobileTypeDefinition,
+  MobileTypeDefinitions,
+} from './mobileWorkspaceModel'
+import { normalizeRelationshipKey } from './mobileWorkspaceSuggestions'
+
+type SlotSource = 'suggested' | 'typeDerived'
+
+export type MobileInspectorPropertySlot = {
+  key: string
+  label: string
+  source: SlotSource
+}
+
+export type MobileInspectorRelationshipSlot = {
+  key: string
+  label: string
+  source: SlotSource
+}
+
+const SUGGESTED_PROPERTY_SLOTS = [
+  { key: 'Status', label: 'Status' },
+  { key: 'Date', label: 'Date' },
+  { key: 'URL', label: 'URL' },
+] as const
+const SUGGESTED_RELATIONSHIP_KEYS = ['belongs_to', 'related_to', 'has'] as const
+const RELATIONSHIP_SCHEMA_KEYS = new Set(SUGGESTED_RELATIONSHIP_KEYS)
+
+export function mobileInspectorPropertySlots(
+  note: MobileNote,
+  typeDefinitions?: MobileTypeDefinitions,
+): MobileInspectorPropertySlot[] {
+  const existingKeys = existingPropertyKeys(note)
+  const typeDerivedSlots = typeDerivedPropertySlots(note, typeDefinitions, existingKeys)
+  const suggestedSlots = suggestedPropertySlots(existingKeys)
+
+  return [...typeDerivedSlots, ...suggestedSlots]
+}
+
+export function mobileInspectorRelationshipSlots(
+  note: MobileNote,
+  typeDefinitions?: MobileTypeDefinitions,
+): MobileInspectorRelationshipSlot[] {
+  const existingKeys = existingRelationshipKeys(note)
+  const typeDerivedSlots = typeDerivedRelationshipSlots(note, typeDefinitions, existingKeys)
+  const suggestedSlots = suggestedRelationshipSlots(existingKeys)
+
+  return [...typeDerivedSlots, ...suggestedSlots]
+}
+
+function typeDerivedPropertySlots(
+  note: MobileNote,
+  typeDefinitions: MobileTypeDefinitions | undefined,
+  existingKeys: Set<string>,
+): MobileInspectorPropertySlot[] {
+  const definition = typeDefinitionForNote(note, typeDefinitions)
+  if (!definition?.properties) return []
+
+  const slots: MobileInspectorPropertySlot[] = []
+  for (const [key, value] of Object.entries(definition.properties)) {
+    const canonicalKey = canonicalSlotKey(key)
+    if (!isVisibleTypeDerivedProperty(key, value, existingKeys, slots)) continue
+    existingKeys.add(canonicalKey)
+    slots.push({ key, label: humanizeSlotKey(key), source: 'typeDerived' })
+  }
+
+  return slots
+}
+
+function typeDerivedRelationshipSlots(
+  note: MobileNote,
+  typeDefinitions: MobileTypeDefinitions | undefined,
+  existingKeys: Set<string>,
+): MobileInspectorRelationshipSlot[] {
+  const definition = typeDefinitionForNote(note, typeDefinitions)
+  if (!definition) return []
+
+  const slots: MobileInspectorRelationshipSlot[] = []
+  for (const key of typeRelationshipKeys(definition)) {
+    pushRelationshipSlot(slots, existingKeys, key)
+  }
+  return slots
+}
+
+function typeRelationshipKeys(definition: MobileTypeDefinition): string[] {
+  const keys = Object.entries(definition.relationships ?? {})
+    .filter(([, refs]) => refs.length > 0)
+    .map(([key]) => key)
+
+  for (const key of Object.keys(definition.properties ?? {})) {
+    if (isRelationshipSchemaKey(key)) keys.push(key)
+  }
+
+  return keys
+}
+
+function pushRelationshipSlot(
+  slots: MobileInspectorRelationshipSlot[],
+  existingKeys: Set<string>,
+  key: string,
+) {
+  const normalizedKey = normalizeRelationshipKey(key)
+  const canonicalKey = canonicalSlotKey(normalizedKey)
+  if (existingKeys.has(canonicalKey)) return
+
+  existingKeys.add(canonicalKey)
+  slots.push({ key: normalizedKey, label: humanizeSlotKey(normalizedKey), source: 'typeDerived' })
+}
+
+function suggestedPropertySlots(existingKeys: Set<string>): MobileInspectorPropertySlot[] {
+  return SUGGESTED_PROPERTY_SLOTS
+    .filter(({ key }) => !existingKeys.has(canonicalSlotKey(key)))
+    .map(({ key, label }) => ({ key, label, source: 'suggested' }))
+}
+
+function suggestedRelationshipSlots(existingKeys: Set<string>): MobileInspectorRelationshipSlot[] {
+  return SUGGESTED_RELATIONSHIP_KEYS
+    .filter((key) => !existingKeys.has(canonicalSlotKey(key)))
+    .map((key) => ({ key, label: humanizeSlotKey(key), source: 'suggested' }))
+}
+
+function typeDefinitionForNote(
+  note: MobileNote,
+  typeDefinitions: MobileTypeDefinitions | undefined,
+): MobileTypeDefinition | undefined {
+  if (note.type === 'Type') return undefined
+  return typeDefinitions?.[note.type]
+}
+
+function existingPropertyKeys(note: MobileNote): Set<string> {
+  const keys = new Set((note.properties ?? []).map((property) => canonicalSlotKey(property.key)))
+  if (note.status) keys.add('status')
+  if (note.tags.length > 0) keys.add('tags')
+  keys.add('type')
+  return keys
+}
+
+function existingRelationshipKeys(note: MobileNote): Set<string> {
+  return new Set(note.relationships.map((relationship) => canonicalSlotKey(relationshipFrontmatterKey(relationship))))
+}
+
+function relationshipFrontmatterKey(relationship: MobileRelationship): string {
+  if (relationship.key) return normalizeRelationshipKey(relationship.key)
+  if (relationship.kind === 'belongsTo') return 'belongs_to'
+  if (relationship.kind === 'relatedTo') return 'related_to'
+  if (relationship.kind === 'has') return 'has'
+  return relationship.label ?? 'related_to'
+}
+
+function isVisibleTypeDerivedProperty(
+  key: string,
+  value: MobilePropertyValue,
+  existingKeys: Set<string>,
+  slots: MobileInspectorPropertySlot[],
+): boolean {
+  const canonicalKey = canonicalSlotKey(key)
+  return !existingKeys.has(canonicalKey)
+    && !slots.some((slot) => canonicalSlotKey(slot.key) === canonicalKey)
+    && !isRelationshipSchemaKey(key)
+    && isVisiblePlaceholderValue(value)
+}
+
+function isRelationshipSchemaKey(key: string): boolean {
+  return RELATIONSHIP_SCHEMA_KEYS.has(canonicalSlotKey(key) as (typeof SUGGESTED_RELATIONSHIP_KEYS)[number])
+}
+
+function isVisiblePlaceholderValue(value: MobilePropertyValue): boolean {
+  return !(Array.isArray(value) && value.length === 0)
+}
+
+function canonicalSlotKey(key: string): string {
+  return key.trim().toLowerCase().replace(/[-\s]+/g, '_')
+}
+
+function humanizeSlotKey(key: string): string {
+  const spaced = key.replace(/^_+/, '').replace(/[_-]/g, ' ')
+  if (!spaced) return spaced
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
