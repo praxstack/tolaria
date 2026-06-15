@@ -203,6 +203,28 @@ describe('applyMobileWorkspaceEdit', () => {
     expectMoveWikilinkWrites(result.writes, updatedRef.rawContent ?? '')
   })
 
+  it('does not overwrite an existing destination when moving notes between folders', () => {
+    const base = workspaceScenarioForId('default')
+    const existingDestination = {
+      ...base.notes[1],
+      id: 'Writing/Essays/Workflow Orchestration Essay.md',
+      path: 'Writing/Essays/Workflow Orchestration Essay.md',
+      title: 'Existing Workflow Essay',
+    }
+    const result = applyMobileWorkspaceEditWithWrites({
+      ...base,
+      allNotes: [base.notes[0], existingDestination],
+      notes: [base.notes[0], existingDestination],
+    }, {
+      folderPath: 'Writing/Essays',
+      noteId: 'workflow-orchestration',
+      type: 'moveNoteToFolder',
+    })
+
+    expect(result.snapshot.notes[0]?.path).toBe('Tolaria/Mobile UI/Workflow Orchestration Essay.md')
+    expect(result.writes).toEqual([])
+  })
+
   it('retargets path-backed note ids when a local-vault note moves folders', () => {
     const base = workspaceScenarioForId('default')
     const pathBackedNote = {

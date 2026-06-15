@@ -366,10 +366,12 @@ function moveNoteToFolder(
   const folderPath = normalizedFolderPath(edit.folderPath)
   if (!previousNote || !folderPath) return { snapshot, writes: [] }
 
+  const previousPool = workspaceNotePool(snapshot)
+  if (moveDestinationExists(previousPool, previousNote, folderPath)) return { snapshot, writes: [] }
+
   const nextNote = movedNote(previousNote, folderPath)
   if (nextNote === previousNote) return { snapshot, writes: [] }
 
-  const previousPool = workspaceNotePool(snapshot)
   const nextPool = moveWorkspaceNotes(previousPool, previousNote, nextNote)
   const nextNotes = moveWorkspaceNotes(snapshot.notes, previousNote, nextNote)
   const nextAllNotes = snapshot.allNotes ? nextPool : undefined
@@ -384,6 +386,17 @@ function moveNoteToFolder(
     snapshot: nextSnapshot,
     writes: moveNoteWrites(previousNote, nextNote, previousPool, nextPool),
   }
+}
+
+function moveDestinationExists(
+  notes: MobileNote[],
+  previousNote: MobileNote,
+  folderPath: FolderPath,
+): boolean {
+  const nextPath = `${folderPath}/${noteFilename(noteWritePath(previousNote))}`
+  if (nextPath === noteWritePath(previousNote)) return false
+
+  return notes.some((note) => note.id !== previousNote.id && noteWritePath(note) === nextPath)
 }
 
 function moveWorkspaceNotes(
