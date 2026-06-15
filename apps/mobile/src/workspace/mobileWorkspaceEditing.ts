@@ -1124,7 +1124,7 @@ function resolveRelationshipTarget(notes: MobileNote[], target: WikilinkTarget):
 
 function relationshipRefForTitle(title: NoteTitle, notes: MobileNote[]): WikilinkRef {
   if (/^\[\[[^\]]+\]\]$/.test(title)) return title
-  const targetNote = notes.find((note) => normalizeTarget(note.title) === normalizeTarget(title))
+  const targetNote = resolveRelationshipTarget(notes, title)
   const target = targetNote ? wikilinkTargetForNote(targetNote) : slugifyTitle(title)
   return `[[${target}]]`
 }

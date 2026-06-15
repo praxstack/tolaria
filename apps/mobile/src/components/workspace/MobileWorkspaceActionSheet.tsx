@@ -1036,13 +1036,18 @@ function relationshipSuggestions(notes: MobileNote[], query: string) {
   if (!normalized) return []
 
   return notes
-    .filter((note) => !note.archived && [
-      note.title,
-      note.type,
-      note.path ?? '',
-      note.tags.join(' '),
-    ].join(' ').toLowerCase().includes(normalized))
+    .filter((note) => !note.archived && relationshipSuggestionSearchText(note).includes(normalized))
     .slice(0, 6)
+}
+
+function relationshipSuggestionSearchText(note: MobileNote) {
+  return [
+    note.title,
+    note.type,
+    note.path ?? '',
+    ...(note.aliases ?? []),
+    note.tags.join(' '),
+  ].join(' ').toLowerCase()
 }
 
 function shouldShowRelationshipCreateTarget(notes: MobileNote[], title: string) {

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { MobileNote } from './mobileWorkspaceModel'
 import {
+  activeMobilePersonMentionQuery,
   activeMobileWikilinkQuery,
+  mobilePersonMentionAutocompleteSuggestions,
   mobileWikilinkAutocompleteSuggestions,
   mobileWikilinkAutocompleteTarget,
+  replaceActiveMobilePersonMentionQuery,
   replaceActiveMobileWikilinkQuery,
 } from './mobileWikilinkAutocomplete'
 
@@ -74,6 +77,37 @@ describe('mobile wikilink autocomplete', () => {
       path: 'projects/project-alpha.md',
       title: 'Project Alpha',
     }))).toBe('projects/project-alpha')
+  })
+
+  it('detects desktop-style @ person mention queries at text boundaries', () => {
+    expect(activeMobilePersonMentionQuery('Talk to @Mat today', 12)).toEqual({
+      cursor: 12,
+      query: 'Mat',
+      start: 8,
+    })
+    expect(activeMobilePersonMentionQuery('mail@example.com', 14)).toBeNull()
+    expect(activeMobilePersonMentionQuery('Talk to @Mat teo', 16)).toBeNull()
+  })
+
+  it('suggests only Person notes for @ mentions and matches aliases', () => {
+    const suggestions = mobilePersonMentionAutocompleteSuggestions([
+      note({ aliases: ['Meri'], path: 'people/maria.md', title: 'Maria Rossi', type: 'Person' }),
+      note({ aliases: ['Meri'], path: 'projects/meri.md', title: 'Meri Project', type: 'Project' }),
+      note({ archived: true, path: 'people/matteo.md', title: 'Matteo', type: 'Person' }),
+    ], 'meri')
+
+    expect(suggestions.map((suggestion) => suggestion.title)).toEqual(['Maria Rossi'])
+  })
+
+  it('replaces @ mention queries with canonical wikilinks and a trailing space', () => {
+    expect(replaceActiveMobilePersonMentionQuery('Talk to @Mer today', 12, 'people/maria')).toEqual({
+      cursor: 24,
+      text: 'Talk to [[people/maria]] today',
+    })
+    expect(replaceActiveMobilePersonMentionQuery('Talk to @Mer', 12, 'people/maria')).toEqual({
+      cursor: 25,
+      text: 'Talk to [[people/maria]] ',
+    })
   })
 })
 

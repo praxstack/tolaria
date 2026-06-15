@@ -5,6 +5,13 @@ type CursorOffset = number
 type MarkdownContent = string
 type WikilinkQuery = string
 type WikilinkTarget = string
+type PersonMentionQuery = string
+type InlineQueryOptions = {
+  invalidQuery: (query: string) => boolean
+  replacement: (target: WikilinkTarget, nextCharacter: string) => string
+  trigger: string
+  validBoundary?: (text: string, triggerIndex: number) => boolean
+}
 
 export type MobileWikilinkAutocompleteMatch = {
   cursor: CursorOffset
@@ -18,24 +25,23 @@ export type MobileWikilinkAutocompleteReplacement = {
 }
 
 const MAX_WIKILINK_SUGGESTIONS = 10
+const wikilinkQueryOptions: InlineQueryOptions = {
+  invalidQuery: (query) => query.includes(']') || query.includes('\n'),
+  replacement: (target) => `[[${target}]]`,
+  trigger: '[[',
+}
+const personMentionQueryOptions: InlineQueryOptions = {
+  invalidQuery: (query) => query.includes('@') || query.includes(']') || /\s/u.test(query),
+  replacement: personMentionReplacement,
+  trigger: '@',
+  validBoundary: hasPersonMentionBoundary,
+}
 
 export function activeMobileWikilinkQuery(
   text: MarkdownContent,
   cursor: CursorOffset,
 ): MobileWikilinkAutocompleteMatch | null {
-  const boundedCursor = boundedTextCursor(text, cursor)
-  const beforeCursor = text.slice(0, boundedCursor)
-  const triggerIndex = beforeCursor.lastIndexOf('[[')
-  if (triggerIndex === -1) return null
-
-  const query = beforeCursor.slice(triggerIndex + 2)
-  if (query.includes(']') || query.includes('\n')) return null
-
-  return {
-    cursor: boundedCursor,
-    query,
-    start: triggerIndex,
-  }
+  return activeMobileInlineQuery(text, cursor, wikilinkQueryOptions)
 }
 
 export function replaceActiveMobileWikilinkQuery(
@@ -43,14 +49,7 @@ export function replaceActiveMobileWikilinkQuery(
   cursor: CursorOffset,
   target: WikilinkTarget,
 ): MobileWikilinkAutocompleteReplacement | null {
-  const match = activeMobileWikilinkQuery(text, cursor)
-  if (!match) return null
-
-  const replacement = `[[${target}]]`
-  return {
-    cursor: match.start + replacement.length,
-    text: `${text.slice(0, match.start)}${replacement}${text.slice(match.cursor)}`,
-  }
+  return replaceActiveMobileInlineQuery(text, cursor, target, wikilinkQueryOptions)
 }
 
 export function mobileWikilinkAutocompleteSuggestions(
@@ -65,6 +64,39 @@ export function mobileWikilinkAutocompleteSuggestions(
 }
 
 export const mobileWikilinkAutocompleteTarget = mobileWikilinkTargetForNote
+
+export type MobilePersonMentionAutocompleteMatch = {
+  cursor: CursorOffset
+  query: PersonMentionQuery
+  start: CursorOffset
+}
+
+export function activeMobilePersonMentionQuery(
+  text: MarkdownContent,
+  cursor: CursorOffset,
+): MobilePersonMentionAutocompleteMatch | null {
+  return activeMobileInlineQuery(text, cursor, personMentionQueryOptions)
+}
+
+export function replaceActiveMobilePersonMentionQuery(
+  text: MarkdownContent,
+  cursor: CursorOffset,
+  target: WikilinkTarget,
+): MobileWikilinkAutocompleteReplacement | null {
+  return replaceActiveMobileInlineQuery(text, cursor, target, personMentionQueryOptions)
+}
+
+export function mobilePersonMentionAutocompleteSuggestions(
+  notes: MobileNote[],
+  query: PersonMentionQuery,
+): MobileNote[] {
+  const normalizedQuery = normalizeSearchText(query)
+  if (normalizedQuery.length === 0) return []
+
+  return finalizeMobileWikilinkSuggestions(notes
+    .filter((note) => !note.archived && note.type === 'Person')
+    .filter((note) => mobilePersonMentionMatchesQuery(note, normalizedQuery)))
+}
 
 function topMobileWikilinkSuggestions(notes: MobileNote[]): MobileNote[] {
   return prepareMobileWikilinkSuggestions(notes)
@@ -147,4 +179,56 @@ function mobileWikilinkSearchValues(note: MobileNote): string[] {
     ...(note.aliases ?? []),
     ...note.tags,
   ]
+}
+
+function hasPersonMentionBoundary(text: string, triggerIndex: number): boolean {
+  const previous = text.at(triggerIndex - 1)
+  return previous === undefined || /[\s([{:>,-]/u.test(previous)
+}
+
+function mobilePersonMentionMatchesQuery(note: MobileNote, normalizedQuery: string): boolean {
+  return [
+    note.title,
+    ...(note.aliases ?? []),
+  ].some((value) => normalizeSearchText(value).includes(normalizedQuery))
+}
+
+function activeMobileInlineQuery(
+  text: MarkdownContent,
+  cursor: CursorOffset,
+  options: InlineQueryOptions,
+): MobileWikilinkAutocompleteMatch | null {
+  const boundedCursor = boundedTextCursor(text, cursor)
+  const beforeCursor = text.slice(0, boundedCursor)
+  const triggerIndex = beforeCursor.lastIndexOf(options.trigger)
+  if (triggerIndex === -1 || options.validBoundary?.(beforeCursor, triggerIndex) === false) return null
+
+  const query = beforeCursor.slice(triggerIndex + options.trigger.length)
+  if (options.invalidQuery(query)) return null
+
+  return {
+    cursor: boundedCursor,
+    query,
+    start: triggerIndex,
+  }
+}
+
+function replaceActiveMobileInlineQuery(
+  text: MarkdownContent,
+  cursor: CursorOffset,
+  target: WikilinkTarget,
+  options: InlineQueryOptions,
+): MobileWikilinkAutocompleteReplacement | null {
+  const match = activeMobileInlineQuery(text, cursor, options)
+  if (!match) return null
+
+  const replacement = options.replacement(target, text.at(match.cursor) ?? '')
+  return {
+    cursor: match.start + replacement.length,
+    text: `${text.slice(0, match.start)}${replacement}${text.slice(match.cursor)}`,
+  }
+}
+
+function personMentionReplacement(target: WikilinkTarget, nextCharacter: string): string {
+  return `[[${target}]]${/\s/u.test(nextCharacter) ? '' : ' '}`
 }

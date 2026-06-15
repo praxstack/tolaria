@@ -18,8 +18,11 @@ import { mobileColors, mobileRadius, mobileSpace, mobileType } from '../ui/token
 import { parseLocalVaultDocument } from '../workspace/localVaultFrontmatter'
 import {
   activeMobileWikilinkQuery,
+  activeMobilePersonMentionQuery,
+  mobilePersonMentionAutocompleteSuggestions,
   mobileWikilinkAutocompleteSuggestions,
   mobileWikilinkAutocompleteTarget,
+  replaceActiveMobilePersonMentionQuery,
   replaceActiveMobileWikilinkQuery,
 } from '../workspace/mobileWikilinkAutocomplete'
 import type { MobileEditorBlock, MobileEditorInline, MobileNote } from '../workspace/mobileWorkspaceModel'
@@ -61,6 +64,7 @@ type TextSelectionRange = {
   end: number
   start: number
 }
+type InlineAutocompleteKind = 'personMention' | 'wikilink'
 
 export function TabletEditorPanel(props: TabletEditorPanelProps) {
   const {
@@ -189,32 +193,12 @@ function MarkdownEditor({
   onUpdateTitle: (noteId: string, title: string) => void
 }) {
   const content = parseLocalVaultDocument(note.rawContent ?? `# ${note.title}\n\n`).body
-  const [selection, setSelection] = useState<TextSelectionRange>({ end: content.length, start: content.length })
-  const [controlledSelection, setControlledSelection] = useState<TextSelectionRange | undefined>()
-  const wikilinkMatch = activeMobileWikilinkQuery(content, selection.start)
-  const wikilinkQuery = wikilinkMatch?.query ?? null
-  const suggestions = useMemo(
-    () => wikilinkQuery === null ? [] : mobileWikilinkAutocompleteSuggestions(notes, wikilinkQuery),
-    [notes, wikilinkQuery],
-  )
-  const handleSelectionChange = useCallback((event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-    setSelection(event.nativeEvent.selection)
-    setControlledSelection(undefined)
-  }, [setControlledSelection, setSelection])
-  const handleMarkdownChange = useCallback((nextContent: string) => {
-    onUpdateContent(note.id, nextContent)
-    const endSelection = { end: nextContent.length, start: nextContent.length }
-    if (activeMobileWikilinkQuery(nextContent, nextContent.length)) setSelection(endSelection)
-  }, [note.id, onUpdateContent, setSelection])
-  const insertWikilinkSuggestion = useCallback((suggestion: MobileNote) => {
-    const replacement = replaceActiveMobileWikilinkQuery(content, selection.start, mobileWikilinkAutocompleteTarget(suggestion))
-    if (!replacement) return
-
-    const nextSelection = { end: replacement.cursor, start: replacement.cursor }
-    onUpdateContent(note.id, replacement.text)
-    setSelection(nextSelection)
-    setControlledSelection(nextSelection)
-  }, [content, note.id, onUpdateContent, selection.start, setControlledSelection, setSelection])
+  const autocomplete = useMarkdownInlineAutocomplete({
+    content,
+    noteId: note.id,
+    notes,
+    onUpdateContent,
+  })
 
   return (
     <View style={editorFormStyles.form} testID="editor-markdown-form">
@@ -232,20 +216,20 @@ function MarkdownEditor({
         testID="editor-markdown-input"
         textAlignVertical="top"
         value={content}
-        selection={controlledSelection}
-        onChangeText={handleMarkdownChange}
-        onSelectionChange={handleSelectionChange}
+        selection={autocomplete.controlledSelection}
+        onChangeText={autocomplete.handleMarkdownChange}
+        onSelectionChange={autocomplete.handleSelectionChange}
       />
-      {suggestions.length > 0 ? (
-        <View style={editorFormStyles.suggestions} testID="editor-wikilink-suggestions">
-          {suggestions.map((suggestion) => (
+      {autocomplete.suggestions.length > 0 ? (
+        <View style={editorFormStyles.suggestions} testID={autocomplete.suggestionsTestId}>
+          {autocomplete.suggestions.map((suggestion) => (
             <Pressable
               accessibilityLabel={suggestion.title}
               accessibilityRole="button"
               key={suggestion.id}
               style={({ pressed }) => [editorFormStyles.suggestionRow, pressed ? editorFormStyles.suggestionRowPressed : null]}
-              testID={`editor-wikilink-suggestion-${suggestion.id}`}
-              onPress={() => insertWikilinkSuggestion(suggestion)}
+              testID={`${autocomplete.rowTestIdPrefix}-${testIdSegment(suggestion.id)}`}
+              onPress={() => autocomplete.insertSuggestion(suggestion)}
             >
               <Text numberOfLines={1} style={editorFormStyles.suggestionTitle}>{suggestion.title}</Text>
               <MobileChip label={suggestion.type} tone="gray" />
@@ -255,6 +239,104 @@ function MarkdownEditor({
       ) : null}
     </View>
   )
+}
+
+function useMarkdownInlineAutocomplete({
+  content,
+  noteId,
+  notes,
+  onUpdateContent,
+}: {
+  content: string
+  noteId: string
+  notes: MobileNote[]
+  onUpdateContent: (noteId: string, content: string) => void
+}) {
+  const [selection, setSelection] = useState<TextSelectionRange>({ end: content.length, start: content.length })
+  const [controlledSelection, setControlledSelection] = useState<TextSelectionRange | undefined>()
+  const state = useMemo(() => markdownInlineAutocompleteState(content, selection.start, notes), [content, notes, selection.start])
+
+  const handleSelectionChange = useCallback((event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+    setSelection(event.nativeEvent.selection)
+    setControlledSelection(undefined)
+  }, [])
+  const handleMarkdownChange = useCallback((nextContent: string) => {
+    onUpdateContent(noteId, nextContent)
+    const nextSelection = textEndSelection(nextContent)
+    if (hasActiveInlineAutocomplete(nextContent, nextSelection.start)) setSelection(nextSelection)
+  }, [noteId, onUpdateContent])
+  const insertSuggestion = useCallback((suggestion: MobileNote) => {
+    const replacement = markdownInlineAutocompleteReplacement(content, selection.start, state.kind, suggestion)
+    if (!replacement) return
+
+    const nextSelection = { end: replacement.cursor, start: replacement.cursor }
+    onUpdateContent(noteId, replacement.text)
+    setSelection(nextSelection)
+    setControlledSelection(nextSelection)
+  }, [content, noteId, onUpdateContent, selection.start, state.kind])
+
+  return {
+    controlledSelection,
+    handleMarkdownChange,
+    handleSelectionChange,
+    insertSuggestion,
+    rowTestIdPrefix: inlineAutocompleteRowTestIdPrefix(state.kind),
+    suggestions: state.suggestions,
+    suggestionsTestId: inlineAutocompleteTestId(state.kind),
+  }
+}
+
+function markdownInlineAutocompleteState(
+  content: string,
+  cursor: number,
+  notes: MobileNote[],
+) {
+  const wikilinkMatch = activeMobileWikilinkQuery(content, cursor)
+  if (wikilinkMatch) {
+    return {
+      kind: 'wikilink' as const,
+      suggestions: mobileWikilinkAutocompleteSuggestions(notes, wikilinkMatch.query),
+    }
+  }
+
+  const personMentionMatch = activeMobilePersonMentionQuery(content, cursor)
+  return {
+    kind: personMentionMatch ? 'personMention' as const : null,
+    suggestions: personMentionMatch ? mobilePersonMentionAutocompleteSuggestions(notes, personMentionMatch.query) : [],
+  }
+}
+
+function markdownInlineAutocompleteReplacement(
+  content: string,
+  cursor: number,
+  kind: InlineAutocompleteKind | null,
+  suggestion: MobileNote,
+) {
+  if (kind === null) return null
+
+  const target = mobileWikilinkAutocompleteTarget(suggestion)
+  return kind === 'personMention'
+    ? replaceActiveMobilePersonMentionQuery(content, cursor, target)
+    : replaceActiveMobileWikilinkQuery(content, cursor, target)
+}
+
+function hasActiveInlineAutocomplete(text: string, cursor: number): boolean {
+  return Boolean(
+    activeMobileWikilinkQuery(text, cursor)
+    ?? activeMobilePersonMentionQuery(text, cursor),
+  )
+}
+
+function textEndSelection(text: string): TextSelectionRange {
+  return { end: text.length, start: text.length }
+}
+
+function inlineAutocompleteTestId(kind: InlineAutocompleteKind | null): string {
+  return kind === 'personMention' ? 'editor-person-mention-suggestions' : 'editor-wikilink-suggestions'
+}
+
+function inlineAutocompleteRowTestIdPrefix(kind: InlineAutocompleteKind | null): string {
+  return kind === 'personMention' ? 'editor-person-mention-suggestion' : 'editor-wikilink-suggestion'
 }
 
 function EmptyEditorPanel() {

@@ -84,6 +84,16 @@ test.describe('mobile UI lab interactions', () => {
     await createAndDeleteTypeSection(page)
   })
 
+  test('inserts @ person mentions as canonical wikilinks in the editor', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'tablet-landscape', 'Editor autocomplete checks use the full-width tablet layout.')
+
+    await page.goto('/')
+    await createNote(page, 'Maria Rossi', 'maria-rossi.md')
+    await changeSelectedNoteTypeTo(page, 'Person')
+    await createNote(page, 'Mention Draft', 'mention-draft.md')
+    await insertPersonMention(page)
+  })
+
   test('keeps large local-vault read-only interactions within tablet budgets', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-landscape', 'Large-vault performance checks run once on the primary tablet layout.')
 
@@ -216,13 +226,37 @@ async function assertSelectedReleaseDeepLink(page: PageLike) {
 }
 
 async function createMobileQaDraft(page: PageLike) {
+  await createNote(page, 'Mobile QA Draft', 'mobile-qa-draft.md')
+}
+
+async function createNote(page: PageLike, title: string, rowId: string) {
   await page.getByTestId('note-list-create-action').click()
   await expect(page.getByTestId('workspace-create-note-title-input')).toBeVisible()
-  await page.getByTestId('workspace-create-note-title-input').fill('Mobile QA Draft')
+  await page.getByTestId('workspace-create-note-title-input').fill(title)
   await page.getByTestId('workspace-action-sheet-createNote').getByRole('button', { name: 'Create' }).click()
   await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
-  await expect(page.getByTestId('note-row-mobile-qa-draft.md')).toBeVisible()
-  await expect(page.getByTestId('editor-title')).toHaveText('Mobile QA Draft')
+  await expect(page.getByTestId(`note-row-${rowId}`)).toBeVisible()
+  await expect(page.getByTestId('editor-title')).toHaveText(title)
+}
+
+async function changeSelectedNoteTypeTo(page: PageLike, type: string) {
+  await page.getByTestId('property-row-type-edit').click()
+  await expect(page.getByTestId('workspace-change-type-input')).toBeVisible()
+  await page.getByTestId('workspace-change-type-input').fill(type)
+  await page.getByTestId('workspace-action-sheet-changeNoteType').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
+  await expect(page.getByTestId('property-row-type')).toContainText(type)
+}
+
+async function insertPersonMention(page: PageLike) {
+  await page.getByTestId('editor-edit-action').click()
+  await expect(page.getByTestId('editor-title-input')).toBeVisible()
+  await page.getByTestId('editor-markdown-input').fill('# Mention Draft\n\nFollow up with @mar')
+  await expect(page.getByTestId('editor-person-mention-suggestions')).toBeVisible()
+  await page.getByTestId('editor-person-mention-suggestion-maria-rossi-md').click()
+  await expect(page.getByTestId('editor-markdown-input')).toHaveValue('# Mention Draft\n\nFollow up with [[maria-rossi]] ')
+  await page.getByTestId('editor-edit-action').click()
+  await expect(page.getByTestId('editor-wikilink-maria-rossi')).toBeVisible()
 }
 
 async function createSavedViewFromSidebar(page: PageLike) {

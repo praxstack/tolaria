@@ -180,6 +180,41 @@ describe('applyMobileWorkspaceEdit', () => {
     expect(refs ?? []).not.toContain(ref)
   })
 
+  it('resolves typed relationships through desktop wikilink aliases and path stems', () => {
+    const base = workspaceScenarioForId('default')
+    const notes = base.notes.map((note) => note.id === 'open-source-project'
+      ? { ...note, aliases: ['OSS Project'] }
+      : note)
+    const aliasedSnapshot = { ...base, allNotes: notes, notes }
+
+    const withAliasRelationship = applyMobileWorkspaceEdit(aliasedSnapshot, {
+      key: 'belongs_to',
+      noteId: 'workflow-orchestration',
+      targetTitle: 'OSS Project',
+      type: 'addRelationship',
+    })
+    const withPathRelationship = applyMobileWorkspaceEdit(withAliasRelationship, {
+      key: 'related_to',
+      noteId: 'workflow-orchestration',
+      targetTitle: 'Tolaria/Mobile UI/How I Run an Open Source Project',
+      type: 'addRelationship',
+    })
+
+    const note = withPathRelationship.notes.find((candidate) => candidate.id === 'workflow-orchestration')
+    expect(note?.relationships.find((relationship) => relationship.key === 'belongs_to')?.values).toContainEqual(
+      expect.objectContaining({
+        ref: '[[Tolaria/Mobile UI/How I Run an Open Source Project]]',
+        title: 'How I Run an Open Source Project',
+      }),
+    )
+    expect(note?.relationships.find((relationship) => relationship.key === 'related_to')?.values).toContainEqual(
+      expect.objectContaining({
+        ref: '[[Tolaria/Mobile UI/How I Run an Open Source Project]]',
+        title: 'How I Run an Open Source Project',
+      }),
+    )
+  })
+
   it('changes note type through the desktop type frontmatter key', () => {
     const base = workspaceScenarioForId('default')
     const editableNote = {
