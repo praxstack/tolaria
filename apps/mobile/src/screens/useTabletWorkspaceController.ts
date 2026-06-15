@@ -4,7 +4,7 @@ import type { MobileSidebarItemSelection } from '../components/workspace/MobileW
 import type {
   MobileNote,
   MobilePropertyValue,
-  MobileViewDefinition,
+  MobileTypeDefinitions,
   MobileViewFilterGroup,
   MobileViewFilterNode,
   MobileWorkspaceSnapshot,
@@ -22,6 +22,7 @@ import { buildMobileDeepLinkForNote } from '../workspace/mobileDeepLinks'
 import { useTabletWorkspaceNavigation } from './tabletWorkspaceNavigation'
 import type { TabletReadOnlyForm } from './tabletWorkspaceTypes'
 import type { TabletSidebarSelection } from './tabletWorkspaceNavigation'
+import { viewColorForSelection, viewFiltersForSelection } from './tabletWorkspaceViewHelpers'
 
 const emptyReadOnlyForm: TabletReadOnlyForm = {
   createTitle: '',
@@ -349,6 +350,7 @@ function createWorkspaceActions({
       name: readOnlyForm.viewName,
       selectedNote,
       selection: navigation.sidebarSelection,
+      typeDefinitions: workspaceSnapshot.typeDefinitions,
     }),
     onDeleteView: () => deleteView({ applyEdit, closeAction, viewId: readOnlyForm.editingViewId }),
     onSaveView: () => updateView({
@@ -570,6 +572,7 @@ function createView({
   name,
   selectedNote,
   selection,
+  typeDefinitions,
 }: {
   applyEdit: (edit: MobileWorkspaceEdit) => void
   closeAction: () => void
@@ -577,13 +580,14 @@ function createView({
   name: string
   selectedNote: MobileNote | null
   selection: TabletSidebarSelection
+  typeDefinitions?: MobileTypeDefinitions
 }) {
   const trimmedName = name.trim()
   if (!trimmedName) return
 
   applyEdit({
     definition: {
-      color: viewColorForSelection(selection, selectedNote),
+      color: viewColorForSelection(selection, selectedNote, typeDefinitions),
       filters,
       icon: null,
       name: trimmedName,
@@ -639,71 +643,6 @@ function defaultViewName(title: string) {
   return title.trim() || 'New View'
 }
 
-function viewFiltersForSelection(
-  selection: TabletSidebarSelection,
-  notes: MobileNote[],
-  selectedNote: MobileNote | null,
-  views: NonNullable<MobileWorkspaceSnapshot['views']>,
-): MobileViewFilterGroup {
-  if (selection.kind === 'folder') return allFilters([{ field: 'path', op: 'contains', value: selection.label }])
-
-  return itemViewFiltersForSelection(selection, notes, selectedNote, views)
-}
-
-function itemViewFiltersForSelection(
-  selection: Extract<TabletSidebarSelection, { kind: 'item' }>,
-  notes: MobileNote[],
-  selectedNote: MobileNote | null,
-  views: NonNullable<MobileWorkspaceSnapshot['views']>,
-): MobileViewFilterGroup {
-  const sectionFilters = sectionViewFilters(selection, selectedNote, views)
-  if (sectionFilters) return sectionFilters
-  return primaryViewFilters(selection, notes)
-}
-
-function sectionViewFilters(
-  selection: Extract<TabletSidebarSelection, { kind: 'item' }>,
-  selectedNote: MobileNote | null,
-  views: NonNullable<MobileWorkspaceSnapshot['views']>,
-): MobileViewFilterGroup | null {
-  if (selection.sectionId === 'views') return existingViewFilters(selection, views)
-  if (selection.sectionId === 'types') return typeViewFilters(selection, selectedNote)
-  if (selection.sectionId === 'favorites') return allFilters([{ field: 'favorite', op: 'equals', value: true }])
-  return null
-}
-
-function primaryViewFilters(
-  selection: Extract<TabletSidebarSelection, { kind: 'item' }>,
-  notes: MobileNote[],
-): MobileViewFilterGroup {
-  if (selection.id === 'archive') return allFilters([{ field: 'archived', op: 'equals', value: true }])
-  if (selection.id === 'all-notes') return allFilters([{ field: 'archived', op: 'equals', value: false }])
-  if (selection.id === 'inbox') return allFilters([
-    { field: 'archived', op: 'equals', value: false },
-    { field: 'organized', op: 'equals', value: false },
-  ])
-
-  return allFilters([{ field: 'title', op: 'contains', value: notes[0]?.title ?? selection.label }])
-}
-
-function typeViewFilters(
-  selection: Extract<TabletSidebarSelection, { kind: 'item' }>,
-  selectedNote: MobileNote | null,
-): MobileViewFilterGroup {
-  return allFilters([{ field: 'type', op: 'equals', value: selectedNote?.type ?? singularLabel(selection.label) }])
-}
-
-function existingViewFilters(
-  selection: Extract<TabletSidebarSelection, { kind: 'item' }>,
-  views: NonNullable<MobileWorkspaceSnapshot['views']>,
-): MobileViewFilterGroup {
-  return views.find((view) => view.id === selection.viewId || view.id === selection.id)?.definition.filters ?? allFilters([])
-}
-
-function allFilters(filters: MobileViewFilterNode[]): MobileViewFilterGroup {
-  return { all: filters }
-}
-
 function cloneFilterGroup(group: MobileViewFilterGroup): MobileViewFilterGroup {
   if ('any' in group) return { any: group.any.map(cloneFilterNode) }
   return { all: group.all.map(cloneFilterNode) }
@@ -717,10 +656,6 @@ function cloneFilterNode(node: MobileViewFilterNode): MobileViewFilterNode {
   }
 }
 
-function singularLabel(label: string) {
-  return label.replace(/s$/u, '')
-}
-
 function propertyValueFormText(value: MobilePropertyValue): string {
   if (Array.isArray(value)) return value.join(', ')
   return String(value)
@@ -731,11 +666,6 @@ function propertyValueKind(key: string, value: MobilePropertyValue): TabletReadO
   if (typeof value === 'boolean') return 'boolean'
   if (typeof value === 'number') return 'number'
   return 'string'
-}
-
-function viewColorForSelection(selection: TabletSidebarSelection, selectedNote: MobileNote | null): MobileViewDefinition['color'] {
-  if (selection.kind === 'item' && selection.sectionId === 'types') return selectedNote?.typeTone ?? 'gray'
-  return selectedNote?.typeTone ?? 'gray'
 }
 
 function propertyEdit(form: TabletReadOnlyForm, noteId: string): MobileWorkspaceEdit {
