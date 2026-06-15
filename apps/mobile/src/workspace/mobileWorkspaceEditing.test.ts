@@ -260,7 +260,7 @@ describe('applyMobileWorkspaceEdit', () => {
       patch: {
         label: 'Runbooks',
         listPropertiesDisplay: ['status', 'belongs_to'],
-        sort: 'title:asc',
+        sort: 'property:Priority:desc',
         tone: 'green',
       },
       type: 'updateTypeDefinition',
@@ -273,7 +273,7 @@ describe('applyMobileWorkspaceEdit', () => {
       label: 'Runbooks',
       listPropertiesDisplay: ['status', 'belongs_to'],
       path: 'procedure.md',
-      sort: 'title:asc',
+      sort: 'property:Priority:desc',
       tone: 'green',
     })
     expect(procedureNote?.typeTone).toBe('green')
@@ -287,7 +287,7 @@ describe('applyMobileWorkspaceEdit', () => {
     }])
     const typeWrite = result.writes.find((write) => write.kind === 'saveNote')
     expect(typeWrite?.content).toContain('color: green')
-    expect(typeWrite?.content).toContain('sort: "title:asc"')
+    expect(typeWrite?.content).toContain('sort: "property:Priority:desc"')
     expect(typeWrite?.content).toContain('_list_properties_display:\n  - status\n  - belongs_to')
   })
 
@@ -1023,7 +1023,7 @@ function updateActiveSavedView() {
       icon: null,
       listPropertiesDisplay: ['belongs_to', 'status'],
       name: 'Active Workflows',
-      sort: 'title:asc',
+      sort: 'property:Priority:asc',
     },
     type: 'updateView',
     viewId: 'view-active-procedures',
@@ -1042,7 +1042,7 @@ function expectUpdatedSavedViewWrite(
   })
   expect(savedViewWrite?.content).toContain('name: "Active Workflows"')
   expect(savedViewWrite?.content).toContain('value: "Active"')
-  expect(savedViewWrite?.content).toContain('sort: "title:asc"')
+  expect(savedViewWrite?.content).toContain('sort: "property:Priority:asc"')
   expect(savedViewWrite?.content).toContain('listPropertiesDisplay:\n  - "belongs_to"\n  - "status"')
 }
 
@@ -1052,7 +1052,7 @@ function expectUpdatedSavedViewSnapshot(
   expect(result.snapshot.views?.[0]?.definition).toMatchObject({
     listPropertiesDisplay: ['belongs_to', 'status'],
     name: 'Active Workflows',
-    sort: 'title:asc',
+    sort: 'property:Priority:asc',
   })
   expect(result.snapshot.sidebarSections.find((section) => section.id === 'views')?.items?.[0]).toMatchObject({
     id: 'view-active-procedures',

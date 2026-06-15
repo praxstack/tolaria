@@ -31,6 +31,7 @@ type MobileTypeSectionEditorProps = {
   schemaRelationshipTarget: string
   sectionLabel: string
   sort: string
+  sortPropertyOptions: string[]
   template: string
   tone: MobileTone
   typeName: string
@@ -69,6 +70,7 @@ export function MobileTypeSectionEditor(props: MobileTypeSectionEditorProps) {
       <VisibilityToggle visible={props.visible} onChange={props.onVisibleChange} />
       <TonePicker selectedTone={props.tone} onSelect={props.onToneChange} />
       <MobileSortPicker
+        customPropertyOptions={props.sortPropertyOptions}
         selectedSort={props.sort}
         testID="workspace-type-sort-picker"
         testIDPrefix="workspace-type-sort"

@@ -135,6 +135,7 @@ type MobileWorkspaceActionSheetProps = {
   typeName: string
   typePropertyOptions: string[]
   typePropertyQuery: string
+  typeSortPropertyOptions: string[]
   typeRelationshipTargetOptions: string[]
   typeSchemaProperties: MobileTypeSchemaProperty[]
   typeSchemaPropertyName: string
@@ -152,6 +153,7 @@ type MobileWorkspaceActionSheetProps = {
   viewName: string
   viewPropertyOptions: string[]
   viewPropertyQuery: string
+  viewSortPropertyOptions: string[]
   viewSort: string
   onTypeDisplayPropertiesChange: (value: string[]) => void
   onTypeNameChange: (value: string) => void
@@ -338,7 +340,7 @@ function SingleTextFieldContent({ config }: { config: SingleTextFieldConfig }) {
   } = config
 
   return (
-    <View style={styles.content}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" style={styles.scrollArea}>
       <MobileTextInput
         autoFocus
         label={inputLabel}
@@ -353,7 +355,7 @@ function SingleTextFieldContent({ config }: { config: SingleTextFieldConfig }) {
         <MobileButton label={mobileText('common.cancel')} variant="ghost" onPress={onCancel} />
         <MobileButton disabled={submitDisabled || inputValue.trim().length === 0} label={submitLabel} variant="primary" onPress={onSubmit} />
       </SheetFooter>
-    </View>
+    </ScrollView>
   )
 }
 
@@ -451,6 +453,7 @@ function viewFilterBuilder(props: MobileWorkspaceActionSheetProps) {
   return (
     <>
       <MobileSortPicker
+        customPropertyOptions={props.viewSortPropertyOptions}
         selectedSort={props.viewSort}
         testID="workspace-view-sort-picker"
         testIDPrefix="workspace-view-sort"
@@ -531,6 +534,7 @@ function TypeSectionContent(props: MobileWorkspaceActionSheetProps) {
         schemaRelationshipTarget={props.typeSchemaRelationshipTarget}
         sectionLabel={props.typeSectionLabel}
         sort={props.typeSort}
+        sortPropertyOptions={props.typeSortPropertyOptions}
         template={props.typeTemplate}
         tone={props.typeTone}
         typeName={props.typeName}
@@ -1141,6 +1145,9 @@ const styles = StyleSheet.create({
     borderColor: mobileColors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  scrollArea: {
+    flexShrink: 1,
+  },
   suggestionList: {
     gap: mobileSpace.xs,
   },
@@ -1168,6 +1175,7 @@ const styles = StyleSheet.create({
     width: 520,
     borderColor: mobileColors.borderStrong,
     borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.14,

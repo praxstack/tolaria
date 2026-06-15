@@ -166,5 +166,7 @@ export type TabletWorkspaceChromeProps = {
   snapshot: MobileWorkspaceSnapshot
   typePropertyOptions: string[]
   typeRelationshipTargetOptions: string[]
+  typeSortPropertyOptions: string[]
   viewPropertyOptions: string[]
+  viewSortPropertyOptions: string[]
 }

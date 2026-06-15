@@ -453,6 +453,10 @@ function savedViewWorkspaceActions({
       editableViewPropertyNotes(readOnlyForm, workspaceSnapshot),
       readOnlyForm.viewPropertyQuery,
     ),
+    viewSortPropertyOptions: mobileListPropertySuggestions(
+      editableViewPropertyNotes(readOnlyForm, workspaceSnapshot),
+      '',
+    ),
   }
 }
 
@@ -498,6 +502,10 @@ function typeSectionWorkspaceActions({
       readOnlyForm.typePropertyQuery,
     ),
     typeRelationshipTargetOptions: typeSchemaRelationshipTargetSuggestions(notes, readOnlyForm.typeSchemaRelationshipTarget),
+    typeSortPropertyOptions: mobileListPropertySuggestions(
+      editableTypePropertyNotes(readOnlyForm, workspaceSnapshot),
+      '',
+    ),
   }
 }
 

@@ -1,7 +1,10 @@
+import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import { Text } from '../ui/text'
 import { mobileText } from '../../i18n/mobileText'
+import { MobileTextInput } from '../../ui/MobileTextInput'
 import { mobileColors, mobileSpace, mobileType } from '../../ui/tokens'
+import { MobileWorkspaceSuggestionList } from './MobileWorkspaceSuggestionList'
 
 const mobileSortOptions = [
   { label: `${mobileText('noteList.sort.modified')} ${mobileText('noteList.sort.descending')}`, value: 'modified:desc' },
@@ -15,16 +18,34 @@ const mobileSortOptions = [
 ]
 
 export function MobileSortPicker({
+  customPropertyOptions = [],
   selectedSort,
   testID = 'workspace-sort-picker',
   testIDPrefix = 'workspace-sort',
   onSelect,
 }: {
+  customPropertyOptions?: string[]
   selectedSort: string
   testID?: string
   testIDPrefix?: string
   onSelect: (value: string) => void
 }) {
+  const customSort = customSortFromValue(selectedSort)
+  const [customField, setCustomField] = useState(customSort.field)
+  const customDirection = customSort.direction ?? 'asc'
+  const customSuggestions = useMemo(() => {
+    return customPropertyOptions
+      .filter((property) => matchesCustomField(property, customField))
+      .slice(0, 6)
+  }, [customField, customPropertyOptions])
+
+  const selectCustomSort = (field: string, direction = customDirection) => {
+    const trimmedField = field.trim()
+    if (!trimmedField) return
+    setCustomField(trimmedField)
+    onSelect(customPropertySortValue(trimmedField, direction))
+  }
+
   return (
     <View style={styles.section} testID={testID}>
       <Text style={styles.label}>{sortLabel()}</Text>
@@ -38,6 +59,37 @@ export function MobileSortPicker({
           onSelect={onSelect}
         />
       ))}
+      <View style={styles.customSort} testID={`${testIDPrefix}-custom-property`}>
+        <MobileTextInput
+          label={mobileText('viewDialog.filter.fieldLabel')}
+          placeholder={mobileText('viewDialog.filter.fieldLabel')}
+          testID={`${testIDPrefix}-custom-field-input`}
+          value={customField}
+          onChangeText={setCustomField}
+        />
+        <MobileWorkspaceSuggestionList
+          labels={customSuggestions}
+          testID={`${testIDPrefix}-custom-field-suggestions`}
+          testIDPrefix={`${testIDPrefix}-custom-field-suggestion`}
+          onSelect={(field) => selectCustomSort(field)}
+        />
+        <View style={styles.customDirectionRow}>
+          <CustomDirectionButton
+            disabled={customField.trim().length === 0}
+            label={mobileText('noteList.sort.ascending')}
+            selected={selectedSort === customPropertySortValue(customField, 'asc')}
+            testID={`${testIDPrefix}-custom-asc`}
+            onPress={() => selectCustomSort(customField, 'asc')}
+          />
+          <CustomDirectionButton
+            disabled={customField.trim().length === 0}
+            label={mobileText('noteList.sort.descending')}
+            selected={selectedSort === customPropertySortValue(customField, 'desc')}
+            testID={`${testIDPrefix}-custom-desc`}
+            onPress={() => selectCustomSort(customField, 'desc')}
+          />
+        </View>
+      </View>
     </View>
   )
 }
@@ -72,11 +124,94 @@ function SortRow({
   )
 }
 
+function CustomDirectionButton({
+  disabled,
+  label,
+  onPress,
+  selected,
+  testID,
+}: {
+  disabled: boolean
+  label: string
+  onPress: () => void
+  selected: boolean
+  testID: string
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.directionButton,
+        selected ? styles.sortRowSelected : null,
+        pressed ? styles.pressed : null,
+        disabled ? styles.disabled : null,
+      ]}
+      testID={testID}
+      onPress={onPress}
+    >
+      <Text style={[styles.rowText, selected ? styles.selectedText : null, disabled ? styles.disabledText : null]}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
 function sortLabel() {
   return mobileText('noteList.sort.menu').replace(/\s*\{label\}/u, '').trim()
 }
 
+function customSortFromValue(value: string): { direction: 'asc' | 'desc' | null; field: string } {
+  const normalized = value.trim()
+  const separator = normalized.lastIndexOf(':')
+  if (separator <= 0) return { direction: null, field: '' }
+
+  const direction = normalized.slice(separator + 1)
+  if (direction !== 'asc' && direction !== 'desc') return { direction: null, field: '' }
+
+  const rawField = normalized.slice(0, separator)
+  const field = rawField.startsWith('property:') ? rawField.slice('property:'.length) : rawField
+  return isBuiltInSortField(field) ? { direction: null, field: '' } : { direction, field }
+}
+
+function customPropertySortValue(field: string, direction: 'asc' | 'desc') {
+  return `property:${field.trim()}:${direction}`
+}
+
+function isBuiltInSortField(field: string) {
+  const normalized = field.trim().toLowerCase()
+  return ['created', 'modified', 'status', 'title', 'type'].includes(normalized)
+}
+
+function matchesCustomField(property: string, query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return true
+  return property.toLowerCase().includes(normalizedQuery)
+}
+
 const styles = StyleSheet.create({
+  customDirectionRow: {
+    flexDirection: 'row',
+    gap: mobileSpace.xs,
+  },
+  customSort: {
+    gap: mobileSpace.xs,
+    paddingTop: mobileSpace.xs,
+  },
+  directionButton: {
+    minHeight: 30,
+    flex: 1,
+    justifyContent: 'center',
+    borderRadius: 6,
+    paddingHorizontal: mobileSpace.sm,
+  },
+  disabled: {
+    opacity: 0.45,
+  },
+  disabledText: {
+    color: mobileColors.textMuted,
+  },
   label: {
     color: mobileColors.textMuted,
     fontSize: mobileType.caption,

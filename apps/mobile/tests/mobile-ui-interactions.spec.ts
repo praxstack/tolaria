@@ -66,6 +66,7 @@ test.describe('mobile UI lab interactions', () => {
     test.skip(testInfo.project.name !== 'tablet-landscape', 'Saved-view column editing is exercised in the full-width tablet layout.')
 
     await page.goto('/')
+    await addPrioritySortFixtures(page)
     await createSavedViewFromSidebar(page)
     await customizeCreatedSavedViewColumns(page)
   })
@@ -311,7 +312,8 @@ async function moveCreatedSavedView(page: PageLike) {
 async function customizeCreatedSavedViewColumns(page: PageLike) {
   await longPress(page, 'sidebar-item-view-mobile-inbox-view')
   await expect(page.getByTestId('workspace-view-property-picker')).toBeVisible()
-  await page.getByTestId('workspace-view-sort-title-asc').click()
+  await page.getByTestId('workspace-view-sort-custom-field-input').fill('Pri')
+  await page.getByTestId('workspace-view-sort-custom-field-suggestion-priority').click()
   await page.getByTestId('workspace-view-property-search-input').fill('bel')
   await page.getByTestId('workspace-view-property-option-belongs-to').click()
   await page.getByTestId('workspace-action-sheet-editView').getByRole('button', { name: 'Save' }).click()
@@ -325,6 +327,27 @@ async function customizeCreatedSavedViewColumns(page: PageLike) {
   await expect(workflowRow.getByText('Tolaria MVP')).toBeVisible()
 }
 
+async function addPrioritySortFixtures(page: PageLike) {
+  await addNumericPropertyToNote(page, 'note-row-workflow-orchestration', 'Priority', '2')
+  await addNumericPropertyToNote(page, 'note-row-open-source-project', 'Priority', '1')
+}
+
+async function addNumericPropertyToNote(
+  page: PageLike,
+  rowTestId: string,
+  propertyName: string,
+  propertyValue: string,
+) {
+  await page.getByTestId(rowTestId).click()
+  await page.getByTestId('property-action-add-property').click()
+  await page.getByTestId('workspace-property-name-input').fill(propertyName)
+  await page.getByTestId('workspace-property-kind-number').click()
+  await page.getByTestId('workspace-property-value-input').fill(propertyValue)
+  await page.getByTestId('workspace-action-sheet-addProperty').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
+  await expect(page.getByTestId(`property-row-${propertyName.toLowerCase()}`)).toContainText(propertyValue)
+}
+
 async function customizeProcedureTypeSection(page: PageLike) {
   await longPress(page, 'sidebar-item-procedures')
   const sheet = page.getByTestId('workspace-action-sheet-editTypeSection')
@@ -333,7 +356,8 @@ async function customizeProcedureTypeSection(page: PageLike) {
   await page.getByTestId('workspace-type-section-label-input').fill('Runbooks')
   await page.getByTestId('workspace-move-type-up-action').click()
   await page.getByTestId('workspace-type-tone-green').click()
-  await page.getByTestId('workspace-type-sort-title-asc').click()
+  await page.getByTestId('workspace-type-sort-custom-field-input').fill('Priority')
+  await page.getByTestId('workspace-type-sort-custom-desc').click()
   await page.getByTestId('workspace-type-template-input').fill('## Checklist\n\nTemplate body from the Procedure type.')
   await page.getByTestId('workspace-type-property-search-input').fill('bel')
   await page.getByTestId('workspace-type-property-option-belongs-to').click()
@@ -352,6 +376,11 @@ async function customizeProcedureTypeSection(page: PageLike) {
   const essaysSection = page.getByTestId('sidebar-item-essays')
   await expect(runbooksSection).toContainText('Runbooks')
   await expect(await rowY(runbooksSection)).toBeLessThan(await rowY(essaysSection))
+
+  await longPress(page, 'sidebar-item-procedures')
+  await expect(page.getByTestId('workspace-type-sort-custom-field-input')).toHaveValue('Priority')
+  await page.getByTestId('workspace-action-sheet-toolbar').getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
 
   await runbooksSection.click()
   await expect(page.getByTestId('note-list-toolbar-title')).toHaveText('Runbooks')

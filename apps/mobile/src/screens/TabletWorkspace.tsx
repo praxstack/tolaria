@@ -199,7 +199,9 @@ function actionSheetValues(props: ActionSheetHostProps) {
     suggestionNotes,
     typePropertyOptions,
     typeRelationshipTargetOptions,
+    typeSortPropertyOptions,
     viewPropertyOptions,
+    viewSortPropertyOptions,
   } = props
 
   return {
@@ -215,7 +217,9 @@ function actionSheetValues(props: ActionSheetHostProps) {
     ...actionSheetFormValues(readOnlyForm),
     typePropertyOptions,
     typeRelationshipTargetOptions,
+    typeSortPropertyOptions,
     viewPropertyOptions,
+    viewSortPropertyOptions,
   }
 }
 
