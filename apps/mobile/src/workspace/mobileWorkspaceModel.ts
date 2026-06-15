@@ -56,6 +56,7 @@ export type MobileTypeDefinition = {
   listPropertiesDisplay?: string[]
   order?: number | null
   sort?: string | null
+  tone?: MobileTone | null
   visible?: boolean | null
 }
 

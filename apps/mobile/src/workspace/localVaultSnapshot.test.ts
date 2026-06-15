@@ -96,52 +96,7 @@ _organized: false
 
   it('preserves desktop type document sidebar metadata for mobile navigation', () => {
     const snapshot = buildLocalVaultWorkspaceSnapshot({
-      files: [
-        vaultFile('types/project.md', `---
-type: Type
-color: red
-order: 2
-sidebar_label: Client Work
-sort: "property:Priority:asc"
-_list_properties_display:
-  - Priority
-  - belongs_to
----
-# Project
-`),
-        vaultFile('types/secret.md', `---
-type: Type
-visible: false
----
-# Secret
-`),
-        vaultFile('projects/high.md', `---
-type: Project
-Priority: High
-_organized: false
----
-# High Project
-`),
-        vaultFile('projects/low.md', `---
-type: Project
-Priority: Low
-_organized: false
----
-# Low Project
-`),
-        vaultFile('secret.md', `---
-type: Secret
-_organized: false
----
-# Hidden Work
-`),
-        vaultFile('note.md', `---
-type: Note
-_organized: false
----
-# Plain Note
-`),
-      ],
+      files: typeMetadataVaultFiles(),
       vaultLabel: 'Laputa',
       vaultPath: '/Users/luca/Laputa',
     })
@@ -151,6 +106,7 @@ _organized: false
       listPropertiesDisplay: ['Priority', 'belongs_to'],
       order: 2,
       sort: 'property:Priority:asc',
+      tone: 'red',
     })
     expect(snapshot.typeDefinitions?.Secret).toMatchObject({ visible: false })
 
@@ -158,6 +114,7 @@ _organized: false
     expect(typeItems).toEqual([
       expect.objectContaining({ count: '2', label: 'Client Work', typeName: 'Project' }),
       expect.objectContaining({ count: '1', label: 'Notes', typeName: 'Note' }),
+      expect.objectContaining({ count: '0', label: 'Topics', tone: 'green', typeName: 'Topic' }),
     ])
     expect(typeItems).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ typeName: 'Secret' })]),
@@ -238,6 +195,60 @@ icon: folder
 ---
 # Project
 `
+
+function typeMetadataVaultFiles(): LocalVaultFile[] {
+  return [
+    vaultFile('types/project.md', `---
+type: Type
+color: red
+order: 2
+sidebar_label: Client Work
+sort: "property:Priority:asc"
+_list_properties_display:
+  - Priority
+  - belongs_to
+---
+# Project
+`),
+    vaultFile('types/secret.md', `---
+type: Type
+visible: false
+---
+# Secret
+`),
+    vaultFile('types/topic.md', `---
+type: Type
+---
+# Topic
+`),
+    vaultFile('projects/high.md', `---
+type: Project
+Priority: High
+_organized: false
+---
+# High Project
+`),
+    vaultFile('projects/low.md', `---
+type: Project
+Priority: Low
+_organized: false
+---
+# Low Project
+`),
+    vaultFile('secret.md', `---
+type: Secret
+_organized: false
+---
+# Hidden Work
+`),
+    vaultFile('note.md', `---
+type: Note
+_organized: false
+---
+# Plain Note
+`),
+  ]
+}
 
 const tolariaMobileContent = `---
 type: Project

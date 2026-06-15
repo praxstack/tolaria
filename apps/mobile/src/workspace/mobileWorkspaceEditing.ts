@@ -22,6 +22,8 @@ import type {
   MobileRelationshipKind,
   MobileRelationshipValue,
   MobileSavedView,
+  MobileTone,
+  MobileTypeDefinitions,
   MobileViewDefinition,
   MobileWorkspaceSnapshot,
 } from './mobileWorkspaceModel'
@@ -87,6 +89,7 @@ type MobileNoteEditContext = {
   editableNote: EditableNoteInput
   note: MobileNote
   notes: MobileNote[]
+  typeDefinitions?: MobileTypeDefinitions
 }
 type MobileNoteEditHandler = (context: MobileNoteEditContext, edit: MobileNoteEdit) => MobileNote
 
@@ -95,45 +98,45 @@ const mobileNoteEditHandlers: Record<MobileNoteEdit['type'], MobileNoteEditHandl
     if (edit.type !== 'addRelationship') return editableNote
     return addRelationship(editableNote, notes, edit.key, edit.targetTitle)
   },
-  changeNoteType: ({ editableNote }, edit) => {
+  changeNoteType: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'changeNoteType') return editableNote
-    return changeNoteType(editableNote, edit.value)
+    return changeNoteType(editableNote, edit.value, typeDefinitions)
   },
-  deleteProperty: ({ editableNote }, edit) => {
+  deleteProperty: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'deleteProperty') return editableNote
-    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, edit.key, null))
+    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, edit.key, null), typeDefinitions)
   },
-  hydrateNoteContent: ({ editableNote }, edit) => {
+  hydrateNoteContent: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'hydrateNoteContent') return editableNote
-    return deriveEditedNote(editableNote, edit.rawContent)
+    return deriveEditedNote(editableNote, edit.rawContent, typeDefinitions)
   },
   removeRelationship: ({ editableNote }, edit) => {
     if (edit.type !== 'removeRelationship') return editableNote
     return removeRelationship(editableNote, edit.key, edit.ref)
   },
-  renameNoteTitle: ({ editableNote }, edit) => {
+  renameNoteTitle: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'renameNoteTitle') return editableNote
-    return deriveEditedNote(editableNote, replaceMarkdownTitle(editableNote.rawContent, edit.title))
+    return deriveEditedNote(editableNote, replaceMarkdownTitle(editableNote.rawContent, edit.title), typeDefinitions)
   },
-  setArchived: ({ editableNote }, edit) => {
+  setArchived: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'setArchived') return editableNote
-    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, '_archived', edit.archived))
+    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, '_archived', edit.archived), typeDefinitions)
   },
-  setOrganized: ({ editableNote }, edit) => {
+  setOrganized: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'setOrganized') return editableNote
-    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, '_organized', edit.organized))
+    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, '_organized', edit.organized), typeDefinitions)
   },
-  toggleFavorite: ({ editableNote, note }, edit) => {
+  toggleFavorite: ({ editableNote, note, typeDefinitions }, edit) => {
     if (edit.type !== 'toggleFavorite') return editableNote
-    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, '_favorite', !note.favorite))
+    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, '_favorite', !note.favorite), typeDefinitions)
   },
-  updateNoteContent: ({ editableNote }, edit) => {
+  updateNoteContent: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'updateNoteContent') return editableNote
-    return deriveEditedNote(editableNote, contentEditWithPreservedFrontmatter(editableNote.rawContent, edit.content))
+    return deriveEditedNote(editableNote, contentEditWithPreservedFrontmatter(editableNote.rawContent, edit.content), typeDefinitions)
   },
-  updateProperty: ({ editableNote }, edit) => {
+  updateProperty: ({ editableNote, typeDefinitions }, edit) => {
     if (edit.type !== 'updateProperty') return editableNote
-    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, edit.key, edit.value))
+    return deriveEditedNote(editableNote, writeFrontmatterValue(editableNote.rawContent, edit.key, edit.value), typeDefinitions)
   },
 }
 
@@ -169,8 +172,8 @@ export function applyMobileWorkspaceEditWithWrites(
   }
 
   const notePool = workspaceNotePool(snapshot)
-  const notes = snapshot.notes.map((note) => applyMobileNoteEdit(note, notePool, edit))
-  const allNotes = snapshot.allNotes?.map((note) => applyMobileNoteEdit(note, notePool, edit))
+  const notes = snapshot.notes.map((note) => applyMobileNoteEdit(note, notePool, edit, snapshot.typeDefinitions))
+  const allNotes = snapshot.allNotes?.map((note) => applyMobileNoteEdit(note, notePool, edit, snapshot.typeDefinitions))
   const nextSnapshot = rebuildSnapshot({ ...snapshot, allNotes, notes }, notes, allNotes)
 
   return {
@@ -237,6 +240,7 @@ function createMobileNote(snapshot: MobileWorkspaceSnapshot, title: NoteTitle): 
       workspace: snapshot.source?.label ?? 'Tolaria Vault',
     },
     rawContent,
+    typeDefinitions: snapshot.typeDefinitions,
   }).note
 
   return rebuildSnapshot(
@@ -250,11 +254,12 @@ function applyMobileNoteEdit(
   note: MobileNote,
   notes: MobileNote[],
   edit: MobileNoteEdit,
+  typeDefinitions?: MobileTypeDefinitions,
 ): MobileNote {
   if (note.id !== edit.noteId) return note
 
   const editableNote = withEditableContent(note)
-  return mobileNoteEditHandlers[edit.type]({ editableNote, note, notes }, edit)
+  return mobileNoteEditHandlers[edit.type]({ editableNote, note, notes, typeDefinitions }, edit)
 }
 
 function addRelationship(
@@ -293,11 +298,15 @@ function removeRelationship(
   }).note
 }
 
-function changeNoteType(note: EditableNoteInput, value: NoteTitle): MobileNote {
+function changeNoteType(
+  note: EditableNoteInput,
+  value: NoteTitle,
+  typeDefinitions?: MobileTypeDefinitions,
+): MobileNote {
   const nextType = value.trim()
   if (!nextType || nextType === note.type) return note
 
-  return deriveEditedNote(note, writeFrontmatterValue(note.rawContent, 'type', nextType))
+  return deriveEditedNote(note, writeFrontmatterValue(note.rawContent, 'type', nextType), typeDefinitions)
 }
 
 function deleteMobileNote(snapshot: MobileWorkspaceSnapshot, noteId: NoteId): MobileWorkspaceEditResult {
@@ -379,7 +388,7 @@ function rebuildSnapshot(
 ): MobileWorkspaceSnapshot {
   const derivedById = new Map(
     allNotes
-      .map((note) => [note.id, deriveMobileNote(note)] as const)
+      .map((note) => [note.id, deriveMobileNote(note, snapshot.typeDefinitions)] as const)
       .filter((entry): entry is readonly [NoteId, DerivedNote] => entry[1] !== null),
   )
   const relationshipTargets = allNotes.map((note) => derivedById.get(note.id)?.note ?? note)
@@ -413,15 +422,19 @@ function rebuildSnapshot(
   }
 }
 
-function deriveMobileNote(note: MobileNote): DerivedNote | null {
+function deriveMobileNote(note: MobileNote, typeDefinitions?: MobileTypeDefinitions): DerivedNote | null {
   if (note.rawContent === undefined) return null
 
   const editable = withEditableContent(note)
-  return deriveEditableNote({ fallback: editable, rawContent: editable.rawContent })
+  return deriveEditableNote({ fallback: editable, rawContent: editable.rawContent, typeDefinitions })
 }
 
-function deriveEditedNote(fallback: EditableNoteInput, rawContent: MarkdownContent): MobileNote {
-  return deriveEditableNote({ fallback, rawContent }).note
+function deriveEditedNote(
+  fallback: EditableNoteInput,
+  rawContent: MarkdownContent,
+  typeDefinitions?: MobileTypeDefinitions,
+): MobileNote {
+  return deriveEditableNote({ fallback, rawContent, typeDefinitions }).note
 }
 
 function workspaceNotePool(snapshot: MobileWorkspaceSnapshot): MobileNote[] {
@@ -564,9 +577,11 @@ function noteWritePath(note: MobileNote): string {
 function deriveEditableNote({
   fallback,
   rawContent,
+  typeDefinitions,
 }: {
   fallback: EditableNoteInput
   rawContent: MarkdownContent
+  typeDefinitions?: MobileTypeDefinitions
 }): DerivedNote {
   const document = parseLocalVaultDocument(rawContent)
   const filename = fallback.path?.split('/').at(-1) ?? fallback.id
@@ -596,9 +611,18 @@ function deriveEditableNote({
         filename,
       }),
       type,
+      typeTone: mobileTypeTone(type, typeDefinitions, fallback.typeTone),
     },
     rawRelationships: frontmatterRelationships(document.frontmatter),
   }
+}
+
+function mobileTypeTone(
+  type: NoteTitle,
+  typeDefinitions: MobileTypeDefinitions | undefined,
+  fallback: MobileTone,
+): MobileTone {
+  return typeDefinitions?.[type]?.tone ?? typeToneFallbacks[type] ?? fallback
 }
 
 function withEditableContent(note: MobileNote): EditableNoteInput {
@@ -833,6 +857,17 @@ function mobilePropertyValue(value: LocalVaultFrontmatterValue): MobilePropertyV
 
 function cleanTypeName(value: string): string {
   return wikilinkTarget(value).replace(/\.md$/, '')
+}
+
+const typeToneFallbacks: Record<string, MobileTone> = {
+  Event: 'yellow',
+  Experiment: 'red',
+  Person: 'yellow',
+  Procedure: 'purple',
+  Project: 'red',
+  Responsibility: 'purple',
+  Topic: 'green',
+  Type: 'blue',
 }
 
 function wikilinkSearchText(note: MobileNote): string {

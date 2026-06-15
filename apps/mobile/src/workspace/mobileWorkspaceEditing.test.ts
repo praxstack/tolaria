@@ -128,7 +128,13 @@ describe('applyMobileWorkspaceEdit', () => {
       ...base.notes[0],
       rawContent: '# Workflow Orchestration Essay\n\nChange my type.\n',
     }
-    const result = applyMobileWorkspaceEditWithWrites({ ...base, notes: [editableNote, ...base.notes.slice(1)] }, {
+    const result = applyMobileWorkspaceEditWithWrites({
+      ...base,
+      notes: [editableNote, ...base.notes.slice(1)],
+      typeDefinitions: {
+        Procedure: { tone: 'orange' },
+      },
+    }, {
       noteId: 'workflow-orchestration',
       type: 'changeNoteType',
       value: 'Procedure',
@@ -137,6 +143,7 @@ describe('applyMobileWorkspaceEdit', () => {
 
     expect(note).toMatchObject({
       type: 'Procedure',
+      typeTone: 'orange',
     })
     expect(note?.rawContent).toContain('type: Procedure')
     expect(result.writes).toEqual([{

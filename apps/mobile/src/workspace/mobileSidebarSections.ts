@@ -137,7 +137,7 @@ function orderedTypeCounts(notes: MobileNote[], typeDefinitions: MobileTypeDefin
   }
   for (const [type, definition] of Object.entries(typeDefinitions)) {
     if (!isVisibleTypeDefinition(definition)) continue
-    counts.set(type, counts.get(type) ?? { count: 0, tone: 'gray' })
+    counts.set(type, counts.get(type) ?? { count: 0, tone: definition.tone ?? 'gray' })
   }
 
   return [...counts.entries()]

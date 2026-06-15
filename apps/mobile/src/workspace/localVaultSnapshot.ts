@@ -146,6 +146,11 @@ function parseLocalVaultEntry(file: LocalVaultFile): LocalVaultEntry {
   const filename = file.relativePath.split('/').at(-1) ?? file.relativePath
   const type = cleanTypeName(frontmatterScalar(document.frontmatter, ['type', 'Is A', 'is_a']) ?? 'Note')
   const color = frontmatterScalar(document.frontmatter, ['color', '_color'])
+  const title = deriveLocalVaultTitle({
+    body: document.body,
+    fallbackTitle: frontmatterScalar(document.frontmatter, ['title']),
+    filename,
+  })
 
   return {
     archived: frontmatterFlag(document.frontmatter, ['_archived', 'Archived', 'archived']),
@@ -163,14 +168,10 @@ function parseLocalVaultEntry(file: LocalVaultFile): LocalVaultEntry {
     relationships: frontmatterRelationships(document.frontmatter),
     status: frontmatterScalar(document.frontmatter, ['Status', 'status']) ?? '',
     tags: frontmatterList(document.frontmatter, ['tags', 'Tags']).slice(0, 8),
-    title: deriveLocalVaultTitle({
-      body: document.body,
-      fallbackTitle: frontmatterScalar(document.frontmatter, ['title']),
-      filename,
-    }),
+    title,
     type,
     typeDefinition: typeDefinitionFromFrontmatter(document.frontmatter),
-    typeTone: toneFromDesktopColor(color, type),
+    typeTone: toneFromDesktopColor(color, type === 'Type' ? title : type),
   }
 }
 
@@ -214,7 +215,7 @@ function localTypeDefinitions(entries: LocalVaultEntry[]): MobileTypeDefinitions
   return Object.fromEntries(
     entries
       .filter((entry) => entry.type === 'Type')
-      .map((entry) => [entry.title, entry.typeDefinition]),
+      .map((entry) => [entry.title, { ...entry.typeDefinition, tone: entry.typeTone }]),
   )
 }
 
