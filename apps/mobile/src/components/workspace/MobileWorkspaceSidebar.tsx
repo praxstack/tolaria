@@ -53,6 +53,7 @@ type MobileWorkspaceSidebarProps = {
   activeItemId?: string | null
   layoutProbe?: boolean
   onCreateView?: () => void
+  onOpenTypeActions?: (selection: MobileSidebarItemSelection) => void
   onOpenViewActions?: (selection: MobileSidebarItemSelection) => void
   onSelectFolder?: (selection: MobileSidebarFolderSelection) => void
   onSelectItem?: (selection: MobileSidebarItemSelection) => void
@@ -80,6 +81,7 @@ export function MobileWorkspaceSidebar(props: MobileWorkspaceSidebarProps) {
     activeItemId,
     layoutProbe: layoutProbeEnabled = false,
     onCreateView,
+    onOpenTypeActions,
     onOpenViewActions,
     onSelectFolder,
     onSelectItem,
@@ -105,6 +107,7 @@ export function MobileWorkspaceSidebar(props: MobileWorkspaceSidebarProps) {
             layoutProbe={layoutProbe.probe}
             section={section}
             onCreateView={onCreateView}
+            onOpenTypeActions={onOpenTypeActions}
             onOpenViewActions={onOpenViewActions}
             onSelectFolder={onSelectFolder}
             onSelectItem={onSelectItem}
@@ -121,6 +124,7 @@ function SidebarSection({
   activeItemId,
   layoutProbe,
   onCreateView,
+  onOpenTypeActions,
   onOpenViewActions,
   onSelectFolder,
   onSelectItem,
@@ -130,6 +134,7 @@ function SidebarSection({
   activeItemId?: string | null
   layoutProbe: MobileLayoutProbe
   onCreateView?: () => void
+  onOpenTypeActions?: (selection: MobileSidebarItemSelection) => void
   onOpenViewActions?: (selection: MobileSidebarItemSelection) => void
   onSelectFolder?: (selection: MobileSidebarFolderSelection) => void
   onSelectItem?: (selection: MobileSidebarItemSelection) => void
@@ -146,6 +151,7 @@ function SidebarSection({
         activeItemId={activeItemId}
         layoutProbe={layoutProbe}
         section={section}
+        onOpenTypeActions={onOpenTypeActions}
         onOpenViewActions={onOpenViewActions}
         onSelectItem={onSelectItem}
       />
@@ -187,12 +193,14 @@ function SidebarSectionItems({
   activeItemId,
   layoutProbe,
   onSelectItem,
+  onOpenTypeActions,
   onOpenViewActions,
   section,
 }: {
   activeItemId?: string | null
   layoutProbe: MobileLayoutProbe
   onSelectItem?: (selection: MobileSidebarItemSelection) => void
+  onOpenTypeActions?: (selection: MobileSidebarItemSelection) => void
   onOpenViewActions?: (selection: MobileSidebarItemSelection) => void
   section: MobileSidebarSection
 }) {
@@ -213,11 +221,22 @@ function SidebarSectionItems({
         layoutProbe={layoutProbe}
         metricId={`sidebar.item.${item.id}`}
         slug={item.id}
-        onLongPress={section.id === 'views' ? () => onOpenViewActions?.(selection) : undefined}
+        onLongPress={sidebarItemLongPress(section.id, selection, onOpenTypeActions, onOpenViewActions)}
         onPress={() => onSelectItem?.(selection)}
       />
     )
   }) ?? null
+}
+
+function sidebarItemLongPress(
+  sectionId: SidebarSectionId,
+  selection: MobileSidebarItemSelection,
+  onOpenTypeActions?: (selection: MobileSidebarItemSelection) => void,
+  onOpenViewActions?: (selection: MobileSidebarItemSelection) => void,
+) {
+  if (sectionId === 'types') return () => onOpenTypeActions?.(selection)
+  if (sectionId === 'views') return () => onOpenViewActions?.(selection)
+  return undefined
 }
 
 function sidebarItemSelection(

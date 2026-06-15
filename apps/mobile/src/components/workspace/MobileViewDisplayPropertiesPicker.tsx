@@ -9,6 +9,7 @@ type MobileViewDisplayPropertiesPickerProps = {
   options: string[]
   query: string
   selectedProperties: string[]
+  testIDPrefix?: string
   onQueryChange: (value: string) => void
   onSelectedPropertiesChange: (value: string[]) => void
 }
@@ -19,20 +20,21 @@ export function MobileViewDisplayPropertiesPicker({
   options,
   query,
   selectedProperties,
+  testIDPrefix = 'workspace-view-property',
 }: MobileViewDisplayPropertiesPickerProps) {
   const orderedOptions = orderedDisplayPropertyOptions(options, selectedProperties)
 
   return (
-    <View style={styles.picker} testID="workspace-view-property-picker">
+    <View style={styles.picker} testID={`${testIDPrefix}-picker`}>
       <Text style={styles.label}>{mobileText('noteList.properties.showInNoteList')}</Text>
       <MobileTextInput
         label={mobileText('noteList.properties.searchLabel')}
         placeholder={mobileText('noteList.properties.searchPlaceholder')}
-        testID="workspace-view-property-search-input"
+        testID={`${testIDPrefix}-search-input`}
         value={query}
         onChangeText={onQueryChange}
       />
-      <View style={styles.optionList} testID="workspace-view-property-options">
+      <View style={styles.optionList} testID={`${testIDPrefix}-options`}>
         {orderedOptions.length === 0 ? (
           <Text style={styles.empty}>{mobileText('noteList.properties.noMatches')}</Text>
         ) : orderedOptions.map((key) => (
@@ -40,6 +42,7 @@ export function MobileViewDisplayPropertiesPicker({
             key={key}
             label={key}
             selected={selectedDisplayProperty(selectedProperties, key)}
+            testIDPrefix={testIDPrefix}
             onPress={() => onSelectedPropertiesChange(toggleDisplayProperty(selectedProperties, key))}
           />
         ))}
@@ -52,10 +55,12 @@ function PropertyOption({
   label,
   onPress,
   selected,
+  testIDPrefix,
 }: {
   label: string
   onPress: () => void
   selected: boolean
+  testIDPrefix: string
 }) {
   return (
     <Pressable
@@ -67,7 +72,7 @@ function PropertyOption({
         selected ? styles.optionSelected : null,
         pressed ? styles.optionPressed : null,
       ]}
-      testID={`workspace-view-property-option-${testIdSegment(label)}`}
+      testID={`${testIDPrefix}-option-${testIdSegment(label)}`}
       onPress={onPress}
     >
       <CheckCircle color={selected ? mobileColors.primary : mobileColors.textFaint} size={16} weight={selected ? 'fill' : 'regular'} />

@@ -7,6 +7,7 @@ import type {
   MobileEditorBlock,
   MobileNote,
   MobilePropertyValue,
+  MobileTone,
   MobileViewFilterGroup,
   MobileWorkspaceSnapshot,
 } from '../workspace/mobileWorkspaceModel'
@@ -32,6 +33,13 @@ export type TabletReadOnlyForm = {
   propertyValueKind: TabletPropertyValueKind
   relationshipName: ReadOnlyFormValue
   relationshipNoteTitle: ReadOnlyFormValue
+  typeDisplayProperties: string[]
+  typeName: ReadOnlyFormValue
+  typePropertyQuery: ReadOnlyFormValue
+  typeSectionLabel: ReadOnlyFormValue
+  typeSort: ReadOnlyFormValue
+  typeTone: MobileTone
+  typeVisible: boolean
   viewDisplayProperties: string[]
   viewFilters: MobileViewFilterGroup
   viewName: ReadOnlyFormValue
@@ -75,16 +83,24 @@ export type TabletWorkspaceChromeProps = {
   onOpenCreateNote: () => void
   onOpenCreateView: () => void
   onOpenMoveNoteToFolder: () => void
+  onOpenTypeActions: (selection: MobileSidebarItemSelection) => void
   onOpenViewActions: (selection: MobileSidebarItemSelection) => void
   onOpenMoreActions: () => void
   onOpenRenameNoteFile: () => void
   onOpenSearch: () => void
   onRemoveRelationship: (noteId: NoteId, key: string, ref: string) => void
+  onSaveTypeDefinition: () => void
   onSaveProperty: () => void
   onSaveRelationship: () => void
   onRenameNoteFile: () => void
   onUpdateNoteContent: (noteId: NoteId, content: string) => void
   onUpdateNoteTitle: (noteId: NoteId, title: string) => void
+  onTypeDisplayPropertiesChange: (value: string[]) => void
+  onTypePropertyQueryChange: (value: ReadOnlyFormValue) => void
+  onTypeSectionLabelChange: (value: ReadOnlyFormValue) => void
+  onTypeSortChange: (value: ReadOnlyFormValue) => void
+  onTypeToneChange: (value: MobileTone) => void
+  onTypeVisibleChange: (value: boolean) => void
   onViewFiltersChange: (value: MobileViewFilterGroup) => void
   onViewDisplayPropertiesChange: (value: string[]) => void
   onViewNameChange: (value: ReadOnlyFormValue) => void
@@ -107,5 +123,6 @@ export type TabletWorkspaceChromeProps = {
   selectedNote: MobileNote | null
   selectedNoteId: string | null
   snapshot: MobileWorkspaceSnapshot
+  typePropertyOptions: string[]
   viewPropertyOptions: string[]
 }

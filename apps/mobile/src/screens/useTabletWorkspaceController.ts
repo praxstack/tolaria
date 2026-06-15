@@ -6,6 +6,7 @@ import type {
   MobileNote,
   MobilePropertyValue,
   MobileSavedView,
+  MobileTone,
   MobileTypeDefinitions,
   MobileViewFilterGroup,
   MobileViewFilterNode,
@@ -43,6 +44,13 @@ const emptyReadOnlyForm: TabletReadOnlyForm = {
   propertyValueKind: 'string',
   relationshipName: '',
   relationshipNoteTitle: '',
+  typeDisplayProperties: [],
+  typeName: '',
+  typePropertyQuery: '',
+  typeSectionLabel: '',
+  typeSort: '',
+  typeTone: 'gray',
+  typeVisible: true,
   viewDisplayProperties: [],
   viewFilters: { all: [] },
   viewName: '',
@@ -57,6 +65,15 @@ type ReadOnlyFormField = {
 type SaveSelectedEdit = (toEdit: (noteId: string) => MobileWorkspaceEdit) => void
 type SetOpenAction = (action: MobileWorkspaceAction | null) => void
 type TabletWorkspaceNavigation = ReturnType<typeof useTabletWorkspaceNavigation>
+type WorkspaceActionsContext = {
+  applyEdit: ApplyWorkspaceEdit
+  closeAction: () => void
+  navigation: TabletWorkspaceNavigation
+  readOnlyForm: TabletReadOnlyForm
+  selectedNote: MobileNote | null
+  updateReadOnlyForm: ReadOnlyFormUpdater
+  workspaceSnapshot: MobileWorkspaceSnapshot
+}
 
 export function useTabletWorkspaceController({
   repository,
@@ -354,6 +371,12 @@ function actionSheetWorkspaceActions({
       snapshot: workspaceSnapshot,
       updateReadOnlyForm,
     }),
+    onOpenTypeActions: (selection: MobileSidebarItemSelection) => openTypeActions({
+      selection,
+      setOpenAction,
+      snapshot: workspaceSnapshot,
+      updateReadOnlyForm,
+    }),
   }
 }
 
@@ -365,15 +388,7 @@ function createWorkspaceActions({
   selectedNote,
   updateReadOnlyForm,
   workspaceSnapshot,
-}: {
-  applyEdit: ApplyWorkspaceEdit
-  closeAction: () => void
-  navigation: TabletWorkspaceNavigation
-  readOnlyForm: TabletReadOnlyForm
-  selectedNote: MobileNote | null
-  updateReadOnlyForm: ReadOnlyFormUpdater
-  workspaceSnapshot: MobileWorkspaceSnapshot
-}) {
+}: WorkspaceActionsContext) {
   return {
     onCreateNote: () => createNote({
       applyEdit,
@@ -391,17 +406,24 @@ function createWorkspaceActions({
       selection: navigation.sidebarSelection,
       typeDefinitions: workspaceSnapshot.typeDefinitions,
     }),
+    ...savedViewWorkspaceActions({ applyEdit, closeAction, readOnlyForm, updateReadOnlyForm, workspaceSnapshot }),
+    ...typeSectionWorkspaceActions({ applyEdit, closeAction, readOnlyForm, updateReadOnlyForm, workspaceSnapshot }),
+  }
+}
+
+function savedViewWorkspaceActions({
+  applyEdit,
+  closeAction,
+  readOnlyForm,
+  updateReadOnlyForm,
+  workspaceSnapshot,
+}: Pick<WorkspaceActionsContext, 'applyEdit' | 'closeAction' | 'readOnlyForm' | 'updateReadOnlyForm' | 'workspaceSnapshot'>) {
+  return {
+    canMoveViewDown: canMoveMobileSavedView(workspaceSnapshot.views ?? [], readOnlyForm.editingViewId, 'down'),
+    canMoveViewUp: canMoveMobileSavedView(workspaceSnapshot.views ?? [], readOnlyForm.editingViewId, 'up'),
     onDeleteView: () => deleteView({ applyEdit, closeAction, viewId: readOnlyForm.editingViewId }),
-    onMoveViewDown: () => moveView({
-      applyEdit,
-      direction: 'down',
-      viewId: readOnlyForm.editingViewId,
-    }),
-    onMoveViewUp: () => moveView({
-      applyEdit,
-      direction: 'up',
-      viewId: readOnlyForm.editingViewId,
-    }),
+    onMoveViewDown: () => moveView({ applyEdit, direction: 'down', viewId: readOnlyForm.editingViewId }),
+    onMoveViewUp: () => moveView({ applyEdit, direction: 'up', viewId: readOnlyForm.editingViewId }),
     onSaveView: () => updateView({
       applyEdit,
       closeAction,
@@ -411,8 +433,6 @@ function createWorkspaceActions({
       viewId: readOnlyForm.editingViewId,
       views: workspaceSnapshot.views ?? [],
     }),
-    canMoveViewDown: canMoveMobileSavedView(workspaceSnapshot.views ?? [], readOnlyForm.editingViewId, 'down'),
-    canMoveViewUp: canMoveMobileSavedView(workspaceSnapshot.views ?? [], readOnlyForm.editingViewId, 'up'),
     onViewDisplayPropertiesChange: (value: string[]) => updateReadOnlyForm('viewDisplayProperties', value),
     onViewFiltersChange: (value: MobileViewFilterGroup) => updateReadOnlyForm('viewFilters', value),
     onViewNameChange: (value: string) => updateReadOnlyForm('viewName', value),
@@ -420,6 +440,28 @@ function createWorkspaceActions({
     viewPropertyOptions: mobileListPropertySuggestions(
       editableViewPropertyNotes(readOnlyForm, workspaceSnapshot),
       readOnlyForm.viewPropertyQuery,
+    ),
+  }
+}
+
+function typeSectionWorkspaceActions({
+  applyEdit,
+  closeAction,
+  readOnlyForm,
+  updateReadOnlyForm,
+  workspaceSnapshot,
+}: Pick<WorkspaceActionsContext, 'applyEdit' | 'closeAction' | 'readOnlyForm' | 'updateReadOnlyForm' | 'workspaceSnapshot'>) {
+  return {
+    onSaveTypeDefinition: () => updateTypeDefinition({ applyEdit, closeAction, form: readOnlyForm }),
+    onTypeDisplayPropertiesChange: (value: string[]) => updateReadOnlyForm('typeDisplayProperties', value),
+    onTypePropertyQueryChange: (value: string) => updateReadOnlyForm('typePropertyQuery', value),
+    onTypeSectionLabelChange: (value: string) => updateReadOnlyForm('typeSectionLabel', value),
+    onTypeSortChange: (value: string) => updateReadOnlyForm('typeSort', value),
+    onTypeToneChange: (value: MobileTone) => updateReadOnlyForm('typeTone', value),
+    onTypeVisibleChange: (value: boolean) => updateReadOnlyForm('typeVisible', value),
+    typePropertyOptions: mobileListPropertySuggestions(
+      editableTypePropertyNotes(readOnlyForm, workspaceSnapshot),
+      readOnlyForm.typePropertyQuery,
     ),
   }
 }
@@ -649,6 +691,53 @@ function openViewActions({
   setOpenAction('editView')
 }
 
+function openTypeActions({
+  selection,
+  setOpenAction,
+  snapshot,
+  updateReadOnlyForm,
+}: {
+  selection: MobileSidebarItemSelection
+  setOpenAction: SetOpenAction
+  snapshot: MobileWorkspaceSnapshot
+  updateReadOnlyForm: ReadOnlyFormUpdater
+}) {
+  if (selection.sectionId !== 'types') return
+  const typeName = selection.typeName ?? typeNameForSidebarSelection(snapshot, selection.id)
+  if (!typeName) return
+
+  openWorkspaceAction({
+    action: 'editTypeSection',
+    fields: typeDefinitionFields({
+      definition: snapshot.typeDefinitions?.[typeName],
+      label: selection.label,
+      typeName,
+    }),
+    setOpenAction,
+    updateReadOnlyForm,
+  })
+}
+
+function typeDefinitionFields({
+  definition,
+  label,
+  typeName,
+}: {
+  definition: MobileTypeDefinitions[string] | undefined
+  label: string
+  typeName: string
+}): ReadOnlyFormField[] {
+  return [
+    { key: 'typeDisplayProperties', value: definition?.listPropertiesDisplay ?? [] },
+    { key: 'typeName', value: typeName },
+    { key: 'typePropertyQuery', value: '' },
+    { key: 'typeSectionLabel', value: definition?.label ?? label },
+    { key: 'typeSort', value: definition?.sort ?? '' },
+    { key: 'typeTone', value: definition?.tone ?? 'gray' },
+    { key: 'typeVisible', value: definition?.visible !== false },
+  ]
+}
+
 function createNote({
   applyEdit,
   closeAction,
@@ -752,6 +841,41 @@ function updateView({
   closeAction()
 }
 
+function updateTypeDefinition({
+  applyEdit,
+  closeAction,
+  form,
+}: {
+  applyEdit: (edit: MobileWorkspaceEdit) => void
+  closeAction: () => void
+  form: TabletReadOnlyForm
+}) {
+  const typeName = form.typeName.trim()
+  if (!typeName) return
+
+  applyEdit({
+    patch: {
+      label: form.typeSectionLabel,
+      listPropertiesDisplay: normalizedListPropertiesDisplay(form.typeDisplayProperties),
+      sort: form.typeSort,
+      tone: form.typeTone,
+      visible: form.typeVisible ? null : false,
+    },
+    type: 'updateTypeDefinition',
+    typeName,
+  })
+  closeAction()
+}
+
+function editableTypePropertyNotes(
+  form: TabletReadOnlyForm,
+  snapshot: MobileWorkspaceSnapshot,
+): MobileNote[] {
+  const normalizedType = normalizedLabel(form.typeName)
+  if (!normalizedType) return workspaceNotes(snapshot)
+  return workspaceNotes(snapshot).filter((note) => normalizedLabel(note.type) === normalizedType)
+}
+
 function editableViewPropertyNotes(
   form: TabletReadOnlyForm,
   snapshot: MobileWorkspaceSnapshot,
@@ -792,6 +916,21 @@ function normalizedListPropertiesDisplay(displayProperties: string[]) {
 
 function workspaceNotes(snapshot: MobileWorkspaceSnapshot) {
   return snapshot.allNotes ?? snapshot.notes
+}
+
+function typeNameForSidebarSelection(
+  snapshot: MobileWorkspaceSnapshot,
+  selectionId: string,
+): string | null {
+  return snapshot.sidebarSections
+    .find((section) => section.id === 'types')
+    ?.items
+    ?.find((item) => item.id === selectionId)
+    ?.typeName ?? null
+}
+
+function normalizedLabel(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
 function moveView({

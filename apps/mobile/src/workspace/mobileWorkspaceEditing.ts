@@ -40,6 +40,12 @@ import {
   type MobileViewMoveDirection,
 } from './mobileSavedViews'
 import { buildMobileSidebarSections } from './mobileSidebarSections'
+import {
+  mobileTypeDefinitionContent,
+  mobileTypeDefinitionPath,
+  typeDefinitionsWithPatch,
+  type MobileTypeDefinitionPatch,
+} from './mobileTypeDefinitions'
 import { normalizeRelationshipKey } from './mobileWorkspaceSuggestions'
 
 type EditableNoteInput = MobileNote & { rawContent: string }
@@ -72,9 +78,11 @@ export type MobileWorkspaceEdit =
   | { definition: MobileViewDefinition; viewId: string; type: 'updateView' }
   | { viewId: string; type: 'deleteView' }
   | { direction: MobileViewMoveDirection; viewId: string; type: 'moveView' }
+  | { patch: MobileTypeDefinitionPatch; type: 'updateTypeDefinition'; typeName: NoteTitle }
 type MobileViewEdit = Extract<MobileWorkspaceEdit, { type: 'createView' | 'deleteView' | 'moveView' | 'updateView' }>
+type MobileTypeEdit = Extract<MobileWorkspaceEdit, { type: 'updateTypeDefinition' }>
 type MobileSnapshotEdit = Extract<MobileWorkspaceEdit, { type: 'deleteNote' | 'moveNoteToFolder' | 'renameNoteFile' }>
-type MobileNoteEdit = Exclude<MobileWorkspaceEdit, MobileSnapshotEdit | MobileViewEdit | { type: 'createNote' }>
+type MobileNoteEdit = Exclude<MobileWorkspaceEdit, MobileSnapshotEdit | MobileTypeEdit | MobileViewEdit | { type: 'createNote' }>
 type MobileWorkspaceResultHandlerMap = {
   [Type in MobileWorkspaceEdit['type']]?: (
     snapshot: MobileWorkspaceSnapshot,
@@ -165,6 +173,7 @@ const mobileWorkspaceResultHandlers: MobileWorkspaceResultHandlerMap = {
   moveView: (snapshot, edit) => moveMobileView(snapshot, edit.viewId, edit.direction),
   moveNoteToFolder: (snapshot, edit) => moveNoteToFolder(snapshot, edit),
   renameNoteFile: (snapshot, edit) => renameNoteFile(snapshot, edit),
+  updateTypeDefinition: (snapshot, edit) => updateMobileTypeDefinition(snapshot, edit.typeName, edit.patch),
   updateView: (snapshot, edit) => updateMobileView(snapshot, edit.viewId, edit.definition),
 }
 
@@ -800,6 +809,44 @@ function moveMobileView(
 
 function findMobileView(views: MobileSavedView[] | undefined, viewId: string): MobileSavedView | null {
   return views?.find((view) => view.id === viewId || view.filename === viewId) ?? null
+}
+
+function updateMobileTypeDefinition(
+  snapshot: MobileWorkspaceSnapshot,
+  typeName: NoteTitle,
+  patch: MobileTypeDefinitionPatch,
+): MobileWorkspaceEditResult {
+  const cleanType = cleanTypeName(typeName)
+  if (!cleanType) return { snapshot, writes: [] }
+
+  const existingDefinition = snapshot.typeDefinitions?.[cleanType]
+  const typeDefinitions = typeDefinitionsWithPatch(snapshot.typeDefinitions, cleanType, patch)
+  const notes = notesWithTypeDefinitionTones(snapshot.notes, typeDefinitions)
+  const allNotes = snapshot.allNotes ? notesWithTypeDefinitionTones(snapshot.allNotes, typeDefinitions) : undefined
+  const nextSnapshot = rebuildSnapshot(
+    { ...snapshot, typeDefinitions },
+    notes,
+    allNotes,
+  )
+
+  return {
+    snapshot: nextSnapshot,
+    writes: [{
+      content: mobileTypeDefinitionContent(cleanType, existingDefinition, patch),
+      kind: 'saveNote',
+      path: mobileTypeDefinitionPath(cleanType, existingDefinition),
+    }],
+  }
+}
+
+function notesWithTypeDefinitionTones(
+  notes: MobileNote[],
+  typeDefinitions: MobileTypeDefinitions,
+): MobileNote[] {
+  return notes.map((note) => ({
+    ...note,
+    typeTone: typeDefinitions[note.type]?.tone ?? note.typeTone,
+  }))
 }
 
 function snapshotWithViews(

@@ -53,12 +53,16 @@ export type MobileProperty = {
 }
 
 export type MobileTypeDefinition = {
+  icon?: string | null
   label?: string | null
   listPropertiesDisplay?: string[]
   order?: number | null
+  path?: string
   properties?: Record<string, MobilePropertyValue>
   relationships?: Record<string, string[]>
+  rawContent?: string
   sort?: string | null
+  template?: string | null
   tone?: MobileTone | null
   visible?: boolean | null
 }

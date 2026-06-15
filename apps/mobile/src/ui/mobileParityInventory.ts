@@ -134,6 +134,13 @@ export const mobileParityInventory = [
     surface: 'Saved-view note-list column picker',
   },
   {
+    assertions: ['type-section edit user-flow checks'],
+    contracts: ['desktopPropertyParity', 'desktopSidebarParity'],
+    desktopSource: 'TypeCustomizePopover, Sidebar type context actions, and NoteListHeader type columns',
+    mobileFile: 'src/components/workspace/MobileTypeSectionEditor.tsx',
+    surface: 'Type section editor',
+  },
+  {
     assertions: ['editor computed styles'],
     contracts: ['desktopEditorParity', 'desktopPanelParity', 'desktopToolbarParity'],
     desktopSource: 'EditorTheme.css, theme.json, BreadcrumbBar',

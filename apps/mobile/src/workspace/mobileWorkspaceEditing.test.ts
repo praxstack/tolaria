@@ -162,6 +162,42 @@ describe('applyMobileWorkspaceEdit', () => {
     )
   })
 
+  it('updates type definition metadata through the Type markdown document contract', () => {
+    const result = applyMobileWorkspaceEditWithWrites(workspaceScenarioForId('default'), {
+      patch: {
+        label: 'Runbooks',
+        listPropertiesDisplay: ['status', 'belongs_to'],
+        sort: 'title:asc',
+        tone: 'green',
+      },
+      type: 'updateTypeDefinition',
+      typeName: 'Procedure',
+    })
+    const procedure = result.snapshot.typeDefinitions?.Procedure
+    const procedureNote = result.snapshot.notes.find((note) => note.type === 'Procedure')
+
+    expect(procedure).toMatchObject({
+      label: 'Runbooks',
+      listPropertiesDisplay: ['status', 'belongs_to'],
+      path: 'procedure.md',
+      sort: 'title:asc',
+      tone: 'green',
+    })
+    expect(procedureNote?.typeTone).toBe('green')
+    expect(sidebarItems(result.snapshot, 'types')).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: 'Runbooks', tone: 'green', typeName: 'Procedure' })]),
+    )
+    expect(result.writes).toEqual([{
+      content: expect.stringContaining('sidebar label: Runbooks'),
+      kind: 'saveNote',
+      path: 'procedure.md',
+    }])
+    const typeWrite = result.writes.find((write) => write.kind === 'saveNote')
+    expect(typeWrite?.content).toContain('color: green')
+    expect(typeWrite?.content).toContain('sort: "title:asc"')
+    expect(typeWrite?.content).toContain('_list_properties_display:\n  - status\n  - belongs_to')
+  })
+
   it('moves notes to another folder by changing the relative path and planning delete plus save writes', () => {
     const base = workspaceScenarioForId('default')
     const editableNote = {

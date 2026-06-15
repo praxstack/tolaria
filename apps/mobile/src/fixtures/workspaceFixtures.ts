@@ -344,9 +344,9 @@ const defaultSidebarSections: FixtureSidebarSection[] = [
     id: 'types',
     label: 'Types',
     items: [
-      { id: 'essays', count: '448', icon: 'file', label: 'Essays', tone: 'green' },
-      { id: 'procedures', count: '51', icon: 'procedure', label: 'Procedures', tone: 'purple' },
-      { id: 'responsibilities', count: '18', icon: 'tag', label: 'Responsibilities', tone: 'orange' },
+      { id: 'essays', count: '448', icon: 'file', label: 'Essays', tone: 'green', typeName: 'Essay' },
+      { id: 'procedures', count: '51', icon: 'procedure', label: 'Procedures', tone: 'purple', typeName: 'Procedure' },
+      { id: 'responsibilities', count: '18', icon: 'tag', label: 'Responsibilities', tone: 'orange', typeName: 'Responsibility' },
     ],
   },
   {
@@ -398,15 +398,24 @@ const fixtureViews: FixtureSavedView[] = [
 
 const fixtureTypeDefinitions: MobileTypeDefinitions = {
   Essay: {
+    icon: 'file',
+    path: 'essay.md',
     properties: { Priority: 'Medium' },
+    rawContent: '---\ntype: Type\ncolor: green\nicon: file\n---\n# Essay\n',
     tone: 'green',
   },
   Procedure: {
+    icon: 'stack',
+    path: 'procedure.md',
     properties: { Cadence: 'Weekly' },
+    rawContent: '---\ntype: Type\ncolor: purple\nicon: stack\n---\n# Procedure\n',
     tone: 'purple',
   },
   Release: {
+    icon: 'archive',
+    path: 'release.md',
     properties: { Date: '2026-05-02' },
+    rawContent: '---\ntype: Type\ncolor: orange\nicon: archive\n---\n# Release\n',
     tone: 'orange',
   },
 }

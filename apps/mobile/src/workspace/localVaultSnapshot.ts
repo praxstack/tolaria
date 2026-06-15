@@ -179,6 +179,7 @@ function parseLocalVaultEntry(file: LocalVaultFile): LocalVaultEntry {
 
 function typeDefinitionFromFrontmatter(frontmatter: LocalVaultFrontmatter): MobileTypeDefinition {
   return {
+    icon: frontmatterText(frontmatter, ['icon', '_icon']),
     label: frontmatterText(frontmatter, ['_sidebar_label', 'sidebar_label', 'sidebar label']),
     listPropertiesDisplay: frontmatterList(frontmatter, [
       '_list_properties_display',
@@ -189,6 +190,7 @@ function typeDefinitionFromFrontmatter(frontmatter: LocalVaultFrontmatter): Mobi
     properties: mobileTypeDefinitionProperties(frontmatter),
     relationships: frontmatterRelationships(frontmatter),
     sort: frontmatterText(frontmatter, ['_sort', 'sort']),
+    template: frontmatterText(frontmatter, ['template']),
     visible: frontmatterBoolean(frontmatter, ['visible']),
   }
 }
@@ -225,7 +227,12 @@ function localTypeDefinitions(entries: LocalVaultEntry[]): MobileTypeDefinitions
   return Object.fromEntries(
     entries
       .filter((entry) => entry.type === 'Type')
-      .map((entry) => [entry.title, { ...entry.typeDefinition, tone: entry.typeTone }]),
+      .map((entry) => [entry.title, {
+        ...entry.typeDefinition,
+        path: entry.path,
+        rawContent: entry.rawContent,
+        tone: entry.typeTone,
+      }]),
   )
 }
 

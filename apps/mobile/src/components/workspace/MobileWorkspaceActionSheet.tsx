@@ -10,7 +10,7 @@ import { MobilePanel, MobileToolbar, MobileToolbarSpacer, MobileToolbarTitle } f
 import { MobileTextInput } from '../../ui/MobileTextInput'
 import { desktopPanelParity, desktopToolbarActionParity } from '../../ui/desktopParity'
 import { mobileColors, mobileSpace, mobileType } from '../../ui/tokens'
-import type { MobileNote, MobileViewFilterGroup } from '../../workspace/mobileWorkspaceModel'
+import type { MobileNote, MobileTone, MobileViewFilterGroup } from '../../workspace/mobileWorkspaceModel'
 import {
   mobilePropertyKeySuggestions,
   mobilePropertyValueSuggestions,
@@ -19,6 +19,7 @@ import {
   mobileTypeSuggestions,
 } from '../../workspace/mobileWorkspaceSuggestions'
 import { MobileTypeIcon } from './MobileWorkspaceIcons'
+import { MobileTypeSectionEditor } from './MobileTypeSectionEditor'
 import { MobileViewDisplayPropertiesPicker } from './MobileViewDisplayPropertiesPicker'
 import { MobileViewFilterBuilder } from './MobileViewFilterBuilder'
 import { MobileWorkspaceSuggestionList } from './MobileWorkspaceSuggestionList'
@@ -31,6 +32,7 @@ export type MobileWorkspaceAction =
   | 'createNote'
   | 'createView'
   | 'editProperty'
+  | 'editTypeSection'
   | 'editView'
   | 'moreActions'
   | 'moveNoteToFolder'
@@ -70,6 +72,7 @@ type MobileWorkspaceActionSheetProps = {
   onRelationshipNoteTitleChange: (value: string) => void
   onSaveProperty: () => void
   onSaveRelationship: () => void
+  onSaveTypeDefinition: () => void
   onRenameNoteFile: () => void
   onSaveView: () => void
   onSearchQueryChange: (value: string) => void
@@ -86,11 +89,25 @@ type MobileWorkspaceActionSheetProps = {
   relationshipNoteTitle: string
   searchQuery: string
   selectedNote: MobileNote | null
+  typeDisplayProperties: string[]
+  typeName: string
+  typePropertyOptions: string[]
+  typePropertyQuery: string
+  typeSectionLabel: string
+  typeSort: string
+  typeTone: MobileTone
+  typeVisible: boolean
   viewDisplayProperties: string[]
   viewFilters: MobileViewFilterGroup
   viewName: string
   viewPropertyOptions: string[]
   viewPropertyQuery: string
+  onTypeDisplayPropertiesChange: (value: string[]) => void
+  onTypePropertyQueryChange: (value: string) => void
+  onTypeSectionLabelChange: (value: string) => void
+  onTypeSortChange: (value: string) => void
+  onTypeToneChange: (value: MobileTone) => void
+  onTypeVisibleChange: (value: boolean) => void
 }
 
 type SingleTextFieldConfig = {
@@ -148,6 +165,7 @@ const actionContentByAction: Record<MobileWorkspaceAction, (props: MobileWorkspa
   createNote: (props) => <SingleTextFieldContent config={singleTextFieldConfig(props)} />,
   createView: (props) => <SingleTextFieldContent config={singleTextFieldConfig(props)} />,
   editProperty: (props) => <AddPropertyContent {...props} />,
+  editTypeSection: (props) => <TypeSectionContent {...props} />,
   editView: (props) => <SingleTextFieldContent config={singleTextFieldConfig(props)} />,
   moreActions: (props) => (
     <MoreActionsContent
@@ -324,6 +342,33 @@ function editViewContent(props: MobileWorkspaceActionSheetProps) {
       {viewFilterBuilder(props)}
       <ViewDisplayPropertiesPicker {...props} />
     </>
+  )
+}
+
+function TypeSectionContent(props: MobileWorkspaceActionSheetProps) {
+  return (
+    <View style={styles.content}>
+      <MobileTypeSectionEditor
+        displayProperties={props.typeDisplayProperties}
+        propertyOptions={props.typePropertyOptions}
+        propertyQuery={props.typePropertyQuery}
+        sectionLabel={props.typeSectionLabel}
+        sort={props.typeSort}
+        tone={props.typeTone}
+        typeName={props.typeName}
+        visible={props.typeVisible}
+        onDisplayPropertiesChange={props.onTypeDisplayPropertiesChange}
+        onPropertyQueryChange={props.onTypePropertyQueryChange}
+        onSectionLabelChange={props.onTypeSectionLabelChange}
+        onSortChange={props.onTypeSortChange}
+        onToneChange={props.onTypeToneChange}
+        onVisibleChange={props.onTypeVisibleChange}
+      />
+      <SheetFooter>
+        <MobileButton label={mobileText('common.cancel')} variant="ghost" onPress={props.onClose} />
+        <MobileButton disabled={props.typeSectionLabel.trim().length === 0} label={mobileText('common.save')} variant="primary" onPress={props.onSaveTypeDefinition} />
+      </SheetFooter>
+    </View>
   )
 }
 
@@ -887,6 +932,7 @@ const actionTitleByAction: Record<MobileWorkspaceAction, () => string> = {
   createNote: () => mobileText('command.note.newNote'),
   createView: () => mobileText('viewDialog.title.create'),
   editProperty: () => mobileText('inspector.title.properties'),
+  editTypeSection: () => mobileText('sidebar.section.name'),
   editView: () => mobileText('viewDialog.title.edit'),
   moreActions: () => mobileText('editor.toolbar.moreActions'),
   moveNoteToFolder: () => mobileText('command.note.moveToFolder'),

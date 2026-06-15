@@ -106,6 +106,7 @@ _organized: false
       label: 'Client Work',
       listPropertiesDisplay: ['Priority', 'belongs_to'],
       order: 2,
+      path: 'types/project.md',
       properties: {
         Priority: 'Medium',
         has: 'Milestone',
@@ -116,6 +117,7 @@ _organized: false
       sort: 'property:Priority:asc',
       tone: 'red',
     })
+    expect(snapshot.typeDefinitions?.Project?.rawContent).toContain('sidebar_label: Client Work')
     expect(snapshot.typeDefinitions?.Secret).toMatchObject({ visible: false })
 
     const typeItems = snapshot.sidebarSections.find((section) => section.id === 'types')?.items ?? []

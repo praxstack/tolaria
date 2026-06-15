@@ -79,6 +79,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
     onOpenCreateView,
     onOpenMoreActions,
     onOpenSearch,
+    onOpenTypeActions,
     onOpenViewActions,
     onRemoveRelationship,
     onSelectFolder,
@@ -110,6 +111,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
             sections={snapshot.sidebarSections}
             title={snapshot.source?.label}
             onCreateView={onOpenCreateView}
+            onOpenTypeActions={onOpenTypeActions}
             onOpenViewActions={onOpenViewActions}
             onSelectFolder={onSelectFolder}
             onSelectItem={onSelectSidebarItem}
@@ -166,110 +168,98 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
   )
 }
 
-function WorkspaceActionSheetHost(props: TabletWorkspaceChromeProps & { suggestionNotes: MobileNote[] }) {
-  const {
-    onChangeNoteType,
-    onChangeNoteTypeInputChange,
-    canMoveViewDown,
-    canMoveViewUp,
-    onCloseAction,
-    onCopyDeepLink,
-    onCreateNote,
-    onCreateRelationshipTarget,
-    onCreateTitleChange,
-    onCreateView,
-    onDeleteNote,
-    onDeleteView,
-    onFilenameStemChange,
-    onFolderPathChange,
-    onMoveNoteToFolder,
-    onMoveViewDown,
-    onMoveViewUp,
-    onOpenChangeNoteType,
-    onOpenMoveNoteToFolder,
-    onOpenRenameNoteFile,
-    onPropertyNameChange,
-    onPropertyValueChange,
-    onRelationshipNameChange,
-    onRelationshipNoteTitleChange,
-    onSaveProperty,
-    onSaveRelationship,
-    onSaveView,
-    onRenameNoteFile,
-    onSearchQueryChange,
-    onSelectNote,
-    onSetArchived,
-    onSetOrganized,
-    onViewDisplayPropertiesChange,
-    onViewFiltersChange,
-    onViewNameChange,
-    onViewPropertyQueryChange,
-    openAction,
-    readOnlyForm,
-    searchQuery,
-    selectedNote,
-    suggestionNotes,
-    viewPropertyOptions,
-  } = props
+type ActionSheetHostProps = TabletWorkspaceChromeProps & { suggestionNotes: MobileNote[] }
+
+function WorkspaceActionSheetHost(props: ActionSheetHostProps) {
+  const { openAction } = props
   if (!openAction) return null
 
   return (
     <MobileWorkspaceActionSheet
       action={openAction}
-      canMoveViewDown={canMoveViewDown}
-      canMoveViewUp={canMoveViewUp}
-      createTitle={readOnlyForm.createTitle}
-      filenameStem={readOnlyForm.filenameStem}
-      folderPath={readOnlyForm.folderPath}
-      notes={suggestionNotes}
-      noteType={readOnlyForm.noteType}
-      propertyName={readOnlyForm.propertyName}
-      propertyValue={readOnlyForm.propertyValue}
-      relationshipName={readOnlyForm.relationshipName}
-      relationshipNoteTitle={readOnlyForm.relationshipNoteTitle}
-      searchQuery={searchQuery}
-      selectedNote={selectedNote}
-      viewDisplayProperties={readOnlyForm.viewDisplayProperties}
-      viewFilters={readOnlyForm.viewFilters}
-      onChangeNoteType={onChangeNoteType}
-      onChangeNoteTypeInputChange={onChangeNoteTypeInputChange}
-      onClose={onCloseAction}
-      onCopyDeepLink={onCopyDeepLink}
-      onCreateNote={onCreateNote}
-      onCreateRelationshipTarget={onCreateRelationshipTarget}
-      onCreateTitleChange={onCreateTitleChange}
-      onCreateView={onCreateView}
-      onDeleteView={onDeleteView}
-      onDeleteNote={onDeleteNote}
-      onFilenameStemChange={onFilenameStemChange}
-      onFolderPathChange={onFolderPathChange}
-      onMoveNoteToFolder={onMoveNoteToFolder}
-      onMoveViewDown={onMoveViewDown}
-      onMoveViewUp={onMoveViewUp}
-      onOpenChangeNoteType={onOpenChangeNoteType}
-      onOpenMoveNoteToFolder={onOpenMoveNoteToFolder}
-      onOpenRenameNoteFile={onOpenRenameNoteFile}
-      onPropertyNameChange={onPropertyNameChange}
-      onPropertyValueChange={onPropertyValueChange}
-      onRelationshipNameChange={onRelationshipNameChange}
-      onRelationshipNoteTitleChange={onRelationshipNoteTitleChange}
-      onSaveProperty={onSaveProperty}
-      onSaveRelationship={onSaveRelationship}
-      onSaveView={onSaveView}
-      onRenameNoteFile={onRenameNoteFile}
-      onSearchQueryChange={onSearchQueryChange}
-      onSelectNote={onSelectNote}
-      onSetArchived={onSetArchived}
-      onSetOrganized={onSetOrganized}
-      onViewDisplayPropertiesChange={onViewDisplayPropertiesChange}
-      onViewFiltersChange={onViewFiltersChange}
-      onViewNameChange={onViewNameChange}
-      onViewPropertyQueryChange={onViewPropertyQueryChange}
-      viewName={readOnlyForm.viewName}
-      viewPropertyOptions={viewPropertyOptions}
-      viewPropertyQuery={readOnlyForm.viewPropertyQuery}
+      {...actionSheetValues(props)}
+      {...actionSheetHandlers(props)}
     />
   )
+}
+
+function actionSheetValues(props: ActionSheetHostProps) {
+  const { canMoveViewDown, canMoveViewUp, readOnlyForm, searchQuery, selectedNote, suggestionNotes, typePropertyOptions, viewPropertyOptions } = props
+
+  return {
+    canMoveViewDown,
+    canMoveViewUp,
+    createTitle: readOnlyForm.createTitle,
+    filenameStem: readOnlyForm.filenameStem,
+    folderPath: readOnlyForm.folderPath,
+    notes: suggestionNotes,
+    noteType: readOnlyForm.noteType,
+    propertyName: readOnlyForm.propertyName,
+    propertyValue: readOnlyForm.propertyValue,
+    relationshipName: readOnlyForm.relationshipName,
+    relationshipNoteTitle: readOnlyForm.relationshipNoteTitle,
+    searchQuery,
+    selectedNote,
+    typeDisplayProperties: readOnlyForm.typeDisplayProperties,
+    typeName: readOnlyForm.typeName,
+    typePropertyOptions,
+    typePropertyQuery: readOnlyForm.typePropertyQuery,
+    typeSectionLabel: readOnlyForm.typeSectionLabel,
+    typeSort: readOnlyForm.typeSort,
+    typeTone: readOnlyForm.typeTone,
+    typeVisible: readOnlyForm.typeVisible,
+    viewDisplayProperties: readOnlyForm.viewDisplayProperties,
+    viewFilters: readOnlyForm.viewFilters,
+    viewName: readOnlyForm.viewName,
+    viewPropertyOptions,
+    viewPropertyQuery: readOnlyForm.viewPropertyQuery,
+  }
+}
+
+function actionSheetHandlers(props: ActionSheetHostProps) {
+  return {
+    onChangeNoteType: props.onChangeNoteType,
+    onChangeNoteTypeInputChange: props.onChangeNoteTypeInputChange,
+    onClose: props.onCloseAction,
+    onCopyDeepLink: props.onCopyDeepLink,
+    onCreateNote: props.onCreateNote,
+    onCreateRelationshipTarget: props.onCreateRelationshipTarget,
+    onCreateTitleChange: props.onCreateTitleChange,
+    onCreateView: props.onCreateView,
+    onDeleteNote: props.onDeleteNote,
+    onDeleteView: props.onDeleteView,
+    onFilenameStemChange: props.onFilenameStemChange,
+    onFolderPathChange: props.onFolderPathChange,
+    onMoveNoteToFolder: props.onMoveNoteToFolder,
+    onMoveViewDown: props.onMoveViewDown,
+    onMoveViewUp: props.onMoveViewUp,
+    onOpenChangeNoteType: props.onOpenChangeNoteType,
+    onOpenMoveNoteToFolder: props.onOpenMoveNoteToFolder,
+    onOpenRenameNoteFile: props.onOpenRenameNoteFile,
+    onPropertyNameChange: props.onPropertyNameChange,
+    onPropertyValueChange: props.onPropertyValueChange,
+    onRelationshipNameChange: props.onRelationshipNameChange,
+    onRelationshipNoteTitleChange: props.onRelationshipNoteTitleChange,
+    onRenameNoteFile: props.onRenameNoteFile,
+    onSaveProperty: props.onSaveProperty,
+    onSaveRelationship: props.onSaveRelationship,
+    onSaveTypeDefinition: props.onSaveTypeDefinition,
+    onSaveView: props.onSaveView,
+    onSearchQueryChange: props.onSearchQueryChange,
+    onSelectNote: props.onSelectNote,
+    onSetArchived: props.onSetArchived,
+    onSetOrganized: props.onSetOrganized,
+    onTypeDisplayPropertiesChange: props.onTypeDisplayPropertiesChange,
+    onTypePropertyQueryChange: props.onTypePropertyQueryChange,
+    onTypeSectionLabelChange: props.onTypeSectionLabelChange,
+    onTypeSortChange: props.onTypeSortChange,
+    onTypeToneChange: props.onTypeToneChange,
+    onTypeVisibleChange: props.onTypeVisibleChange,
+    onViewDisplayPropertiesChange: props.onViewDisplayPropertiesChange,
+    onViewFiltersChange: props.onViewFiltersChange,
+    onViewNameChange: props.onViewNameChange,
+    onViewPropertyQueryChange: props.onViewPropertyQueryChange,
+  }
 }
 
 function SwipeRail({

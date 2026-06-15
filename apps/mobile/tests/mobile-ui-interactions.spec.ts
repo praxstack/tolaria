@@ -57,6 +57,13 @@ test.describe('mobile UI lab interactions', () => {
     await customizeCreatedSavedViewColumns(page)
   })
 
+  test('customizes type section metadata and note-list columns', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'tablet-landscape', 'Type-section editing is exercised in the full-width tablet layout.')
+
+    await page.goto('/')
+    await customizeProcedureTypeSection(page)
+  })
+
   test('keeps large local-vault read-only interactions within tablet budgets', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-landscape', 'Large-vault performance checks run once on the primary tablet layout.')
 
@@ -207,6 +214,24 @@ async function customizeCreatedSavedViewColumns(page: PageLike) {
   const workflowRow = page.getByTestId('note-row-workflow-orchestration')
   await expect(workflowRow.getByText('LLM Workflow')).toBeVisible()
   await expect(workflowRow.getByText('Tolaria MVP')).toBeVisible()
+}
+
+async function customizeProcedureTypeSection(page: PageLike) {
+  await longPress(page, 'sidebar-item-procedures')
+  await expect(page.getByTestId('workspace-action-sheet-editTypeSection')).toBeVisible()
+  await expect(page.getByTestId('workspace-type-section-label-input')).toHaveValue('Procedures')
+  await page.getByTestId('workspace-type-section-label-input').fill('Runbooks')
+  await page.getByTestId('workspace-type-tone-green').click()
+  await page.getByTestId('workspace-type-sort-title-asc').click()
+  await page.getByTestId('workspace-type-property-search-input').fill('bel')
+  await page.getByTestId('workspace-type-property-option-belongs-to').click()
+  await page.getByTestId('workspace-action-sheet-editTypeSection').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Runbooks' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Runbooks' }).click()
+  await expect(page.getByTestId('note-list-toolbar-title')).toHaveText('Runbooks')
+  await expect(page.getByTestId('note-row-open-source-project').getByText('Project Board')).toBeVisible()
 }
 
 async function longPress(page: PageLike, testId: string) {
