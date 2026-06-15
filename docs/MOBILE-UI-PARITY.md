@@ -170,7 +170,7 @@ TOLARIA_MOBILE_FULL_GATE=1 git push
 | P0 | Note list | Native note list panel | selected note, favorite note, long title, multi-chip note, empty search | Copy desktop full-width row surface, separators, type-colored selected state, typography, and chip density |
 | P0 | Editor shell | Native editor container | title, rich text preview, empty note | Copy desktop editor theme values for content width, title separator, headings, body, lists, quotes, and tables |
 | P0 | Properties panel | Native property rows | type, date, status, relationships, empty values | Copy compact 12px labels, 24px chips, full-width relationship rows, and property-action rows |
-| P1 | Search and quick open | Native search overlay/sheet | empty query, results, no results, keyboard focus | Results can be scanned quickly; mouse/touch selection is deterministic |
+| P1 | Search and quick open | Native search overlay/sheet | empty query, results, no results, keyboard focus | Results can be scanned quickly; touch, Enter, Escape, and clamped ArrowUp/ArrowDown selection are deterministic |
 | P1 | Create note/type/status actions | Native modal/sheet controls | valid input, invalid input, type selection, collision | Controls use Tolaria primitives; disabled/loading/error states are visible |
 | P2 | Phone shell | Reduced navigation and panels | list-only, editor-only, properties sheet, back stack | Phone removes surfaces deliberately after tablet parity is established |
 
@@ -182,7 +182,7 @@ The tablet shell is clickable before it is writable. These interactions are inte
 | --- | --- |
 | Sidebar sections and folders | Filter the note list and select the first visible note |
 | Note rows | Select the note and refresh editor/properties |
-| Search | Opens a desktop-parity sheet, filters the visible note list, and lets results select a note |
+| Search | Opens a desktop-parity sheet, filters the visible note list, and lets touch or keyboard-selected results select a note |
 | Create note | Opens a localized title form with disabled create state until a title exists |
 | Add property | Opens localized property name/value fields |
 | Add relationship | Opens localized relationship name/note-title fields |

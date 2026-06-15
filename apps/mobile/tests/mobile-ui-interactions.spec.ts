@@ -27,6 +27,18 @@ test.describe('mobile UI lab interactions', () => {
     await createRenameAndDeleteSidebarFolder(page)
   })
 
+  test('navigates quick open search from the keyboard', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'tablet-landscape', 'Keyboard quick-open checks use the full-width tablet layout.')
+
+    await page.goto('/')
+    await page.getByTestId('note-list-search-action').click()
+    await expect(page.getByTestId('workspace-search-input')).toBeFocused()
+    await expect(page.getByTestId('workspace-search-result-workflow-orchestration')).toBeVisible()
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
+    await expect(page.getByTestId('editor-title')).toHaveText('How I Run an Open Source Project')
+  })
 
   test('navigates fixture saved views', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-landscape', 'Saved-view navigation is exercised in the full-width tablet layout.')
@@ -82,9 +94,13 @@ test.describe('mobile UI lab interactions', () => {
 async function searchAndSelectRelease(page: PageLike) {
   await page.getByTestId('note-list-search-action').click()
   await expect(page.getByTestId('workspace-search-input')).toBeVisible()
+  await expect(page.getByTestId('workspace-search-input')).toBeFocused()
+  await expect(page.getByTestId('workspace-search-result-workflow-orchestration')).toBeVisible()
+  await page.getByTestId('workspace-search-input').fill('zzzzzzz')
+  await expect(page.getByTestId('workspace-search-results').getByText('No matching notes')).toBeVisible()
   await page.getByTestId('workspace-search-input').fill('Release')
   await expect(page.getByTestId('workspace-search-result-release-2026-05-02')).toBeVisible()
-  await page.getByTestId('workspace-search-result-release-2026-05-02').click()
+  await page.keyboard.press('Enter')
   await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
   await expect(page.getByTestId('note-list-toolbar-subtitle')).toHaveText('7 open notes')
   await expect(page.getByTestId('editor-title')).toHaveText('v2026-05-02')

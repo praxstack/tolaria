@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Pressable, ScrollView, StyleSheet, View, type NativeSyntheticEvent, type TextInputKeyPressEventData } from 'react-native'
 import { Archive, CheckCircle, FilePlus, FolderOpen, LinkSimple, PencilSimple, Star, Tag, Trash } from 'phosphor-react-native'
 import { Text } from '../ui/text'
 import { mobileText } from '../../i18n/mobileText'
@@ -16,6 +16,11 @@ import type {
   MobileTypeSchemaRelationship,
 } from '../../workspace/mobileTypeDefinitionSchema'
 import {
+  mobileQuickOpenMoveIndex,
+  mobileQuickOpenResults,
+  mobileQuickOpenSelectedNote,
+} from '../../workspace/mobileQuickOpen'
+import {
   mobilePropertyKeySuggestions,
   mobilePropertyValueSuggestions,
   mobileFolderSuggestions,
@@ -27,7 +32,7 @@ import { MobileTypeSectionEditor } from './MobileTypeSectionEditor'
 import { MobileViewDisplayPropertiesPicker } from './MobileViewDisplayPropertiesPicker'
 import { MobileViewFilterBuilder } from './MobileViewFilterBuilder'
 import { MobileWorkspaceSuggestionList } from './MobileWorkspaceSuggestionList'
-import { chipTone, statusTone, tagTone } from './mobileWorkspaceTone'
+import { chipTone, noteTypeColor, noteTypeSoftColor, statusTone, tagTone } from './mobileWorkspaceTone'
 
 export type MobileWorkspaceAction =
   | 'addProperty'
@@ -221,7 +226,36 @@ function SearchContent({
   onSelectNote,
   searchQuery,
 }: MobileWorkspaceActionSheetProps) {
-  const searchResults = searchNotes(notes, searchQuery)
+  const searchResults = useMemo(() => mobileQuickOpenResults(notes, searchQuery), [notes, searchQuery])
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0)
+
+  useEffect(() => {
+    setSelectedResultIndex(0) // eslint-disable-line react-hooks/set-state-in-effect -- reset when quick-open results change
+  }, [searchQuery, searchResults.length])
+
+  const selectResult = (note: MobileNote) => {
+    onSelectNote(note.id)
+    onSearchQueryChange('')
+    onClose()
+  }
+
+  const selectActiveResult = () => {
+    const selectedNote = mobileQuickOpenSelectedNote(searchResults, selectedResultIndex)
+    if (selectedNote) selectResult(selectedNote)
+  }
+
+  const handleKeyPress = (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+    if (event.nativeEvent.key === 'ArrowDown') {
+      setSelectedResultIndex((index) => mobileQuickOpenMoveIndex(index, searchResults.length, 'next'))
+    } else if (event.nativeEvent.key === 'ArrowUp') {
+      setSelectedResultIndex((index) => mobileQuickOpenMoveIndex(index, searchResults.length, 'previous'))
+    } else if (event.nativeEvent.key === 'Enter') {
+      selectActiveResult()
+    } else if (event.nativeEvent.key === 'Escape') {
+      onSearchQueryChange('')
+      onClose()
+    }
+  }
 
   return (
     <View style={styles.content}>
@@ -232,49 +266,28 @@ function SearchContent({
         testID="workspace-search-input"
         value={searchQuery}
         onChangeText={onSearchQueryChange}
+        onKeyPress={handleKeyPress}
+        onSubmitEditing={selectActiveResult}
       />
       <ScrollView contentContainerStyle={styles.resultList} keyboardShouldPersistTaps="handled" testID="workspace-search-results">
         {searchResults.length === 0 ? <EmptyState>{mobileText('noteList.empty.noMatching')}</EmptyState> : null}
-        {searchResults.map((note) => (
+        {searchResults.map((note, index) => (
           <MobileListRow
             key={note.id}
             chips={<NoteRowChips note={note} />}
-            selected={false}
+            selected={index === selectedResultIndex}
+            selectedBackgroundColor={noteTypeSoftColor(note.typeTone)}
+            selectedBorderColor={noteTypeColor(note.typeTone)}
             subtitle={note.snippet}
             testID={`workspace-search-result-${note.id}`}
             title={note.title}
             trailing={<MobileTypeIcon size={16} tone={note.typeTone} type={note.type} />}
-            onPress={() => {
-              onSelectNote(note.id)
-              onSearchQueryChange('')
-              onClose()
-            }}
+            onPress={() => selectResult(note)}
           />
         ))}
       </ScrollView>
     </View>
   )
-}
-
-function searchNotes(notes: MobileNote[], query: string) {
-  const normalizedQuery = query.trim().toLowerCase()
-  const activeNotes = notes.filter((note) => !note.archived)
-  if (!normalizedQuery) return activeNotes.slice(0, 16)
-
-  return activeNotes
-    .filter((note) => searchText(note).includes(normalizedQuery))
-    .slice(0, 16)
-}
-
-function searchText(note: MobileNote) {
-  return [
-    note.title,
-    note.snippet,
-    note.type,
-    note.status,
-    note.tags.join(' '),
-    note.path ?? '',
-  ].join(' ').toLowerCase()
 }
 
 function SingleTextFieldContent({ config }: { config: SingleTextFieldConfig }) {
