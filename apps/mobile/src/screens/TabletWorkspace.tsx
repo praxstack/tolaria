@@ -13,6 +13,7 @@ import {
 } from '../workspace/readOnlyWorkspaceRepository'
 import { mobileColors } from '../ui/tokens'
 import { useHorizontalSwipe } from '../ui/useHorizontalSwipe'
+import { mobileNoteIdForWikilinkTarget } from '../workspace/mobileWikilinks'
 import { TabletEditorPanel } from './TabletEditorPanel'
 import type { TabletPanel, TabletWorkspaceChromeProps } from './tabletWorkspaceTypes'
 import { useTabletWorkspaceController } from './useTabletWorkspaceController'
@@ -91,6 +92,10 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
   } = props
   const gestures = useTabletPanelGestures(compactTablet, defaultPropertiesVisible)
   const suggestionNotes = snapshot.allNotes ?? snapshot.notes
+  const handleNavigateWikilink = useCallback((target: string) => {
+    const noteId = mobileNoteIdForWikilinkTarget(suggestionNotes, target)
+    if (noteId) onSelectNote(noteId)
+  }, [onSelectNote, suggestionNotes])
 
   return (
     <View style={styles.shell}>
@@ -130,6 +135,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
         compact={compactTablet}
         note={selectedNote}
         notes={suggestionNotes}
+        onNavigateWikilink={handleNavigateWikilink}
         onOpenMoreActions={onOpenMoreActions}
         onToggleFavorite={onToggleFavorite}
         onUpdateContent={onUpdateNoteContent}
@@ -144,6 +150,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
             onAddRelationship={onAddRelationship}
             onDeleteProperty={onDeleteProperty}
             onEditProperty={onEditProperty}
+            onSelectNote={onSelectNote}
             onRemoveRelationship={onRemoveRelationship}
           />
         </View>

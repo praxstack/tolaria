@@ -97,6 +97,7 @@ export type MobileEditorInline = {
   code?: boolean
   italic?: boolean
   text: string
+  wikilinkTarget?: string
 }
 
 export type MobileEditorBlock =

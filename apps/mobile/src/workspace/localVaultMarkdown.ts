@@ -1,4 +1,5 @@
 import type { MobileEditorBlock, MobileEditorInline } from './mobileWorkspaceModel'
+import { parseMobileWikilink } from './mobileWikilinks'
 
 type MarkdownBody = string
 type MarkdownLine = string
@@ -253,7 +254,7 @@ function rawTableCells(line: MarkdownLine): MarkdownText[] {
 
 function parseInlineText(text: MarkdownText): MobileEditorInline[] {
   const segments: MobileEditorInline[] = []
-  const pattern = /(`([^`]+)`)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)/g
+  const pattern = /(`([^`]+)`)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(\[\[[^\]]+\]\])/g
   let cursor = 0
 
   for (const match of text.matchAll(pattern)) {
@@ -270,5 +271,16 @@ function parseInlineText(text: MarkdownText): MobileEditorInline[] {
 function inlineMatch(match: RegExpMatchArray): MobileEditorInline {
   if (match[2]) return { code: true, text: match[2] }
   if (match[4]) return { bold: true, text: stripMarkdown(match[4]) }
+  if (match[7]) return wikilinkInline(match[7])
   return { italic: true, text: stripMarkdown(match[6] ?? '') }
+}
+
+function wikilinkInline(value: MarkdownText): MobileEditorInline {
+  const parsed = parseMobileWikilink(value)
+  if (!parsed) return { text: stripMarkdown(value) }
+
+  return {
+    text: addSoftBreaks(parsed.display),
+    wikilinkTarget: parsed.target,
+  }
 }

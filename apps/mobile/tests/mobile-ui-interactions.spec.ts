@@ -180,6 +180,10 @@ async function addRelationshipFromSuggestion(page: PageLike) {
   await page.getByTestId('workspace-action-sheet-addRelationship').getByRole('button', { name: 'Add' }).click()
   await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
   await expect(page.getByTestId('relationship-row-how-i-run-an-open-source-project')).toBeVisible()
+  await page.getByTestId('relationship-row-how-i-run-an-open-source-project-open').click()
+  await expect(page.getByTestId('editor-title')).toHaveText('How I Run an Open Source Project')
+  await page.getByTestId('note-row-mobile-qa-draft.md').click()
+  await expect(page.getByTestId('editor-title')).toHaveText('Mobile QA Draft')
   await page.getByTestId('relationship-row-how-i-run-an-open-source-project').getByLabel('Remove').click()
   await expect(page.getByTestId('relationship-row-how-i-run-an-open-source-project')).toBeHidden()
 }
@@ -192,6 +196,11 @@ async function editMarkdownWithWikilink(page: PageLike) {
   await page.getByTestId('editor-wikilink-suggestion-open-source-project').click()
   await expect(page.getByTestId('editor-markdown-input')).toHaveValue('# Mobile QA Draft Revised\n\nDraft body referencing [[Tolaria/Mobile UI/How I Run an Open Source Project]]')
   await page.getByTestId('editor-edit-action').click()
+  await expect(page.getByTestId('editor-title')).toHaveText('Mobile QA Draft Revised')
+  await expect(page.getByTestId('editor-wikilink-tolaria-mobile-ui-how-i-run-an-open-source-project')).toBeVisible()
+  await page.getByTestId('editor-wikilink-tolaria-mobile-ui-how-i-run-an-open-source-project').click()
+  await expect(page.getByTestId('editor-title')).toHaveText('How I Run an Open Source Project')
+  await page.getByTestId('note-row-mobile-qa-draft.md').click()
   await expect(page.getByTestId('editor-title')).toHaveText('Mobile QA Draft Revised')
   await expect(page.getByText('Draft body referencing').first()).toBeVisible()
 }

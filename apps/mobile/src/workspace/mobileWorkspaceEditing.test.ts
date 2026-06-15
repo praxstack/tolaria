@@ -41,6 +41,12 @@ describe('applyMobileWorkspaceEdit', () => {
       type: 'Essay',
     })
     expect(note?.editorBlocks?.some((block) => block.kind === 'heading')).toBe(true)
+    expect(note?.editorBlocks?.[0]).toMatchObject({
+      content: expect.arrayContaining([
+        { text: 'open-source-project', wikilinkTarget: 'open-source-project' },
+      ]),
+      kind: 'paragraph',
+    })
   })
 
   it('removes existing fixture relationships without dropping the other relationship groups', () => {

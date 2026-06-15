@@ -29,8 +29,29 @@ type TabletEditorPanelProps = {
   compact: boolean
   note: MobileNote | null
   notes: MobileNote[]
+  onNavigateWikilink: (target: string) => void
   onOpenMoreActions: () => void
   onToggleFavorite: () => void
+  onUpdateContent: (noteId: string, content: string) => void
+  onUpdateTitle: (noteId: string, title: string) => void
+}
+
+type EditorToolbarProps = {
+  editing: boolean
+  note: MobileNote
+  onOpenMoreActions: () => void
+  onToggleEditing: () => void
+  onToggleFavorite: () => void
+}
+
+type EditorContentProps = {
+  blocks: MobileEditorBlock[]
+  bullets: string[]
+  compact: boolean
+  editing: boolean
+  note: MobileNote
+  notes: MobileNote[]
+  onNavigateWikilink: (target: string) => void
   onUpdateContent: (noteId: string, content: string) => void
   onUpdateTitle: (noteId: string, title: string) => void
 }
@@ -42,6 +63,7 @@ export function TabletEditorPanel(props: TabletEditorPanelProps) {
     compact,
     note,
     notes,
+    onNavigateWikilink,
     onOpenMoreActions,
     onToggleFavorite,
     onUpdateContent,
@@ -55,49 +77,95 @@ export function TabletEditorPanel(props: TabletEditorPanelProps) {
 
   return (
     <MobilePanel style={panelStyles.panel} testID="editor-panel">
-      <MobileToolbar testID="editor-toolbar">
-        <FileText color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} />
-        <MobileToolbarTitle testID="editor-toolbar-title" title={note.title} />
-        <MobileChip label={note.workspace} tone="gray" />
-        <MobileIconButton
-          accessibilityLabel={mobileText(note.favorite ? 'command.note.removeFavorite' : 'command.note.addFavorite')}
-          testID="editor-favorite-action"
-          onPress={onToggleFavorite}
-        >
-          <Star color={note.favorite ? mobileColors.primary : mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} weight={note.favorite ? 'fill' : 'regular'} />
-        </MobileIconButton>
-        <MobileIconButton
-          accessibilityLabel={mobileText(editing ? 'common.save' : 'editor.toolbar.rawOpen')}
-          testID="editor-edit-action"
-          onPress={() => setEditing((current) => !current)}
-        >
-          {editing
-            ? <Check color={mobileColors.primary} size={desktopToolbarActionParity.iconSize} weight="bold" />
-            : <PencilSimple color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} />}
-        </MobileIconButton>
-        <MobileIconButton accessibilityLabel={mobileText('editor.toolbar.moreActions')} testID="editor-more-action" onPress={onOpenMoreActions}>
-          <DotsThree color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} weight="bold" />
-        </MobileIconButton>
-      </MobileToolbar>
+      <EditorToolbar
+        editing={editing}
+        note={note}
+        onOpenMoreActions={onOpenMoreActions}
+        onToggleEditing={() => setEditing((current) => !current)}
+        onToggleFavorite={onToggleFavorite}
+      />
       <ScrollView contentContainerStyle={[panelStyles.content, compact ? panelStyles.contentCompact : null]} testID="editor-scroll">
-        {editing ? (
-          <MarkdownEditor
-            compact={compact}
-            note={note}
-            notes={notes}
-            onUpdateContent={onUpdateContent}
-            onUpdateTitle={onUpdateTitle}
-          />
-        ) : (
-          <>
-            <View style={panelStyles.titleBlock} testID="editor-title-block">
-              <Text style={[panelStyles.title, compact ? panelStyles.titleCompact : null]} testID="editor-title">{note.title}</Text>
-            </View>
-            <EditorBlocks blocks={blocks} fallbackBullets={bullets} />
-          </>
-        )}
+        <EditorContent
+          blocks={blocks}
+          bullets={bullets}
+          compact={compact}
+          editing={editing}
+          note={note}
+          notes={notes}
+          onNavigateWikilink={onNavigateWikilink}
+          onUpdateContent={onUpdateContent}
+          onUpdateTitle={onUpdateTitle}
+        />
       </ScrollView>
     </MobilePanel>
+  )
+}
+
+function EditorToolbar({
+  editing,
+  note,
+  onOpenMoreActions,
+  onToggleEditing,
+  onToggleFavorite,
+}: EditorToolbarProps) {
+  return (
+    <MobileToolbar testID="editor-toolbar">
+      <FileText color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} />
+      <MobileToolbarTitle testID="editor-toolbar-title" title={note.title} />
+      <MobileChip label={note.workspace} tone="gray" />
+      <MobileIconButton
+        accessibilityLabel={mobileText(note.favorite ? 'command.note.removeFavorite' : 'command.note.addFavorite')}
+        testID="editor-favorite-action"
+        onPress={onToggleFavorite}
+      >
+        <Star color={note.favorite ? mobileColors.primary : mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} weight={note.favorite ? 'fill' : 'regular'} />
+      </MobileIconButton>
+      <MobileIconButton
+        accessibilityLabel={mobileText(editing ? 'common.save' : 'editor.toolbar.rawOpen')}
+        testID="editor-edit-action"
+        onPress={onToggleEditing}
+      >
+        {editing
+          ? <Check color={mobileColors.primary} size={desktopToolbarActionParity.iconSize} weight="bold" />
+          : <PencilSimple color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} />}
+      </MobileIconButton>
+      <MobileIconButton accessibilityLabel={mobileText('editor.toolbar.moreActions')} testID="editor-more-action" onPress={onOpenMoreActions}>
+        <DotsThree color={mobileColors.textMuted} size={desktopToolbarActionParity.iconSize} weight="bold" />
+      </MobileIconButton>
+    </MobileToolbar>
+  )
+}
+
+function EditorContent({
+  blocks,
+  bullets,
+  compact,
+  editing,
+  note,
+  notes,
+  onNavigateWikilink,
+  onUpdateContent,
+  onUpdateTitle,
+}: EditorContentProps) {
+  if (editing) {
+    return (
+      <MarkdownEditor
+        compact={compact}
+        note={note}
+        notes={notes}
+        onUpdateContent={onUpdateContent}
+        onUpdateTitle={onUpdateTitle}
+      />
+    )
+  }
+
+  return (
+    <>
+      <View style={panelStyles.titleBlock} testID="editor-title-block">
+        <Text style={[panelStyles.title, compact ? panelStyles.titleCompact : null]} testID="editor-title">{note.title}</Text>
+      </View>
+      <EditorBlocks blocks={blocks} fallbackBullets={bullets} onNavigateWikilink={onNavigateWikilink} />
+    </>
   )
 }
 
@@ -179,9 +247,11 @@ function EmptyEditorPanel() {
 function EditorBlocks({
   blocks,
   fallbackBullets,
+  onNavigateWikilink,
 }: {
   blocks: MobileEditorBlock[]
   fallbackBullets: string[]
+  onNavigateWikilink: (target: string) => void
 }) {
   if (blocks.length === 0) {
     return <FallbackBullets bullets={fallbackBullets} />
@@ -189,7 +259,9 @@ function EditorBlocks({
 
   return (
     <>
-      {blocks.map((block, index) => <EditorBlock block={block} key={`${block.kind}-${index}`} />)}
+      {blocks.map((block, index) => (
+        <EditorBlock block={block} key={`${block.kind}-${index}`} onNavigateWikilink={onNavigateWikilink} />
+      ))}
     </>
   )
 }
@@ -207,9 +279,15 @@ function FallbackBullets({ bullets }: { bullets: string[] }) {
   )
 }
 
-function EditorBlock({ block }: { block: MobileEditorBlock }) {
+function EditorBlock({
+  block,
+  onNavigateWikilink,
+}: {
+  block: MobileEditorBlock
+  onNavigateWikilink: (target: string) => void
+}) {
   if (block.kind === 'paragraph') {
-    return <InlineText content={block.content} style={textStyles.paragraph} testID="editor-paragraph" />
+    return <InlineText content={block.content} style={textStyles.paragraph} testID="editor-paragraph" onNavigateWikilink={onNavigateWikilink} />
   }
 
   if (block.kind === 'heading') {
@@ -217,11 +295,11 @@ function EditorBlock({ block }: { block: MobileEditorBlock }) {
   }
 
   if (block.kind === 'bullets') {
-    return <EditorBulletList items={block.items} />
+    return <EditorBulletList items={block.items} onNavigateWikilink={onNavigateWikilink} />
   }
 
   if (block.kind === 'quote') {
-    return <EditorQuote content={block.content} />
+    return <EditorQuote content={block.content} onNavigateWikilink={onNavigateWikilink} />
   }
 
   return <EditorTable headers={block.headers} rows={block.rows} />
@@ -235,33 +313,47 @@ function EditorHeading({ block }: { block: Extract<MobileEditorBlock, { kind: 'h
   )
 }
 
-function EditorBulletList({ items }: { items: MobileEditorInline[][] }) {
+function EditorBulletList({
+  items,
+  onNavigateWikilink,
+}: {
+  items: MobileEditorInline[][]
+  onNavigateWikilink: (target: string) => void
+}) {
   return (
     <View style={bulletStyles.group}>
       {items.map((item, index) => (
         <View key={`bullet-${index}`} style={bulletStyles.row} testID="editor-bullet-row">
           <Text style={bulletStyles.marker}>•</Text>
-          <InlineText content={item} style={textStyles.body} testID="editor-bullet-text" />
+          <InlineText content={item} style={textStyles.body} testID="editor-bullet-text" onNavigateWikilink={onNavigateWikilink} />
         </View>
       ))}
     </View>
   )
 }
 
-function EditorQuote({ content }: { content: MobileEditorInline[] }) {
+function EditorQuote({
+  content,
+  onNavigateWikilink,
+}: {
+  content: MobileEditorInline[]
+  onNavigateWikilink: (target: string) => void
+}) {
   return (
     <View style={quoteStyles.container} testID="editor-quote">
-      <InlineText content={content} style={quoteStyles.text} testID="editor-quote-text" />
+      <InlineText content={content} style={quoteStyles.text} testID="editor-quote-text" onNavigateWikilink={onNavigateWikilink} />
     </View>
   )
 }
 
 function InlineText({
   content,
+  onNavigateWikilink,
   style,
   testID,
 }: {
   content: MobileEditorInline[]
+  onNavigateWikilink: (target: string) => void
   style: TextStyle
   testID?: string
 }) {
@@ -274,7 +366,10 @@ function InlineText({
             segment.bold ? inlineStyles.bold : null,
             segment.italic ? inlineStyles.italic : null,
             segment.code ? inlineStyles.code : null,
+            segment.wikilinkTarget ? inlineStyles.wikilink : null,
           ]}
+          testID={segment.wikilinkTarget ? `editor-wikilink-${testIdSegment(segment.wikilinkTarget)}` : undefined}
+          onPress={segment.wikilinkTarget ? () => onNavigateWikilink(segment.wikilinkTarget ?? '') : undefined}
         >
           {segment.text}
         </Text>
@@ -398,7 +493,14 @@ const inlineStyles = StyleSheet.create({
     color: mobileColors.text,
     fontStyle: 'italic',
   },
+  wikilink: {
+    color: mobileColors.primary,
+  },
 })
+
+function testIdSegment(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
 
 const editorFormStyles = StyleSheet.create({
   bodyInput: {

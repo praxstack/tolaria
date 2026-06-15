@@ -20,6 +20,7 @@ export function MobilePropertiesPanel({
   onDeleteProperty,
   onEditProperty,
   onRemoveRelationship,
+  onSelectNote,
 }: {
   compact: boolean
   note: MobileNote | null
@@ -28,6 +29,7 @@ export function MobilePropertiesPanel({
   onDeleteProperty: (noteId: string, key: string) => void
   onEditProperty: (noteId: string, key: string, value: MobilePropertyValue) => void
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
+  onSelectNote: (noteId: string) => void
 }) {
   return (
     <MobilePanel style={[panelStyles.panel, compact ? panelStyles.panelCompact : null]} testID="properties-panel">
@@ -43,6 +45,7 @@ export function MobilePropertiesPanel({
             onDeleteProperty={onDeleteProperty}
             onEditProperty={onEditProperty}
             onRemoveRelationship={onRemoveRelationship}
+            onSelectNote={onSelectNote}
           />
         ) : <PropertiesEmptyState />}
       </ScrollView>
@@ -57,6 +60,7 @@ function NoteProperties({
   onDeleteProperty,
   onEditProperty,
   onRemoveRelationship,
+  onSelectNote,
 }: {
   note: MobileNote
   onAddProperty: () => void
@@ -64,6 +68,7 @@ function NoteProperties({
   onDeleteProperty: (noteId: string, key: string) => void
   onEditProperty: (noteId: string, key: string, value: MobilePropertyValue) => void
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
+  onSelectNote: (noteId: string) => void
 }) {
   return (
     <>
@@ -95,6 +100,7 @@ function NoteProperties({
             noteId={note.id}
             relationship={relationship}
             onRemoveRelationship={onRemoveRelationship}
+            onSelectNote={onSelectNote}
           />
         </PropertySection>
       ))}
@@ -198,18 +204,31 @@ function PropertyActionRow({
 function RelationshipValues({
   noteId,
   onRemoveRelationship,
+  onSelectNote,
   relationship,
 }: {
   noteId: string
   relationship: MobileRelationship
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
+  onSelectNote: (noteId: string) => void
 }) {
   return (
     <View style={relationshipStyles.values}>
       {relationship.values.map((value) => (
         <View key={`${value.type}-${value.title}`} style={[relationshipStyles.row, relationshipRowTone(value.typeTone)]} testID={`relationship-row-${testIdSegment(value.title)}`}>
-          <MobileTypeIcon size={desktopRelationshipParity.iconSize} tone={value.typeTone} type={value.type} />
-          <Text numberOfLines={1} style={[relationshipStyles.text, relationshipTextTone(value.typeTone)]} testID={`relationship-row-${testIdSegment(value.title)}-text`}>{value.title}</Text>
+          <Pressable
+            accessibilityLabel={value.title}
+            accessibilityRole="button"
+            disabled={!value.id}
+            style={relationshipStyles.openTarget}
+            testID={`relationship-row-${testIdSegment(value.title)}-open`}
+            onPress={() => {
+              if (value.id) onSelectNote(value.id)
+            }}
+          >
+            <MobileTypeIcon size={desktopRelationshipParity.iconSize} tone={value.typeTone} type={value.type} />
+            <Text numberOfLines={1} style={[relationshipStyles.text, relationshipTextTone(value.typeTone)]} testID={`relationship-row-${testIdSegment(value.title)}-text`}>{value.title}</Text>
+          </Pressable>
           <Pressable
             accessibilityLabel={mobileText('common.remove')}
             accessibilityRole="button"
@@ -316,11 +335,17 @@ const relationshipStyles = StyleSheet.create({
     minHeight: desktopPropertyParity.rowMinHeight,
     alignItems: 'center',
     flexDirection: 'row',
-    gap: desktopRelationshipParity.rowGap,
     borderRadius: desktopRelationshipParity.rowRadius,
     paddingHorizontal: desktopRelationshipParity.rowPaddingHorizontal,
     paddingVertical: desktopRelationshipParity.rowPaddingVertical,
     width: '100%',
+  },
+  openTarget: {
+    minWidth: 0,
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: desktopRelationshipParity.rowGap,
   },
   text: {
     flex: 1,
