@@ -19,6 +19,7 @@ export function MobilePropertiesPanel({
   onAddRelationship,
   onDeleteProperty,
   onEditProperty,
+  onOpenChangeNoteType,
   onRemoveRelationship,
   onSelectNote,
 }: {
@@ -28,6 +29,7 @@ export function MobilePropertiesPanel({
   onAddRelationship: () => void
   onDeleteProperty: (noteId: string, key: string) => void
   onEditProperty: (noteId: string, key: string, value: MobilePropertyValue) => void
+  onOpenChangeNoteType: () => void
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
   onSelectNote: (noteId: string) => void
 }) {
@@ -44,6 +46,7 @@ export function MobilePropertiesPanel({
             onAddRelationship={onAddRelationship}
             onDeleteProperty={onDeleteProperty}
             onEditProperty={onEditProperty}
+            onOpenChangeNoteType={onOpenChangeNoteType}
             onRemoveRelationship={onRemoveRelationship}
             onSelectNote={onSelectNote}
           />
@@ -59,6 +62,7 @@ function NoteProperties({
   onAddRelationship,
   onDeleteProperty,
   onEditProperty,
+  onOpenChangeNoteType,
   onRemoveRelationship,
   onSelectNote,
 }: {
@@ -67,18 +71,38 @@ function NoteProperties({
   onAddRelationship: () => void
   onDeleteProperty: (noteId: string, key: string) => void
   onEditProperty: (noteId: string, key: string, value: MobilePropertyValue) => void
+  onOpenChangeNoteType: () => void
   onRemoveRelationship: (noteId: string, key: string, ref: string) => void
   onSelectNote: (noteId: string) => void
 }) {
   return (
     <>
-      <MobilePropertyRow label="Type" testID="property-row-type" value={<MobileChip label={note.type} tone={chipTone(note.typeTone)} />} />
-      {note.status ? <MobilePropertyRow label={mobileText('noteList.sort.status')} testID="property-row-status" value={<MobileChip label={note.status} tone={statusTone(note.status)} />} /> : null}
+      <MobilePropertyRow label="Type" testID="property-row-type" value={(
+        <EditableChipValue
+          label={note.type}
+          testID="property-row-type-edit"
+          tone={chipTone(note.typeTone)}
+          onPress={onOpenChangeNoteType}
+        />
+      )} />
+      {note.status ? (
+        <MobilePropertyRow label={mobileText('noteList.sort.status')} testID="property-row-status" value={(
+          <EditableChipValue
+            label={note.status}
+            testID="property-row-status-edit"
+            tone={statusTone(note.status)}
+            onPress={() => onEditProperty(note.id, 'Status', note.status)}
+          />
+        )} />
+      ) : null}
       <MobilePropertyRow label={mobileText('noteList.sort.created')} testID="property-row-created" value={note.created} />
       <MobilePropertyRow label={mobileCopy.modified} testID="property-row-modified" value={note.modified} />
       <MobilePropertyRow label={mobileText('inspector.properties.workspace')} testID="property-row-workspace" value={<WorkspaceBadge label={note.workspace} />} />
       <PropertySection label="Tags" testID="property-section-tags">
-        <TagWrap labels={note.tags} />
+        <EditableTagsValue
+          labels={note.tags}
+          onPress={() => onEditProperty(note.id, 'tags', note.tags)}
+        />
       </PropertySection>
       <MobilePropertyRow label="Links" testID="property-row-links" value={`${note.links}`} />
       {note.properties?.map((property) => (
@@ -107,6 +131,38 @@ function NoteProperties({
       <PropertyActionRow label={mobileText('inspector.properties.addProperty')} testID="property-action-add-property" onPress={onAddProperty} />
       <PropertyActionRow label={mobileText('inspector.relationship.addRelationship')} testID="property-action-add-relationship" onPress={onAddRelationship} />
     </>
+  )
+}
+
+function EditableChipValue({
+  label,
+  onPress,
+  testID,
+  tone,
+}: {
+  label: string
+  onPress: () => void
+  testID: string
+  tone: Parameters<typeof MobileChip>[0]['tone']
+}) {
+  return (
+    <Pressable accessibilityLabel={label} accessibilityRole="button" testID={testID} onPress={onPress}>
+      <MobileChip label={label} tone={tone} />
+    </Pressable>
+  )
+}
+
+function EditableTagsValue({
+  labels,
+  onPress,
+}: {
+  labels: string[]
+  onPress: () => void
+}) {
+  return (
+    <Pressable accessibilityLabel="Tags" accessibilityRole="button" testID="property-tags-edit" onPress={onPress}>
+      <TagWrap labels={labels} />
+    </Pressable>
   )
 }
 

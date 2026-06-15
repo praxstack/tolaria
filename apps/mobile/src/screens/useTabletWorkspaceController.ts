@@ -30,6 +30,7 @@ const emptyReadOnlyForm: TabletReadOnlyForm = {
   noteType: '',
   propertyName: '',
   propertyValue: '',
+  propertyValueKind: 'string',
   relationshipName: '',
   relationshipNoteTitle: '',
   viewFilters: { all: [] },
@@ -303,6 +304,7 @@ function actionSheetWorkspaceActions({
     }),
     onOpenMoreActions: () => setOpenAction('moreActions'),
     onOpenChangeNoteType: () => openChangeNoteType({
+      currentType: selectedNote?.type ?? '',
       setOpenAction,
       updateReadOnlyForm,
     }),
@@ -466,13 +468,15 @@ function editorWorkspaceActions({
 }
 
 function openChangeNoteType({
+  currentType,
   setOpenAction,
   updateReadOnlyForm,
 }: {
+  currentType: string
   setOpenAction: SetOpenAction
   updateReadOnlyForm: ReadOnlyFormUpdater
 }) {
-  updateReadOnlyForm('noteType', '')
+  updateReadOnlyForm('noteType', currentType)
   setOpenAction('changeNoteType')
 }
 
@@ -500,6 +504,7 @@ function openEditProperty({
 }) {
   updateReadOnlyForm('propertyName', key)
   updateReadOnlyForm('propertyValue', propertyValueFormText(value))
+  updateReadOnlyForm('propertyValueKind', propertyValueKind(key, value))
   setOpenAction('editProperty')
 }
 
@@ -715,6 +720,13 @@ function propertyValueFormText(value: MobilePropertyValue): string {
   return String(value)
 }
 
+function propertyValueKind(key: string, value: MobilePropertyValue): TabletReadOnlyForm['propertyValueKind'] {
+  if (isListPropertyKey(key) || Array.isArray(value)) return 'list'
+  if (typeof value === 'boolean') return 'boolean'
+  if (typeof value === 'number') return 'number'
+  return 'string'
+}
+
 function viewColorForSelection(selection: TabletSidebarSelection, selectedNote: MobileNote | null): MobileViewDefinition['color'] {
   if (selection.kind === 'item' && selection.sectionId === 'types') return selectedNote?.typeTone ?? 'gray'
   return selectedNote?.typeTone ?? 'gray'
@@ -725,8 +737,32 @@ function propertyEdit(form: TabletReadOnlyForm, noteId: string): MobileWorkspace
     key: form.propertyName,
     noteId,
     type: 'updateProperty',
-    value: form.propertyValue,
+    value: parsedPropertyValue(form),
   }
+}
+
+function parsedPropertyValue(form: TabletReadOnlyForm): MobilePropertyValue {
+  if (isListPropertyKey(form.propertyName) || form.propertyValueKind === 'list') return listPropertyValue(form.propertyValue)
+  if (form.propertyValueKind === 'boolean') return booleanPropertyValue(form.propertyValue)
+  if (form.propertyValueKind === 'number') return numberPropertyValue(form.propertyValue)
+  return form.propertyValue.trim()
+}
+
+function listPropertyValue(value: string): string[] {
+  return value.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function booleanPropertyValue(value: string): boolean {
+  return /^(true|yes|1|on)$/iu.test(value.trim())
+}
+
+function numberPropertyValue(value: string): number | string {
+  const parsed = Number(value.trim())
+  return Number.isFinite(parsed) ? parsed : value.trim()
+}
+
+function isListPropertyKey(key: string): boolean {
+  return key.trim().toLowerCase() === 'tags'
 }
 
 function relationshipEdit(form: TabletReadOnlyForm, noteId: string): MobileWorkspaceEdit {

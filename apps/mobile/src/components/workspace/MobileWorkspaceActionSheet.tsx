@@ -403,7 +403,7 @@ function AddPropertyContent({
         labels={valueSuggestions}
         testID="workspace-property-value-suggestions"
         testIDPrefix="workspace-property-value-suggestion"
-        onSelect={onPropertyValueChange}
+        onSelect={(value) => onPropertyValueChange(propertySuggestionValue(propertyName, propertyValue, value))}
       />
       <SheetFooter>
         <MobileButton label={mobileText('common.cancel')} variant="ghost" onPress={onClose} />
@@ -667,6 +667,15 @@ function relationshipSuggestions(notes: MobileNote[], query: string) {
       note.tags.join(' '),
     ].join(' ').toLowerCase().includes(normalized))
     .slice(0, 6)
+}
+
+function propertySuggestionValue(propertyName: string, propertyValue: string, suggestion: string) {
+  if (propertyName.trim().toLowerCase() !== 'tags') return suggestion
+
+  const parts = propertyValue.split(',').map((part) => part.trim())
+  const existing = parts.slice(0, -1).filter(Boolean)
+  const withoutSuggestion = existing.filter((part) => part.toLowerCase() !== suggestion.toLowerCase())
+  return [...withoutSuggestion, suggestion].join(', ')
 }
 
 function actionTitle(action: MobileWorkspaceAction, propertyName: string) {

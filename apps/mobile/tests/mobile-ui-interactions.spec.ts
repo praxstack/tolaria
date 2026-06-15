@@ -69,14 +69,31 @@ async function toggleFavorite(page: PageLike) {
 }
 
 async function retargetSelectedRelease(page: PageLike) {
-  await page.getByTestId('editor-more-action').click()
-  await expect(page.getByTestId('workspace-action-change-note-type')).toBeVisible()
-  await page.getByTestId('workspace-action-change-note-type').click()
+  await page.getByTestId('property-row-type-edit').click()
   await expect(page.getByTestId('workspace-change-type-input')).toBeVisible()
+  await expect(page.getByTestId('workspace-change-type-input')).toHaveValue('Release')
+  await page.getByTestId('workspace-change-type-input').fill('Proc')
   await page.getByTestId('workspace-change-type-suggestion-procedure').click()
   await page.getByTestId('workspace-action-sheet-changeNoteType').getByRole('button', { name: 'Save' }).click()
   await expect(page.getByTestId('workspace-action-sheet')).toBeHidden()
   await expect(page.getByTestId('property-row-type')).toContainText('Procedure')
+
+  await page.getByTestId('property-row-status-edit').click()
+  await expect(page.getByTestId('workspace-action-sheet-editProperty')).toBeVisible()
+  await expect(page.getByTestId('workspace-property-name-input')).toHaveValue('Status')
+  await expect(page.getByTestId('workspace-property-value-input')).toHaveValue('Shipped')
+  await page.getByTestId('workspace-property-value-input').fill('Active')
+  await page.getByTestId('workspace-action-sheet-editProperty').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('property-row-status')).toContainText('Active')
+
+  await page.getByTestId('property-tags-edit').click()
+  await expect(page.getByTestId('workspace-property-name-input')).toHaveValue('tags')
+  await expect(page.getByTestId('workspace-property-value-input')).toHaveValue('Tolaria MVP')
+  await page.getByTestId('workspace-property-value-input').fill('Tolaria MVP, De')
+  await page.getByTestId('workspace-property-value-suggestion-design').click()
+  await expect(page.getByTestId('workspace-property-value-input')).toHaveValue('Tolaria MVP, Design')
+  await page.getByTestId('workspace-action-sheet-editProperty').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('property-tags-wrap')).toContainText('Design')
 
   await page.getByTestId('editor-more-action').click()
   await expect(page.getByTestId('workspace-action-move-note-folder')).toBeVisible()

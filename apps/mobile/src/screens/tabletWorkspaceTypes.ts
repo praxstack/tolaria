@@ -19,6 +19,7 @@ import type {
 } from './tabletWorkspaceNavigation'
 
 export type TabletPanel = 'noteList' | 'properties' | 'sidebar'
+export type TabletPropertyValueKind = 'boolean' | 'list' | 'number' | 'string'
 
 export type TabletReadOnlyForm = {
   createTitle: ReadOnlyFormValue
@@ -27,6 +28,7 @@ export type TabletReadOnlyForm = {
   noteType: ReadOnlyFormValue
   propertyName: ReadOnlyFormValue
   propertyValue: ReadOnlyFormValue
+  propertyValueKind: TabletPropertyValueKind
   relationshipName: ReadOnlyFormValue
   relationshipNoteTitle: ReadOnlyFormValue
   viewFilters: MobileViewFilterGroup

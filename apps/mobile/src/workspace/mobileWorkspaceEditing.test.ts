@@ -78,6 +78,19 @@ describe('applyMobileWorkspaceEdit', () => {
     expect(note?.properties).toContainEqual({ key: 'priority', label: 'Priority', value: 'High' })
   })
 
+  it('writes tag lists as frontmatter arrays and re-derives note tags', () => {
+    const snapshot = applyMobileWorkspaceEdit(workspaceScenarioForId('default'), {
+      key: 'tags',
+      noteId: 'release-2026-05-02',
+      type: 'updateProperty',
+      value: ['Tolaria MVP', 'Design'],
+    })
+
+    const note = snapshot.notes.find((candidate) => candidate.id === 'release-2026-05-02')
+    expect(note?.rawContent).toContain('tags:\n  - Tolaria MVP\n  - Design')
+    expect(note?.tags).toEqual(['Tolaria MVP', 'Design'])
+  })
+
   it('adds and removes typed relationships using exact wikilink refs', () => {
     const withRelationship = applyMobileWorkspaceEdit(workspaceScenarioForId('default'), {
       key: 'belongs_to',

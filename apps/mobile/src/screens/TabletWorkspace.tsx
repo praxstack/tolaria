@@ -73,6 +73,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
     onAddRelationship,
     onDeleteProperty,
     onEditProperty,
+    onOpenChangeNoteType,
     onOpenCreateNote,
     onOpenCreateView,
     onOpenMoreActions,
@@ -150,6 +151,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
             onAddRelationship={onAddRelationship}
             onDeleteProperty={onDeleteProperty}
             onEditProperty={onEditProperty}
+            onOpenChangeNoteType={onOpenChangeNoteType}
             onSelectNote={onSelectNote}
             onRemoveRelationship={onRemoveRelationship}
           />

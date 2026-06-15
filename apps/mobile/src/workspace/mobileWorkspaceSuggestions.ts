@@ -41,7 +41,9 @@ export function mobilePropertyValueSuggestions(
 ): PropertyValueText[] {
   const normalizedKey = canonicalSuggestionKey(key)
   if (!normalizedKey) return []
-  return visibleSuggestions(propertyValueCandidates(notes, normalizedKey), query)
+  const listQuery = propertyListQuery(query, normalizedKey)
+  return visibleSuggestions(propertyValueCandidates(notes, normalizedKey), listQuery.query)
+    .filter((value) => !listQuery.selected.has(canonicalSuggestionKey(value)))
 }
 
 export function mobileRelationshipKeySuggestions(
@@ -219,6 +221,20 @@ function propertyValueTexts(
   const property = propertiesForNote(note).find((candidate) => canonicalSuggestionKey(candidate.key) === normalizedKey)
   if (!property) return []
   return Array.isArray(property.value) ? property.value : [String(property.value)]
+}
+
+function propertyListQuery(
+  query: SuggestionQuery,
+  normalizedKey: NormalizedSuggestionKey,
+): { query: SuggestionQuery; selected: Set<NormalizedSuggestionKey> } {
+  if (normalizedKey !== 'tags') return { query, selected: new Set() }
+
+  const parts = query.split(',').map((part) => part.trim())
+  const activeQuery = parts.at(-1) ?? ''
+  return {
+    query: activeQuery,
+    selected: new Set(parts.slice(0, -1).map(canonicalSuggestionKey)),
+  }
 }
 
 function relationshipFrontmatterKey(relationship: MobileRelationship): RelationshipKey {
