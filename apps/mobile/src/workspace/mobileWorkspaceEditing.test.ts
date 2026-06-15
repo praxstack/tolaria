@@ -6,7 +6,7 @@ import {
   replaceTrailingWikilinkQuery,
   trailingWikilinkQuery,
 } from './mobileWorkspaceEditing'
-import type { MobileSidebarFolder, MobileWorkspaceSnapshot } from './mobileWorkspaceModel'
+import type { MobileNote, MobileSidebarFolder, MobileWorkspaceSnapshot } from './mobileWorkspaceModel'
 
 describe('applyMobileWorkspaceEdit', () => {
   it('creates a selected editable note with markdown content', () => {
@@ -188,6 +188,19 @@ describe('applyMobileWorkspaceEdit', () => {
     expect(sidebarFolders(result.snapshot)).toContainEqual(
       expect.objectContaining({ id: 'Writing/Essays', name: 'Essays' }),
     )
+  })
+
+  it('updates inbound wikilinks and relationship refs when notes move folders', () => {
+    const { movedSource, referringNote, snapshot } = workspaceMoveLinkScenario()
+    const result = applyMobileWorkspaceEditWithWrites(snapshot, {
+      folderPath: 'Writing/Essays',
+      noteId: movedSource.id,
+      type: 'moveNoteToFolder',
+    })
+    const updatedRef = noteById(result.snapshot, referringNote.id)
+
+    expectMovedWikilinks(updatedRef, movedSource.id)
+    expectMoveWikilinkWrites(result.writes, updatedRef.rawContent ?? '')
   })
 
   it('retargets path-backed note ids when a local-vault note moves folders', () => {
@@ -559,4 +572,78 @@ function sidebarFolders(snapshot: MobileWorkspaceSnapshot) {
 
 function flattenSidebarFolders(folders: MobileSidebarFolder[]): MobileSidebarFolder[] {
   return folders.flatMap((folder) => [folder, ...flattenSidebarFolders(folder.children)])
+}
+
+function workspaceMoveLinkScenario() {
+  const base = workspaceScenarioForId('default')
+  const movedSource = {
+    ...base.notes[0],
+    rawContent: '# Workflow Orchestration Essay\n\nMove me.\n',
+  }
+  const referringNote = {
+    ...base.notes[1],
+    id: 'Refs.md',
+    path: 'Refs.md',
+    rawContent: movedReferenceContent(),
+  }
+
+  return {
+    movedSource,
+    referringNote,
+    snapshot: {
+      ...base,
+      allNotes: [movedSource, referringNote],
+      notes: [movedSource, referringNote],
+    },
+  }
+}
+
+function movedReferenceContent() {
+  return [
+    '---',
+    'related_to:',
+    '  - [[Workflow Orchestration Essay]]',
+    'belongs_to:',
+    '  - [[Tolaria/Mobile UI/Workflow Orchestration Essay|Workflow]]',
+    '---',
+    '# Ref',
+    '',
+    'See [[Tolaria/Mobile UI/Workflow Orchestration Essay|essay]] before launch.',
+    '',
+  ].join('\n')
+}
+
+function noteById(snapshot: MobileWorkspaceSnapshot, noteId: string): MobileNote {
+  const note = snapshot.allNotes?.find((candidate) => candidate.id === noteId)
+  if (!note) throw new Error(`Missing note ${noteId}`)
+  return note
+}
+
+function expectMovedWikilinks(note: MobileNote, movedNoteId: string) {
+  const content = note.rawContent ?? ''
+  expect(content).toContain('[[Writing/Essays/Workflow Orchestration Essay]]')
+  expect(content).toContain('[[Writing/Essays/Workflow Orchestration Essay|Workflow]]')
+  expect(content).toContain('[[Writing/Essays/Workflow Orchestration Essay|essay]]')
+  expect(content).not.toContain('[[Workflow Orchestration Essay]]')
+  expect(content).not.toContain('[[Tolaria/Mobile UI/Workflow Orchestration Essay')
+  expect(note.relationships.find((relationship) => relationship.key === 'related_to')?.values[0]).toMatchObject({
+    id: movedNoteId,
+    title: 'Workflow Orchestration Essay',
+  })
+}
+
+function expectMoveWikilinkWrites(writes: ReturnType<typeof applyMobileWorkspaceEditWithWrites>['writes'], refContent: string) {
+  expect(writes).toEqual([
+    { kind: 'deleteNote', path: 'Tolaria/Mobile UI/Workflow Orchestration Essay.md' },
+    {
+      content: '# Workflow Orchestration Essay\n\nMove me.\n',
+      kind: 'saveNote',
+      path: 'Writing/Essays/Workflow Orchestration Essay.md',
+    },
+    {
+      content: refContent,
+      kind: 'saveNote',
+      path: 'Refs.md',
+    },
+  ])
 }

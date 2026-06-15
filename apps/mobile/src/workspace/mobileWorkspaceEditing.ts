@@ -369,8 +369,10 @@ function moveNoteToFolder(
   const nextNote = movedNote(previousNote, folderPath)
   if (nextNote === previousNote) return { snapshot, writes: [] }
 
-  const nextNotes = snapshot.notes.map((note) => note.id === previousNote.id ? nextNote : note)
-  const nextAllNotes = snapshot.allNotes?.map((note) => note.id === previousNote.id ? nextNote : note)
+  const previousPool = workspaceNotePool(snapshot)
+  const nextPool = moveWorkspaceNotes(previousPool, previousNote, nextNote)
+  const nextNotes = moveWorkspaceNotes(snapshot.notes, previousNote, nextNote)
+  const nextAllNotes = snapshot.allNotes ? nextPool : undefined
   const nextSelectedNoteId = snapshot.selectedNoteId === previousNote.id ? nextNote.id : snapshot.selectedNoteId
   const nextSnapshot = rebuildSnapshot(
     { ...snapshot, allNotes: nextAllNotes, selectedNoteId: nextSelectedNoteId },
@@ -380,8 +382,20 @@ function moveNoteToFolder(
 
   return {
     snapshot: nextSnapshot,
-    writes: moveNoteWrites(previousNote, nextNote),
+    writes: moveNoteWrites(previousNote, nextNote, previousPool, nextPool),
   }
+}
+
+function moveWorkspaceNotes(
+  notes: MobileNote[],
+  previousNote: MobileNote,
+  nextNote: MobileNote,
+): MobileNote[] {
+  const rewrite = movedNoteWikilinkRewrite(previousNote, nextNote)
+  return notes.map((note) => {
+    if (note.id === previousNote.id) return nextNote
+    return rewriteMovedNoteWikilinks(note, rewrite)
+  })
 }
 
 function movedNote(note: MobileNote, folderPath: FolderPath): MobileNote {
@@ -397,7 +411,12 @@ function movedNote(note: MobileNote, folderPath: FolderPath): MobileNote {
   }
 }
 
-function moveNoteWrites(previousNote: MobileNote, nextNote: MobileNote): MobileWorkspaceWrite[] {
+function moveNoteWrites(
+  previousNote: MobileNote,
+  nextNote: MobileNote,
+  previousPool: MobileNote[],
+  nextPool: MobileNote[],
+): MobileWorkspaceWrite[] {
   const previousPath = noteWritePath(previousNote)
   const nextPath = noteWritePath(nextNote)
   if (previousPath === nextPath || nextNote.rawContent === undefined) return []
@@ -405,11 +424,72 @@ function moveNoteWrites(previousNote: MobileNote, nextNote: MobileNote): MobileW
   return [
     { kind: 'deleteNote', path: previousPath },
     { content: nextNote.rawContent, kind: 'saveNote', path: nextPath },
+    ...movedWikilinkWrites(previousPool, nextPool, nextPath),
   ]
+}
+
+function movedWikilinkWrites(
+  previousPool: MobileNote[],
+  nextPool: MobileNote[],
+  movedPath: string,
+): MobileWorkspaceWrite[] {
+  const previousRawContent = new Map(previousPool.map((note) => [noteWritePath(note), note.rawContent]))
+  return nextPool.flatMap((note) => {
+    const path = noteWritePath(note)
+    if (path === movedPath || note.rawContent === undefined) return []
+    if (previousRawContent.get(path) === note.rawContent) return []
+    return [{ content: note.rawContent, kind: 'saveNote', path }]
+  })
+}
+
+type MovedNoteWikilinkRewrite = {
+  newTarget: WikilinkTarget
+  oldTargets: Set<WikilinkTarget>
+}
+
+function movedNoteWikilinkRewrite(
+  previousNote: MobileNote,
+  nextNote: MobileNote,
+): MovedNoteWikilinkRewrite {
+  return {
+    newTarget: notePathStem(noteWritePath(nextNote)),
+    oldTargets: new Set([
+      previousNote.title,
+      notePathStem(noteWritePath(previousNote)),
+      filenameStem(noteWritePath(previousNote)),
+    ].filter(Boolean)),
+  }
+}
+
+function rewriteMovedNoteWikilinks(
+  note: MobileNote,
+  rewrite: MovedNoteWikilinkRewrite,
+): MobileNote {
+  if (note.rawContent === undefined) return note
+
+  const rawContent = replaceMovedWikilinks(note.rawContent, rewrite)
+  return rawContent === note.rawContent ? note : { ...note, rawContent }
+}
+
+function replaceMovedWikilinks(
+  content: MarkdownContent,
+  rewrite: MovedNoteWikilinkRewrite,
+): MarkdownContent {
+  return content.replace(/\[\[([^\]|]+)(\|[^\]]*)?\]\]/g, (match, target: string, alias: string | undefined) => {
+    return rewrite.oldTargets.has(target.trim()) ? `[[${rewrite.newTarget}${alias ?? ''}]]` : match
+  })
 }
 
 function noteFilename(path: string): string {
   return path.split('/').filter(Boolean).at(-1) ?? path
+}
+
+function filenameStem(path: string): string {
+  return noteFilename(path).replace(/\.md$/u, '')
+}
+
+function notePathStem(path: string): string {
+  return path.replace(/\.md$/u, '')
 }
 
 function normalizedFolderPath(folderPath: FolderPath): FolderPath {
