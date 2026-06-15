@@ -38,14 +38,21 @@ export const desktopSidebarParity = {
   countPillTextSize: 10,
   folderIconGap: 8,
   folderIconSize: 17,
+  folderRowContentHeight: 18,
   folderRowContentInset: 12,
+  folderRowHeight: 30,
   folderRowIndent: 25,
   groupHeaderPadding: {
     regular: { bottom: 8, left: 12, right: 14, top: 8 },
     withCount: { bottom: 8, left: 12, right: 8, top: 8 },
   },
+  itemContentHeight: {
+    regular: 18,
+    withCount: 20,
+  },
   itemGap: 8,
   itemIconSize: 16,
+  itemLabelLineHeight: 18,
   itemPadding: {
     regular: { bottom: 6, left: 12, right: 16, top: 6 },
     withCount: { bottom: 6, left: 12, right: 8, top: 6 },
@@ -56,6 +63,7 @@ export const desktopSidebarParity = {
   sectionHorizontalPadding: 6,
   sectionTitleFontWeight: '600',
   sectionTitleLetterSpacing: 0.5,
+  sectionTitleLineHeight: 14,
   titleBarHeight: 52,
   topNavPadding: { bottom: 4, left: 6, right: 6, top: 4 },
 } as const

@@ -18,12 +18,17 @@ describe('native layout metrics', () => {
         height: desktopSidebarParity.countPillHeight,
       },
       folderSectionContentPaddingBottom: desktopSidebarParity.sectionContentPaddingBottom,
+      folderRowContentHeight: desktopSidebarParity.folderRowContentHeight,
       folderRowContentInset: desktopSidebarParity.folderRowContentInset,
+      folderRowHeight: desktopSidebarParity.folderRowHeight,
       folderRowIndent: desktopSidebarParity.folderRowIndent,
+      itemContentHeight: desktopSidebarParity.itemContentHeight,
+      itemLabelLineHeight: desktopSidebarParity.itemLabelLineHeight,
       itemPadding: desktopSidebarParity.itemPadding,
       primarySectionItemCount: 3,
       sectionHorizontalPadding: desktopSidebarParity.sectionHorizontalPadding,
       sectionTitleMinHeight: 30,
+      sectionTitleLineHeight: desktopSidebarParity.sectionTitleLineHeight,
       topNavPadding: desktopSidebarParity.topNavPadding,
     })
     expect(nativeNoteListMetricContract).toEqual({
@@ -195,6 +200,14 @@ function itemMetric(
       x: 12,
       y: hasCount ? 6 : 7,
     },
+    {
+      height: desktopSidebarParity.itemLabelLineHeight,
+      id: `${id}.label`,
+      platform: 'ios',
+      width: hasCount ? 174.5 : 196.5,
+      x: 23,
+      y: hasCount ? 1 : 0,
+    },
     ...(hasCount ? countPillMetric(`${id}.count`) : []),
   ]
 }
@@ -347,6 +360,14 @@ function folderMetric(id: string, contentX: number, y = 0): NativeLayoutMetric[]
       x: contentX,
       y: 6,
     },
+    {
+      height: desktopSidebarParity.itemLabelLineHeight,
+      id: `${id}.label`,
+      platform: 'ios',
+      width: 172.5,
+      x: 52,
+      y: 0,
+    },
   ]
 }
 
@@ -371,14 +392,26 @@ function folderTreeRootMetric(
 }
 
 function sectionMetric(sectionId: string, rowHeight = 30): NativeLayoutMetric[] {
-  return [{
-    height: rowHeight,
-    id: `sidebar.section.${sectionId}.row`,
-    platform: 'ios',
-    width: 247.5,
-    x: 6,
-    y: 0,
-  }]
+  const labelY = (rowHeight - desktopSidebarParity.sectionTitleLineHeight) / 2
+
+  return [
+    {
+      height: rowHeight,
+      id: `sidebar.section.${sectionId}.row`,
+      platform: 'ios',
+      width: 247.5,
+      x: 6,
+      y: 0,
+    },
+    {
+      height: desktopSidebarParity.sectionTitleLineHeight,
+      id: `sidebar.section.${sectionId}.label`,
+      platform: 'ios',
+      width: 206.5,
+      x: 27,
+      y: labelY,
+    },
+  ]
 }
 
 function containerMetric(

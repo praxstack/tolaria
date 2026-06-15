@@ -42,8 +42,15 @@ type MetricExpectation = {
 }
 
 type SidebarItemMetricSpec = {
+  contentHeight: number
   id: string
   padding: SidebarPadding
+}
+
+type SidebarItemMetrics = {
+  content: NativeLayoutMetric | undefined
+  label: NativeLayoutMetric | undefined
+  row: NativeLayoutMetric | undefined
 }
 
 type NoteListItemMetricSpec = {
@@ -83,8 +90,15 @@ export const nativeSidebarMetricContract = {
     height: 20,
   },
   folderSectionContentPaddingBottom: 8,
+  folderRowContentHeight: 18,
   folderRowContentInset: 12,
+  folderRowHeight: 30,
   folderRowIndent: 25,
+  itemContentHeight: {
+    regular: 18,
+    withCount: 20,
+  },
+  itemLabelLineHeight: 18,
   itemPadding: {
     regular: { bottom: 6, left: 12, right: 16, top: 6 },
     withCount: { bottom: 6, left: 12, right: 8, top: 6 },
@@ -92,6 +106,7 @@ export const nativeSidebarMetricContract = {
   primarySectionItemCount: 3,
   sectionHorizontalPadding: 6,
   sectionTitleMinHeight: 30,
+  sectionTitleLineHeight: 14,
   topNavPadding: { bottom: 4, left: 6, right: 6, top: 4 },
 } as const
 
@@ -104,12 +119,12 @@ export const nativeNoteListMetricContract = {
 } as const
 
 const sidebarItemMetricSpecs: SidebarItemMetricSpec[] = [
-  { id: 'sidebar.item.inbox', padding: nativeSidebarMetricContract.itemPadding.withCount },
-  { id: 'sidebar.item.all-notes', padding: nativeSidebarMetricContract.itemPadding.withCount },
-  { id: 'sidebar.item.archive', padding: nativeSidebarMetricContract.itemPadding.withCount },
-  { id: 'sidebar.item.personal-journal', padding: nativeSidebarMetricContract.itemPadding.regular },
-  { id: 'sidebar.item.view-active-procedures', padding: nativeSidebarMetricContract.itemPadding.withCount },
-  { id: 'sidebar.item.essays', padding: nativeSidebarMetricContract.itemPadding.withCount },
+  { contentHeight: nativeSidebarMetricContract.itemContentHeight.withCount, id: 'sidebar.item.inbox', padding: nativeSidebarMetricContract.itemPadding.withCount },
+  { contentHeight: nativeSidebarMetricContract.itemContentHeight.withCount, id: 'sidebar.item.all-notes', padding: nativeSidebarMetricContract.itemPadding.withCount },
+  { contentHeight: nativeSidebarMetricContract.itemContentHeight.withCount, id: 'sidebar.item.archive', padding: nativeSidebarMetricContract.itemPadding.withCount },
+  { contentHeight: nativeSidebarMetricContract.itemContentHeight.regular, id: 'sidebar.item.personal-journal', padding: nativeSidebarMetricContract.itemPadding.regular },
+  { contentHeight: nativeSidebarMetricContract.itemContentHeight.withCount, id: 'sidebar.item.view-active-procedures', padding: nativeSidebarMetricContract.itemPadding.withCount },
+  { contentHeight: nativeSidebarMetricContract.itemContentHeight.withCount, id: 'sidebar.item.essays', padding: nativeSidebarMetricContract.itemPadding.withCount },
 ]
 
 const noteListItemMetricSpecs: NoteListItemMetricSpec[] = [
@@ -297,6 +312,7 @@ function assertSectionTitleLayout({
 }): NativeLayoutAssertionFailure[] {
   const id = `sidebar.section.${sectionId}`
   const titleRow = metrics[`${id}.row`]
+  const titleLabel = metrics[`${id}.label`]
   const firstContent = metrics[firstContentMetricId]
 
   return [
@@ -304,6 +320,11 @@ function assertSectionTitleLayout({
       id,
       message: 'section title row is captured before checking native sidebar spacing',
       metric: titleRow,
+    }),
+    ...expectMetric({
+      id,
+      message: 'section title label is captured before checking native text alignment',
+      metric: titleLabel,
     }),
     ...expectMetric({
       id: firstContentMetricId,
@@ -321,6 +342,20 @@ function assertSectionTitleLayout({
       expected: nativeSidebarMetricContract.sectionTitleMinHeight,
       id,
       message: 'section title keeps desktop header height',
+    }),
+    ...expectClose({
+      actual: titleLabel?.height ?? null,
+      expected: nativeSidebarMetricContract.sectionTitleLineHeight,
+      id,
+      message: 'section title label keeps desktop line height',
+    }),
+    ...expectClose({
+      actual: titleLabel?.y ?? null,
+      expected: titleRow
+        ? (titleRow.height - nativeSidebarMetricContract.sectionTitleLineHeight) / 2
+        : (nativeSidebarMetricContract.sectionTitleMinHeight - nativeSidebarMetricContract.sectionTitleLineHeight) / 2,
+      id,
+      message: 'section title label keeps desktop vertical placement',
     }),
     ...expectAtLeast({
       actual: titleRow && firstContent ? firstContent.y - titleRow.y - titleRow.height : null,
@@ -341,43 +376,135 @@ export function formatNativeLayoutAssertionFailures(failures: NativeLayoutAssert
 }
 
 function assertSidebarItemLayout({
+  contentHeight,
   id,
   metrics,
   padding,
 }: {
+  contentHeight: number
   id: string
   metrics: NativeLayoutMetricMap
   padding: SidebarPadding
 }): NativeLayoutAssertionFailure[] {
-  const row = metrics[`${id}.row`]
-  const content = metrics[`${id}.content`]
+  const item = sidebarItemMetrics(id, metrics)
 
   return [
-    ...expectMetric({ id, message: 'row is captured before checking native padding', metric: row }),
-    ...expectMetric({ id, message: 'content is captured before checking native padding', metric: content }),
+    ...assertSidebarItemMetricsCaptured(id, item),
+    ...assertSidebarItemFrameLayout({ contentHeight, id, item, padding }),
+    ...assertSidebarItemContentLayout({ contentHeight, id, item, padding }),
+    ...assertSidebarItemLabelLayout({ contentHeight, id, item }),
+  ]
+}
+
+function sidebarItemMetrics(id: string, metrics: NativeLayoutMetricMap): SidebarItemMetrics {
+  return {
+    content: metrics[`${id}.content`],
+    label: metrics[`${id}.label`],
+    row: metrics[`${id}.row`],
+  }
+}
+
+function assertSidebarItemMetricsCaptured(id: string, item: SidebarItemMetrics): NativeLayoutAssertionFailure[] {
+  return [
+    ...expectMetric({ id, message: 'row is captured before checking native padding', metric: item.row }),
+    ...expectMetric({ id, message: 'content is captured before checking native padding', metric: item.content }),
+    ...expectMetric({ id, message: 'label is captured before checking native text alignment', metric: item.label }),
+  ]
+}
+
+function assertSidebarItemFrameLayout({
+  contentHeight,
+  id,
+  item,
+  padding,
+}: {
+  contentHeight: number
+  id: string
+  item: SidebarItemMetrics
+  padding: SidebarPadding
+}): NativeLayoutAssertionFailure[] {
+  return [
     ...expectClose({
-      actual: row?.x ?? null,
+      actual: item.row?.x ?? null,
       expected: nativeSidebarMetricContract.sectionHorizontalPadding,
       id,
       message: 'row keeps desktop section inset',
     }),
     ...expectClose({
-      actual: content?.x ?? null,
+      actual: item.row?.height ?? null,
+      expected: padding.top + contentHeight + padding.bottom,
+      id,
+      message: 'row keeps desktop row height',
+    }),
+  ]
+}
+
+function assertSidebarItemContentLayout({
+  contentHeight,
+  id,
+  item,
+  padding,
+}: {
+  contentHeight: number
+  id: string
+  item: SidebarItemMetrics
+  padding: SidebarPadding
+}): NativeLayoutAssertionFailure[] {
+  return [
+    ...expectClose({
+      actual: item.content?.x ?? null,
       expected: padding.left,
       id,
       message: 'content keeps desktop left padding',
     }),
     ...expectClose({
-      actual: row && content ? row.width - content.x - content.width : null,
+      actual: item.content?.y ?? null,
+      expected: padding.top,
+      id,
+      message: 'content keeps desktop top padding',
+    }),
+    ...expectClose({
+      actual: item.content?.height ?? null,
+      expected: contentHeight,
+      id,
+      message: 'content keeps desktop content height',
+    }),
+    ...expectClose({
+      actual: item.row && item.content ? item.row.width - item.content.x - item.content.width : null,
       expected: padding.right,
       id,
       message: 'content keeps desktop right padding',
     }),
     ...expectClose({
-      actual: row && content ? row.height - content.height : null,
+      actual: item.row && item.content ? item.row.height - item.content.height : null,
       expected: padding.top + padding.bottom,
       id,
       message: 'row keeps desktop vertical padding',
+    }),
+  ]
+}
+
+function assertSidebarItemLabelLayout({
+  contentHeight,
+  id,
+  item,
+}: {
+  contentHeight: number
+  id: string
+  item: SidebarItemMetrics
+}): NativeLayoutAssertionFailure[] {
+  return [
+    ...expectClose({
+      actual: item.label?.height ?? null,
+      expected: nativeSidebarMetricContract.itemLabelLineHeight,
+      id,
+      message: 'label keeps desktop line height',
+    }),
+    ...expectClose({
+      actual: item.label?.y ?? null,
+      expected: (contentHeight - nativeSidebarMetricContract.itemLabelLineHeight) / 2,
+      id,
+      message: 'label is vertically centered inside row content',
     }),
   ]
 }
@@ -606,21 +733,47 @@ function assertFolderLayout({
 }): NativeLayoutAssertionFailure[] {
   const row = metrics[`${id}.row`]
   const content = metrics[`${id}.content`]
+  const label = metrics[`${id}.label`]
 
   return [
     ...expectMetric({ id, message: 'row is captured before checking native folder layout', metric: row }),
     ...expectMetric({ id, message: 'content is captured before checking native folder layout', metric: content }),
+    ...expectMetric({ id, message: 'label is captured before checking native folder text alignment', metric: label }),
     ...expectClose({
       actual: content?.x ?? null,
       expected: expectedLeftInset,
       id,
       message: 'folder content keeps desktop indentation',
     }),
-    ...expectAtLeast({
+    ...expectClose({
       actual: row?.height ?? null,
-      expected: 28,
+      expected: nativeSidebarMetricContract.folderRowHeight,
       id,
-      message: 'folder row keeps a tappable hit area',
+      message: 'folder row keeps desktop row height',
+    }),
+    ...expectClose({
+      actual: content?.y ?? null,
+      expected: nativeSidebarMetricContract.itemPadding.regular.top,
+      id,
+      message: 'folder content keeps desktop top padding',
+    }),
+    ...expectClose({
+      actual: content?.height ?? null,
+      expected: nativeSidebarMetricContract.folderRowContentHeight,
+      id,
+      message: 'folder content keeps desktop content height',
+    }),
+    ...expectClose({
+      actual: label?.height ?? null,
+      expected: nativeSidebarMetricContract.itemLabelLineHeight,
+      id,
+      message: 'folder label keeps desktop line height',
+    }),
+    ...expectClose({
+      actual: label?.y ?? null,
+      expected: 0,
+      id,
+      message: 'folder label is vertically centered inside row content',
     }),
   ]
 }

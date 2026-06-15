@@ -81,7 +81,7 @@ The screenshot suite also contains objective parity assertions for tablet landsc
 
 The same Playwright suite also compares the primary tablet-landscape screen against a committed pixel baseline and checks that mobile parity constants still match desktop `src/index.css` and `src/theme.json`.
 
-`pnpm mobile:qa:ios-layout` opens the native Expo Go deep link with `layoutProbe=1`, reads `TOLARIA_MOBILE_LAYOUT_METRIC` lines from the iPad Simulator logs, and fails when native React Native row boxes drift from the desktop parity contract. This is mandatory for padding, margin, row-height, indentation, and count-pill alignment because the Expo web/browser lane can pass while the iPad simulator renders differently.
+`pnpm mobile:qa:ios-layout` opens the native Expo Go deep link with `layoutProbe=1`, reads `TOLARIA_MOBILE_LAYOUT_METRIC` lines from the iPad Simulator logs, and fails when native React Native row boxes drift from the desktop parity contract. This is mandatory for padding, margin, row-height, indentation, text line boxes, text vertical centering, and count-pill alignment because the Expo web/browser lane can pass while the iPad simulator renders differently.
 
 `pnpm mobile:qa:ios-simulator` opens the native Expo Go deep link with `layoutProbe=1`, sets the currently booted iPad Simulator to landscape, and captures it into:
 
@@ -108,7 +108,7 @@ xcrun simctl terminate booted host.exp.Exponent || true
 xcrun simctl openurl booted 'exp://<host-ip>:8081'
 ```
 
-The native app emits `TOLARIA_MOBILE_LAYOUT_METRIC` lines for probed sidebar rows. A healthy sidebar row should report desktop-derived content insets and hit areas, for example `sidebar.item.inbox.content.x = 12`, `sidebar.item.inbox.row.height = 32`, and nested folder content offsets of `12 + depth * 25`. The browser screenshot lane also runs `enforces measured sidebar row layout invariants` with `?layoutProbe=1`, but native metrics remain required because React Native browser rendering can pass while the iPad simulator is wrong.
+The native app emits `TOLARIA_MOBILE_LAYOUT_METRIC` lines for probed sidebar rows. A healthy sidebar row should report desktop-derived content insets, row heights, and text boxes, for example `sidebar.item.inbox.content.x = 12`, `sidebar.item.inbox.row.height = 32`, `sidebar.item.inbox.label.height = 18`, and nested folder content offsets of `12 + depth * 25`. The browser screenshot lane also runs `enforces measured sidebar row layout invariants` with `?layoutProbe=1`, but native metrics remain required because React Native browser rendering can pass while the iPad simulator is wrong.
 
 The harness also exercises a read-only real-vault path. By default it looks for:
 
