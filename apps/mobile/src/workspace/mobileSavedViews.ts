@@ -33,6 +33,7 @@ type IndentLevel = number
 type LineIndex = number
 type MobileTextValues = string[]
 type SortDirection = 'asc' | 'desc'
+type SortField = { key: FieldKey; kind: 'builtIn' | 'property' }
 type SortValue = string | null
 type ViewFilename = string
 type ViewIndex = number
@@ -79,6 +80,7 @@ const supportedFilterOps = new Set<MobileViewFilterOp>([
   'before',
   'after',
 ])
+const builtInSortFields = new Set(['created', 'modified', 'status', 'title', 'type'])
 
 const builtInFieldResolvers: Record<string, BuiltInFieldResolver> = {
   archived: (note) => scalarField(note.archived === true),
@@ -375,28 +377,64 @@ function sortMobileViewNotes(notes: MobileNote[], sort: SortValue): MobileNote[]
   return [...notes].sort((left, right) => compareNotes(left, right, sortSpec.field, sortSpec.direction))
 }
 
-function compareNotes(left: MobileNote, right: MobileNote, field: FieldKey, direction: SortDirection) {
-  const result = compareFieldValue(sortFieldValue(left, field), sortFieldValue(right, field))
+function compareNotes(left: MobileNote, right: MobileNote, field: SortField, direction: SortDirection) {
+  const leftValue = sortFieldValue(left, field)
+  const rightValue = sortFieldValue(right, field)
+  const missingResult = compareMissingValues(leftValue, rightValue)
+  if (missingResult !== null) return missingResult
+
+  const result = comparePresentFieldValue(leftValue, rightValue)
   return direction === 'asc' ? result : -result
 }
 
-function sortFieldValue(note: MobileNote, field: FieldKey): string | number | boolean | null {
-  if (field === 'modified') return note.modifiedAt ?? 0
-  if (field === 'created') return note.createdAt ?? 0
-  if (field === 'title') return note.title
-  if (field === 'type') return note.type
-  if (field === 'status') return note.status
+function sortFieldValue(note: MobileNote, field: SortField): string | number | boolean | null {
+  if (field.kind === 'property') return sortPropertyValue(note, field.key)
+  if (field.key === 'modified') return note.modifiedAt ?? 0
+  if (field.key === 'created') return note.createdAt ?? 0
+  if (field.key === 'title') return note.title
+  if (field.key === 'type') return note.type
+  if (field.key === 'status') return note.status
   return null
 }
 
-function sortConfig(sort: SortValue): { direction: SortDirection; field: FieldKey } | null {
-  const [field, direction = 'asc'] = (sort ?? '').split(':')
-  if (!field) return null
-  return { direction: direction === 'desc' ? 'desc' : 'asc', field: field.toLowerCase() }
+function sortPropertyValue(note: MobileNote, key: FieldKey): string | number | boolean | null {
+  const property = note.properties?.find((candidate) => candidate.key.toLowerCase() === key.toLowerCase())
+  const value = Array.isArray(property?.value) ? property.value[0] : property?.value
+  return value ?? null
 }
 
-function compareFieldValue(left: string | number | boolean | null, right: string | number | boolean | null) {
+function sortConfig(sort: SortValue): { direction: SortDirection; field: SortField } | null {
+  const rawSort = sort ?? ''
+  const directionSeparator = rawSort.lastIndexOf(':')
+  if (directionSeparator <= 0) return null
+
+  const direction = rawSort.slice(directionSeparator + 1)
+  const rawField = rawSort.slice(0, directionSeparator)
+  if (direction !== 'asc' && direction !== 'desc') return null
+
+  return { direction, field: sortField(rawField) }
+}
+
+function sortField(rawField: FieldKey): SortField {
+  const propertyPrefix = 'property:'
+  if (rawField.startsWith(propertyPrefix)) {
+    return { key: rawField.slice(propertyPrefix.length), kind: 'property' }
+  }
+
+  const field = rawField.toLowerCase()
+  return builtInSortFields.has(field) ? { key: field, kind: 'builtIn' } : { key: rawField, kind: 'property' }
+}
+
+function compareMissingValues(left: string | number | boolean | null, right: string | number | boolean | null) {
+  if (left === null && right === null) return 0
+  if (left === null) return 1
+  if (right === null) return -1
+  return null
+}
+
+function comparePresentFieldValue(left: string | number | boolean | null, right: string | number | boolean | null) {
   if (typeof left === 'number' && typeof right === 'number') return left - right
+  if (typeof left === 'boolean' && typeof right === 'boolean') return Number(left) - Number(right)
   return normalizedText(left).localeCompare(normalizedText(right))
 }
 

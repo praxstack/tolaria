@@ -35,6 +35,8 @@ test.describe('mobile UI lab interactions', () => {
     await page.getByRole('button', { name: 'Active Procedures' }).click()
     await expect(page.getByTestId('note-list-toolbar-title')).toHaveText('Active Procedures')
     await expect(page.getByText('How I Run an Open Source Project').first()).toBeVisible()
+    await expect(page.getByTestId('note-row-open-source-project').getByText('Project Board')).toBeVisible()
+    await expect(page.getByTestId('note-row-open-source-project').getByText('Process')).toBeVisible()
     await expect(page.getByText('Workflow Orchestration Essay').first()).toBeHidden()
     await editAndDeleteSavedView(page)
   })

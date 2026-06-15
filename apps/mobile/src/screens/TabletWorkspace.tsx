@@ -66,6 +66,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
     editorBlocks,
     editorBullets,
     layoutProbe,
+    noteListProperties,
     noteListSubtitle,
     noteListTitle,
     notes,
@@ -119,6 +120,7 @@ function TabletWorkspaceChrome(props: TabletWorkspaceChromeProps) {
         <View {...gestures.noteListSwipe} style={styles.panelHost}>
           <MobileNoteListPanel
             compact={compactTablet}
+            displayPropertyKeys={noteListProperties}
             notes={notes}
             searchQuery={searchQuery || undefined}
             selectedNoteId={selectedNoteId}

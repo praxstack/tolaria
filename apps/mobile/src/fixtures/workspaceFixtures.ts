@@ -388,6 +388,7 @@ const fixtureViews: FixtureSavedView[] = [
         ],
       },
       icon: null,
+      listPropertiesDisplay: ['belongs_to', 'tags'],
       name: 'Active Procedures',
       sort: 'modified:desc',
     },

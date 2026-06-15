@@ -44,6 +44,33 @@ filters:
     ]).map((candidate) => candidate.id)).toEqual(['active-project', 'draft-project'])
   })
 
+  it('sorts saved views with desktop custom-property sort strings', () => {
+    const rankedView = parseMobileSavedViewFile({
+      relativePath: 'views/ranked.yml',
+      content: `name: Ranked
+sort: "property:Priority:asc"
+filters:
+  all: []
+`,
+    }, 0)
+    const datedView = parseMobileSavedViewFile({
+      relativePath: 'views/dated.yml',
+      content: `name: Dated
+sort: "Due:desc"
+filters:
+  all: []
+`,
+    }, 1)
+    const notes = [
+      note({ id: 'missing' }),
+      note({ id: 'low', properties: [{ key: 'Priority', label: 'Priority', value: 3 }, { key: 'Due', label: 'Due', value: '2026-06-10' }] }),
+      note({ id: 'high', properties: [{ key: 'Priority', label: 'Priority', value: 1 }, { key: 'Due', label: 'Due', value: '2026-06-20' }] }),
+    ]
+
+    expect(evaluateMobileSavedView(rankedView!, notes).map((candidate) => candidate.id)).toEqual(['high', 'low', 'missing'])
+    expect(evaluateMobileSavedView(datedView!, notes).map((candidate) => candidate.id)).toEqual(['high', 'low', 'missing'])
+  })
+
   it('supports relationship and custom-property fields in saved-view filters', () => {
     const view = parseMobileSavedViewFile({
       relativePath: 'views/blocked-mobile.yml',
@@ -95,12 +122,14 @@ filters:
         ],
       },
       icon: null,
+      listPropertiesDisplay: ['Status', 'belongs_to'],
       name: 'Active Procedures',
       sort: 'modified:desc',
     })
     const parsed = parseMobileSavedViewFile({ content, relativePath: 'views/active-procedures.yml' }, 0)
 
     expect(content).toContain('name: "Active Procedures"')
+    expect(content).toContain('listPropertiesDisplay:')
     expect(content).toContain('filters:')
     expect(parsed?.definition).toMatchObject({
       color: 'purple',
@@ -110,6 +139,7 @@ filters:
           { field: 'status', op: 'any_of', value: ['Active', 'Draft'] },
         ],
       },
+      listPropertiesDisplay: ['Status', 'belongs_to'],
       name: 'Active Procedures',
       sort: 'modified:desc',
     })

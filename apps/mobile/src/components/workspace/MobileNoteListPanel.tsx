@@ -8,12 +8,13 @@ import { MobileListRow } from '../../ui/MobileListRow'
 import { MobilePanel, MobileToolbar, MobileToolbarSpacer, MobileToolbarTitle } from '../../ui/MobilePanel'
 import { desktopPanelParity, desktopToolbarActionParity, desktopToolbarParity } from '../../ui/desktopParity'
 import { mobileColors, mobileSpace, mobileType } from '../../ui/tokens'
-import type { MobileNote } from '../../workspace/mobileWorkspaceModel'
+import type { MobileNote, MobileTone } from '../../workspace/mobileWorkspaceModel'
 import { MobileTypeIcon } from './MobileWorkspaceIcons'
 import { chipTone, noteTypeColor, noteTypeSoftColor, statusTone, tagTone } from './mobileWorkspaceTone'
 
 type MobileNoteListPanelProps = {
   compact: boolean
+  displayPropertyKeys?: string[]
   notes: MobileNote[]
   onOpenCreateNote: () => void
   onOpenSearch: () => void
@@ -27,6 +28,7 @@ type MobileNoteListPanelProps = {
 export function MobileNoteListPanel(props: MobileNoteListPanelProps) {
   const {
     compact,
+    displayPropertyKeys = [],
     notes,
     onOpenCreateNote,
     onOpenSearch,
@@ -65,7 +67,7 @@ export function MobileNoteListPanel(props: MobileNoteListPanelProps) {
           keyExtractor={(note) => note.id}
           renderItem={({ item: note }) => (
             <MobileListRow
-              chips={<NoteRowChips note={note} />}
+              chips={<NoteRowChips displayPropertyKeys={displayPropertyKeys} note={note} />}
               selected={note.id === activeNoteId}
               selectedBackgroundColor={noteTypeSoftColor(note.typeTone)}
               selectedBorderColor={noteTypeColor(note.typeTone)}
@@ -103,14 +105,92 @@ function NoteListEmptyState({ searchQuery }: { searchQuery?: string }) {
   )
 }
 
-function NoteRowChips({ note }: { note: MobileNote }) {
+type NoteRowChip = {
+  label: string
+  tone: MobileTone
+}
+
+function NoteRowChips({
+  displayPropertyKeys,
+  note,
+}: {
+  displayPropertyKeys: string[]
+  note: MobileNote
+}) {
+  const chips = displayPropertyKeys.length > 0
+    ? configuredNoteRowChips(note, displayPropertyKeys)
+    : defaultNoteRowChips(note)
+  if (chips.length === 0) return null
+
   return (
     <View style={styles.chipRow}>
-      <MobileChip density="list" label={note.type} tone={chipTone(note.typeTone)} />
-      {note.status ? <MobileChip density="list" label={note.status} tone={statusTone(note.status)} /> : null}
-      {note.tags.slice(0, 1).map((tag) => <MobileChip density="list" key={tag} label={tag} tone={tagTone(tag)} />)}
+      {chips.map((chip, index) => (
+        <MobileChip density="list" key={`${chip.label}-${index}`} label={chip.label} tone={chip.tone} />
+      ))}
     </View>
   )
+}
+
+function defaultNoteRowChips(note: MobileNote): NoteRowChip[] {
+  return [
+    { label: note.type, tone: chipTone(note.typeTone) },
+    ...(note.status ? [{ label: note.status, tone: statusTone(note.status) }] : []),
+    ...note.tags.slice(0, 1).map((tag) => ({ label: tag, tone: tagTone(tag) })),
+  ]
+}
+
+function configuredNoteRowChips(note: MobileNote, keys: string[]): NoteRowChip[] {
+  return keys.flatMap((key) => displayPropertyChips(note, key))
+}
+
+function displayPropertyChips(note: MobileNote, key: string): NoteRowChip[] {
+  const normalizedKey = key.trim().toLowerCase()
+  if (!normalizedKey) return []
+  if (isTypePropertyKey(normalizedKey)) {
+    return [{ label: note.type, tone: chipTone(note.typeTone) }]
+  }
+  if (normalizedKey === 'status') {
+    return note.status ? [{ label: note.status, tone: statusTone(note.status) }] : []
+  }
+  if (normalizedKey === 'tags') {
+    return note.tags.map((tag) => ({ label: tag, tone: tagTone(tag) }))
+  }
+
+  return relationshipChips(note, normalizedKey) ?? propertyChips(note, normalizedKey)
+}
+
+function isTypePropertyKey(normalizedKey: string) {
+  return ['type', 'isa', 'is_a'].includes(normalizedKey)
+}
+
+function relationshipChips(note: MobileNote, normalizedKey: string): NoteRowChip[] | null {
+  const relationship = note.relationships.find((candidate) => {
+    return relationshipKeys(candidate).includes(normalizedKey)
+  })
+  if (!relationship) return null
+
+  return relationship.values.map((value) => ({ label: value.title, tone: chipTone(value.typeTone) }))
+}
+
+function relationshipKeys(relationship: MobileNote['relationships'][number]) {
+  return [
+    relationship.key,
+    relationship.label,
+    relationship.kind,
+    relationship.kind === 'belongsTo' ? 'belongs_to' : null,
+    relationship.kind === 'relatedTo' ? 'related_to' : null,
+  ].filter((value): value is string => Boolean(value)).map((value) => value.toLowerCase())
+}
+
+function propertyChips(note: MobileNote, normalizedKey: string): NoteRowChip[] {
+  const property = note.properties?.find((candidate) => candidate.key.toLowerCase() === normalizedKey)
+  if (!property) return []
+
+  const values = Array.isArray(property.value) ? property.value : [property.value]
+  return values
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .map((label) => ({ label, tone: 'gray' }))
 }
 
 const styles = StyleSheet.create({

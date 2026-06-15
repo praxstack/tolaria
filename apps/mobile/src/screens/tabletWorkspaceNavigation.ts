@@ -51,6 +51,7 @@ export function useTabletWorkspaceNavigation(snapshot: MobileWorkspaceSnapshot, 
     activeItemId: sidebarSelection.kind === 'item' ? sidebarSelection.id : null,
     editorBlocks: editorBlocksForSelection(snapshot, selectedNote),
     editorBullets: editorBulletsForSelection(snapshot, selectedNote),
+    noteListProperties: noteListPropertiesForSelection(snapshot, sidebarSelection),
     noteListSubtitle: noteListSubtitle(sidebarSelection, snapshot.noteListSubtitle, notes.length, searchQuery),
     noteListTitle: sidebarSelection.label,
     notes,
@@ -154,10 +155,25 @@ function notesForSavedView(
   snapshot: MobileWorkspaceSnapshot,
   selection: TabletSidebarItemSelection,
 ) {
-  const view = snapshot.views?.find((candidate) => candidate.id === selection.viewId || candidate.id === selection.id)
+  const view = savedViewForSelection(snapshot, selection)
   if (!view) return []
 
   return evaluateMobileSavedView(view, workspaceNotes(snapshot))
+}
+
+function noteListPropertiesForSelection(
+  snapshot: MobileWorkspaceSnapshot,
+  selection: TabletSidebarSelection,
+) {
+  if (selection.kind !== 'item' || selection.sectionId !== 'views') return []
+  return savedViewForSelection(snapshot, selection)?.definition.listPropertiesDisplay ?? []
+}
+
+function savedViewForSelection(
+  snapshot: MobileWorkspaceSnapshot,
+  selection: TabletSidebarItemSelection,
+) {
+  return snapshot.views?.find((candidate) => candidate.id === selection.viewId || candidate.id === selection.id) ?? null
 }
 
 function filterNotesBySearch(notes: MobileNote[], searchQuery: SearchQuery) {

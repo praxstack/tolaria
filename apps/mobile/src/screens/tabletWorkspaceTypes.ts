@@ -43,6 +43,7 @@ export type TabletWorkspaceChromeProps = {
   editorBlocks: MobileEditorBlock[]
   editorBullets: string[]
   layoutProbe?: boolean
+  noteListProperties: string[]
   noteListSubtitle: NoteCountText
   noteListTitle: SidebarLabel
   notes: MobileNote[]
