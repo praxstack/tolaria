@@ -24,8 +24,9 @@ type FilterParseResult = {
 }
 
 type FieldKey = string
+type MobileArrayFieldKind = 'property' | 'relationship'
 type ResolvedMobileField =
-  | { kind: 'array'; values: string[] }
+  | { arrayKind: MobileArrayFieldKind; kind: 'array'; values: string[] }
   | { kind: 'scalar'; value: string | number | boolean | null }
 type FilterGroupKind = 'all' | 'any'
 type BuiltInFieldResolver = (note: MobileNote) => ResolvedMobileField
@@ -81,6 +82,8 @@ const supportedFilterOps = new Set<MobileViewFilterOp>([
   'after',
 ])
 const builtInSortFields = new Set(['created', 'modified', 'status', 'title', 'type'])
+const regexFilterOps = new Set<MobileViewFilterOp>(['contains', 'equals', 'not_contains', 'not_equals'])
+const maxUserRegexLength = 256
 
 const builtInFieldResolvers: Record<string, BuiltInFieldResolver> = {
   archived: (note) => scalarField(note.archived === true),
@@ -93,7 +96,7 @@ const builtInFieldResolvers: Record<string, BuiltInFieldResolver> = {
   organized: (note) => scalarField(note.organized === true),
   path: (note) => scalarField(note.path ?? note.id),
   status: (note) => scalarField(note.status),
-  tags: (note) => arrayField(note.tags),
+  tags: (note) => arrayField(note.tags, 'property'),
   title: (note) => scalarField(note.title),
   type: (note) => scalarField(note.type),
 }
@@ -310,42 +313,132 @@ function evaluateCondition(condition: MobileViewFilterCondition, note: MobileNot
   const emptyResult = emptyConditionResult(condition.op, field)
   if (emptyResult !== null) return emptyResult
 
-  if (field.kind === 'array') return evaluateArrayCondition(condition, field.values)
-  return evaluateScalarCondition(condition, field.value)
+  const regex = conditionRegex(condition)
+  if (usesRegex(condition) && !regex) return false
+
+  if (field.kind === 'array') return evaluateArrayCondition(condition, field, regex)
+  return evaluateScalarCondition(condition, field.value, regex)
 }
 
-function evaluateArrayCondition(condition: MobileViewFilterCondition, values: string[]) {
-  const filterValues = conditionValues(condition.value)
-  const normalizedValues = values.map(normalizedText)
-  const target = normalizedText(condition.value)
+function evaluateArrayCondition(
+  condition: MobileViewFilterCondition,
+  field: Extract<ResolvedMobileField, { kind: 'array' }>,
+  regex: RegExp | null,
+) {
+  if (field.arrayKind === 'relationship') return evaluateRelationshipArrayCondition(condition, field.values, regex)
+  return evaluatePropertyArrayCondition(condition, field.values, regex)
+}
 
-  if (condition.op === 'any_of') return filterValues.some((value) => normalizedValues.includes(value))
-  if (condition.op === 'none_of') return filterValues.every((value) => !normalizedValues.includes(value))
-  if (condition.op === 'equals') return normalizedValues.includes(target)
-  if (condition.op === 'not_equals') return !normalizedValues.includes(target)
-  if (condition.op === 'contains') return normalizedValues.some((value) => value.includes(target))
-  if (condition.op === 'not_contains') return normalizedValues.every((value) => !value.includes(target))
+function evaluatePropertyArrayCondition(
+  condition: MobileViewFilterCondition,
+  values: string[],
+  regex: RegExp | null,
+) {
+  const target = textValue(condition.value)
+  const normalizedValues = new Set(values.map(normalizedText))
+  const contains = normalizedValues.has(target.toLowerCase())
+  const equals = values.length === 1 && contains
+  const matchesAny = conditionTextList(condition.value)?.some((value) => normalizedValues.has(value.toLowerCase())) ?? false
+  const regexMatched = regex ? values.some((value) => regex.test(value)) : false
 
+  if (regex) return textMatchResult(condition.op, regexMatched)
+  return arrayMatchResult(condition.op, { contains, equals, matchesAny })
+}
+
+function evaluateRelationshipArrayCondition(
+  condition: MobileViewFilterCondition,
+  values: string[],
+  regex: RegExp | null,
+) {
+  const field = relationshipArrayField(values)
+  const contains = relationshipContains(field, textValue(condition.value))
+  const equals = field.length === 1 && relationshipEquals(field[0] ?? '', textValue(condition.value))
+  const matchesAny = conditionTextList(condition.value)?.some((value) => field.some((ref) => relationshipEquals(ref, value))) ?? false
+  const regexMatched = regex ? field.some((ref) => relationshipRegexCandidates(ref).some((candidate) => regex.test(candidate))) : false
+
+  if (regex) return textMatchResult(condition.op, regexMatched)
+  return arrayMatchResult(condition.op, { contains, equals, matchesAny })
+}
+
+function arrayMatchResult(
+  op: MobileViewFilterOp,
+  result: { contains: boolean; equals: boolean; matchesAny: boolean },
+) {
+  if (op === 'contains') return result.contains
+  if (op === 'not_contains') return !result.contains
+  if (op === 'equals') return result.equals
+  if (op === 'not_equals') return !result.equals
+  if (op === 'any_of') return result.matchesAny
+  if (op === 'none_of') return !result.matchesAny
   return false
+}
+
+function textMatchResult(op: MobileViewFilterOp, matched: boolean): boolean {
+  if (op === 'contains' || op === 'equals') return matched
+  if (op === 'not_contains' || op === 'not_equals') return !matched
+  return false
+}
+
+function conditionRegex(condition: MobileViewFilterCondition): RegExp | null {
+  if (!usesRegex(condition)) return null
+
+  const source = textValue(condition.value)
+  if (source.length > maxUserRegexLength) return null
+
+  try {
+    return new RegExp(source, 'i')
+  } catch {
+    return null
+  }
+}
+
+function usesRegex(condition: MobileViewFilterCondition): boolean {
+  return condition.regex === true && regexFilterOps.has(condition.op)
+}
+
+function relationshipArrayField(values: string[]) {
+  return values.map((value) => value.trim()).filter(Boolean)
 }
 
 function evaluateScalarCondition(
   condition: MobileViewFilterCondition,
   value: string | number | boolean | null,
+  regex: RegExp | null,
 ) {
   const dateResult = dateConditionResult(condition, value)
   if (dateResult !== null) return dateResult
 
-  const text = normalizedText(value)
-  const target = normalizedText(condition.value)
-  if (condition.op === 'equals') return text === target
-  if (condition.op === 'not_equals') return text !== target
-  if (condition.op === 'contains') return text.includes(target)
-  if (condition.op === 'not_contains') return !text.includes(target)
+  const rawText = textValue(value)
+  if (regex) return textMatchResult(condition.op, regex.test(rawText))
+
+  return scalarTextConditionResult(condition, normalizedText(rawText), normalizedText(condition.value))
+}
+
+function scalarTextConditionResult(
+  condition: MobileViewFilterCondition,
+  text: string,
+  target: string,
+) {
+  const comparisonResult = scalarTextComparisonResult(condition.op, text, target)
+  if (comparisonResult !== null) return comparisonResult
+
+  const setResult = scalarSetConditionResult(condition, text)
+  if (setResult !== null) return setResult
+  return false
+}
+
+function scalarTextComparisonResult(op: MobileViewFilterOp, text: string, target: string): boolean | null {
+  if (op === 'equals') return text === target
+  if (op === 'not_equals') return text !== target
+  if (op === 'contains') return text.includes(target)
+  if (op === 'not_contains') return !text.includes(target)
+  return null
+}
+
+function scalarSetConditionResult(condition: MobileViewFilterCondition, text: string): boolean | null {
   if (condition.op === 'any_of') return conditionValues(condition.value).includes(text)
   if (condition.op === 'none_of') return !conditionValues(condition.value).includes(text)
-
-  return false
+  return null
 }
 
 function resolveNoteField(note: MobileNote, field: FieldKey): ResolvedMobileField {
@@ -360,14 +453,14 @@ function resolveRelationshipField(note: MobileNote, lowerField: FieldKey): Resol
   const relationship = note.relationships.find((candidate) => relationshipKeys(candidate).includes(lowerField))
   if (!relationship) return null
 
-  return arrayField(relationship.values.flatMap((value) => [value.title, value.ref ?? value.title]))
+  return arrayField(relationship.values.map((value) => value.ref ?? value.title), 'relationship')
 }
 
 function resolvePropertyField(note: MobileNote, lowerField: FieldKey): ResolvedMobileField | null {
   const property = note.properties?.find((candidate) => candidate.key.toLowerCase() === lowerField)
   if (!property) return null
 
-  return Array.isArray(property.value) ? arrayField(property.value) : scalarField(property.value)
+  return Array.isArray(property.value) ? arrayField(property.value, 'property') : scalarField(property.value)
 }
 
 export function sortMobileNotesBySort(notes: MobileNote[], sort: SortValue): MobileNote[] {
@@ -452,21 +545,35 @@ function dateConditionResult(
   condition: MobileViewFilterCondition,
   value: string | number | boolean | null,
 ): boolean | null {
-  if (condition.op !== 'before' && condition.op !== 'after') return null
-
   const left = dateTimestamp(value)
   const right = dateTimestamp(condition.value)
-  if (left === null || right === null) return false
+  if (left === null || right === null) return null
+
+  if (condition.op === 'equals') return isSameLocalDay(left, right)
+  if (condition.op === 'not_equals') return !isSameLocalDay(left, right)
+  if (condition.op !== 'before' && condition.op !== 'after') return null
 
   return condition.op === 'before' ? left < right : left > right
 }
 
 function dateTimestamp(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'number' && Number.isFinite(value)) return normalizedTimestamp(value)
   if (typeof value !== 'string') return null
 
-  const timestamp = Date.parse(value)
-  return Number.isFinite(timestamp) ? timestamp : null
+  const parsed = parseDateFilterInput(value)
+  return parsed ? parsed.getTime() : null
+}
+
+function isSameLocalDay(leftTimestamp: number, rightTimestamp: number): boolean {
+  const left = new Date(leftTimestamp)
+  const right = new Date(rightTimestamp)
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate()
+}
+
+function normalizedTimestamp(value: number): number {
+  return value > 10_000_000_000 ? value : value * 1000
 }
 
 function yamlLines(content: string): YamlLine[] {
@@ -576,8 +683,8 @@ function scalarField(value: string | number | boolean | null): ResolvedMobileFie
   return { kind: 'scalar', value }
 }
 
-function arrayField(values: MobileTextValues): ResolvedMobileField {
-  return { kind: 'array', values }
+function arrayField(values: MobileTextValues, arrayKind: MobileArrayFieldKind): ResolvedMobileField {
+  return { arrayKind, kind: 'array', values }
 }
 
 function conditionValues(value: unknown): string[] {
@@ -585,8 +692,16 @@ function conditionValues(value: unknown): string[] {
 }
 
 function normalizedText(value: unknown) {
+  return textValue(value).toLowerCase()
+}
+
+function textValue(value: unknown) {
   if (value === null || value === undefined) return ''
-  return String(value).trim().toLowerCase()
+  return String(value).trim()
+}
+
+function conditionTextList(value: unknown): string[] | null {
+  return Array.isArray(value) ? value.map(textValue) : null
 }
 
 function fallbackViewName(filename: ViewFilename, index: ViewIndex) {
@@ -615,6 +730,148 @@ function viewFilenameFromStem(stem: string): ViewFilename {
 
 function avoidReservedDeviceName(stem: string): string {
   return windowsReservedDeviceNames.has(stem.toLocaleUpperCase()) ? `${stem}-view` : stem
+}
+
+const relativeNumberWords = new Map([
+  ['a', 1],
+  ['an', 1],
+  ['one', 1],
+  ['two', 2],
+  ['three', 3],
+  ['four', 4],
+  ['five', 5],
+  ['six', 6],
+  ['seven', 7],
+  ['eight', 8],
+  ['nine', 9],
+  ['ten', 10],
+  ['eleven', 11],
+  ['twelve', 12],
+])
+const relativeDayOffsets = new Map([
+  ['today', 0],
+  ['yesterday', -1],
+  ['tomorrow', 1],
+])
+
+function parseDateFilterInput(value: string, reference = new Date()): Date | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  const relative = parseRelativeDateInput(trimmed, reference)
+  if (relative) return relative
+
+  const isoDate = parseIsoDateOnly(trimmed)
+  if (isoDate) return isoDate
+
+  const timestamp = Date.parse(trimmed)
+  return Number.isNaN(timestamp) ? null : new Date(timestamp)
+}
+
+function parseIsoDateOnly(value: string): Date | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/u)
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const parsed = new Date(year, month - 1, day)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function parseRelativeDateInput(value: string, reference: Date): Date | null {
+  const normalized = value.trim().toLowerCase()
+  const base = startOfLocalDay(reference)
+  const namedOffset = relativeDayOffsets.get(normalized)
+  if (namedOffset !== undefined) return shiftDate(base, 'day', namedOffset)
+
+  const relative = relativeDateParts(normalized)
+  if (!relative) return null
+
+  return shiftDate(base, relative.unit, relative.future ? relative.amount : -relative.amount)
+}
+
+function relativeDateParts(value: string): { amount: number; future: boolean; unit: 'day' | 'month' | 'week' | 'year' } | null {
+  const tokens = value.split(/\s+/u)
+  return futureRelativeDateParts(tokens) ?? pastRelativeDateParts(tokens)
+}
+
+function futureRelativeDateParts(tokens: string[]): { amount: number; future: true; unit: 'day' | 'month' | 'week' | 'year' } | null {
+  if (tokens.length !== 3 || tokens[0] !== 'in') return null
+  const amount = relativeAmount(tokens[1] ?? '')
+  const unit = relativeUnit(tokens[2] ?? '')
+  if (amount === null || unit === null) return null
+
+  return { amount, future: true, unit }
+}
+
+function pastRelativeDateParts(tokens: string[]): { amount: number; future: false; unit: 'day' | 'month' | 'week' | 'year' } | null {
+  if (tokens.length !== 3 || tokens[2] !== 'ago') return null
+  const amount = relativeAmount(tokens[0] ?? '')
+  const unit = relativeUnit(tokens[1] ?? '')
+  if (amount === null || unit === null) return null
+
+  return { amount, future: false, unit }
+}
+
+function relativeAmount(value: string): number | null {
+  if (/^\d+$/u.test(value)) return Number(value)
+  return relativeNumberWords.get(value) ?? null
+}
+
+function relativeUnit(value: string): 'day' | 'month' | 'week' | 'year' | null {
+  const unit = value.toLowerCase().replace(/s$/u, '')
+  if (unit === 'day' || unit === 'week' || unit === 'month' || unit === 'year') return unit
+  return null
+}
+
+function startOfLocalDay(value: Date): Date {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate())
+}
+
+function shiftDate(value: Date, unit: 'day' | 'month' | 'week' | 'year', amount: number): Date {
+  const next = new Date(value)
+  if (unit === 'day') next.setDate(next.getDate() + amount)
+  if (unit === 'week') next.setDate(next.getDate() + amount * 7)
+  if (unit === 'month') next.setMonth(next.getMonth() + amount)
+  if (unit === 'year') next.setFullYear(next.getFullYear() + amount)
+  return next
+}
+
+function relationshipContains(values: string[], targetValue: string): boolean {
+  const target = relationshipValue(targetValue)
+  return values.some((value) => {
+    const candidate = relationshipValue(value)
+    return target.bracketed
+      ? relationshipEquals(value, targetValue)
+      : candidate.stem.toLowerCase().includes(target.stem.toLowerCase())
+  })
+}
+
+function relationshipEquals(value: string, targetValue: string): boolean {
+  const candidateParts = relationshipValue(value).parts
+  const targetParts = relationshipValue(targetValue).parts
+  return candidateParts.some((candidate) => targetParts.includes(candidate))
+}
+
+function relationshipRegexCandidates(value: string): string[] {
+  const trimmed = value.trim()
+  const parsed = relationshipValue(trimmed)
+  return [trimmed, parsed.stem, ...parsed.parts].filter(Boolean)
+}
+
+function relationshipValue(value: string) {
+  const trimmed = value.trim()
+  const inner = trimmed.replace(/^\[\[/u, '').replace(/\]\]$/u, '')
+  const pipeIndex = inner.indexOf('|')
+  const stem = pipeIndex >= 0 ? inner.slice(0, pipeIndex) : inner
+  const alias = pipeIndex >= 0 ? inner.slice(pipeIndex + 1) : null
+
+  return {
+    bracketed: trimmed.startsWith('[['),
+    parts: [stem, alias].filter((part): part is string => Boolean(part)).map((part) => part.toLowerCase()),
+    stem,
+  }
 }
 
 function serializedFilterGroup(group: MobileViewFilterGroup, indent: number): string[] {

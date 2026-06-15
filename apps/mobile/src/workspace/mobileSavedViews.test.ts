@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createMobileSavedViewFilename,
   evaluateMobileSavedView,
@@ -8,6 +8,10 @@ import {
 import type { MobileNote } from './mobileWorkspaceModel'
 
 describe('mobile saved views', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('parses desktop saved-view YAML and evaluates filters against mobile notes', () => {
     const view = parseMobileSavedViewFile({
       relativePath: 'views/active-projects.yml',
@@ -112,6 +116,121 @@ filters:
     ]).map((candidate) => candidate.id)).toEqual(['match'])
   })
 
+  it('evaluates regex-enabled saved-view filters like desktop', () => {
+    const view = parseMobileSavedViewFile({
+      relativePath: 'views/regex.yml',
+      content: `name: Regex
+filters:
+  all:
+    - field: title
+      op: contains
+      value: "^Mobile\\s+QA"
+      regex: true
+`,
+    }, 0)
+    const invalidRegexView = parseMobileSavedViewFile({
+      relativePath: 'views/invalid-regex.yml',
+      content: `name: Invalid Regex
+filters:
+  all:
+    - field: title
+      op: contains
+      value: "("
+      regex: true
+`,
+    }, 1)
+    const notes = [
+      note({ id: 'match', title: 'Mobile QA Draft' }),
+      note({ id: 'miss', title: 'Desktop QA Draft' }),
+    ]
+
+    expect(evaluateMobileSavedView(view!, notes).map((candidate) => candidate.id)).toEqual(['match'])
+    expect(evaluateMobileSavedView(invalidRegexView!, notes)).toEqual([])
+  })
+
+  it('matches relationship array filters with desktop wikilink semantics', () => {
+    const view = parseMobileSavedViewFile({
+      relativePath: 'views/session-trail.yml',
+      content: `name: Session Trail
+filters:
+  all:
+    - field: related_to
+      op: equals
+      value: svc-session-trail
+`,
+    }, 0)
+
+    expect(evaluateMobileSavedView(view!, [
+      note({
+        id: 'single',
+        relationships: [relationship('related_to', [{ ref: '[[svc-session-trail]]', title: 'Trail' }])],
+      }),
+      note({
+        id: 'aliased',
+        relationships: [relationship('related_to', [{ ref: '[[svc-session-trail|Trail]]', title: 'Trail' }])],
+      }),
+      note({
+        id: 'multiple',
+        relationships: [relationship('related_to', [
+          { ref: '[[svc-session-trail]]', title: 'Trail' },
+          { ref: '[[other]]', title: 'Other' },
+        ])],
+      }),
+    ]).map((candidate) => candidate.id)).toEqual(['single', 'aliased'])
+  })
+
+  it('uses exact desktop matching for property-array view filters', () => {
+    const view = parseMobileSavedViewFile({
+      relativePath: 'views/design-tags.yml',
+      content: `name: Design Tags
+filters:
+  all:
+    - field: tags
+      op: contains
+      value: Design
+`,
+    }, 0)
+
+    expect(evaluateMobileSavedView(view!, [
+      note({ id: 'exact', tags: ['Design'] }),
+      note({ id: 'substring', tags: ['Design Systems'] }),
+    ]).map((candidate) => candidate.id)).toEqual(['exact'])
+  })
+
+  it('matches relative date expressions in saved-view filters', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-07T12:00:00Z'))
+
+    const todayView = parseMobileSavedViewFile({
+      relativePath: 'views/today.yml',
+      content: `name: Today
+filters:
+  all:
+    - field: Date
+      op: equals
+      value: today
+`,
+    }, 0)
+    const recentView = parseMobileSavedViewFile({
+      relativePath: 'views/recent.yml',
+      content: `name: Recent
+filters:
+  all:
+    - field: Date
+      op: after
+      value: 10 days ago
+`,
+    }, 1)
+    const notes = [
+      note({ id: 'older', properties: [{ key: 'Date', label: 'Date', value: '2026-03-20' }] }),
+      note({ id: 'recent', properties: [{ key: 'Date', label: 'Date', value: '2026-03-30' }] }),
+      note({ id: 'today', properties: [{ key: 'Date', label: 'Date', value: '2026-04-07' }] }),
+    ]
+
+    expect(evaluateMobileSavedView(todayView!, notes).map((candidate) => candidate.id)).toEqual(['today'])
+    expect(evaluateMobileSavedView(recentView!, notes).map((candidate) => candidate.id)).toEqual(['recent', 'today'])
+  })
+
   it('serializes desktop-compatible saved-view YAML that can be parsed back', () => {
     const content = serializeMobileSavedViewDefinition({
       color: 'purple',
@@ -168,5 +287,17 @@ function note(overrides: Partial<MobileNote>): MobileNote {
     typeTone: 'gray',
     workspace: 'TV',
     ...overrides,
+  }
+}
+
+function relationship(key: string, values: Array<{ ref: string; title: string }>) {
+  return {
+    key,
+    kind: 'custom' as const,
+    values: values.map((value) => ({
+      ...value,
+      type: 'Note',
+      typeTone: 'gray' as const,
+    })),
   }
 }
