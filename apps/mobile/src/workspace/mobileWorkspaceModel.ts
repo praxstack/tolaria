@@ -141,6 +141,18 @@ export type MobileViewDefinition = {
   sort: string | null
 }
 
+export type MobileCreateNoteDefaults = {
+  archived?: boolean
+  favorite?: boolean
+  folderPath?: string
+  organized?: boolean
+  properties?: Record<string, MobilePropertyValue>
+  relationships?: Record<string, string[]>
+  status?: string
+  tags?: string[]
+  type?: string
+}
+
 export type MobileSavedView = {
   definition: MobileViewDefinition
   filename: string

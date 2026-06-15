@@ -401,6 +401,69 @@ describe('applyMobileWorkspaceEdit', () => {
     }])
   })
 
+  it('creates notes in the selected folder with frontmatter defaults', () => {
+    const result = applyMobileWorkspaceEditWithWrites(workspaceScenarioForId('default'), {
+      defaults: {
+        folderPath: 'Writing/Launch',
+        organized: false,
+        properties: { priority: 'High' },
+        relationships: { belongs_to: ['[[Tolaria MVP]]'] },
+        status: 'Active',
+        tags: ['Design', 'Mobile'],
+        type: 'Procedure',
+      },
+      title: 'Launch Checklist',
+      type: 'createNote',
+    })
+    const note = result.snapshot.notes[0]
+
+    expect(note).toMatchObject({
+      id: 'Writing/Launch/launch-checklist.md',
+      path: 'Writing/Launch/launch-checklist.md',
+      status: 'Active',
+      tags: ['Design', 'Mobile'],
+      title: 'Launch Checklist',
+      type: 'Procedure',
+      typeTone: 'purple',
+    })
+    expect(note.relationships.find((relationship) => relationship.key === 'belongs_to')?.values).toContainEqual(
+      expect.objectContaining({ title: 'Tolaria MVP', type: 'Note' }),
+    )
+    expect(note.rawContent).toContain('type: Procedure')
+    expect(note.rawContent).toContain('Status: Active')
+    expect(note.rawContent).toContain('tags:\n  - Design\n  - Mobile')
+    expect(note.rawContent).toContain('priority: High')
+    expect(note.rawContent).toContain('belongs_to:\n  - [[Tolaria MVP]]')
+    expect(result.writes).toEqual([{
+      content: note.rawContent,
+      kind: 'createNote',
+      path: 'Writing/Launch/launch-checklist.md',
+    }])
+  })
+
+  it('deduplicates created note paths against existing note paths and ids', () => {
+    const base = workspaceScenarioForId('default')
+    const existingPath = {
+      ...base.notes[0],
+      id: 'Writing/Launch/launch-checklist.md',
+      path: 'Writing/Launch/launch-checklist.md',
+    }
+    const result = applyMobileWorkspaceEditWithWrites({
+      ...base,
+      allNotes: [existingPath, ...base.notes],
+      notes: [existingPath, ...base.notes],
+    }, {
+      defaults: { folderPath: 'Writing/Launch' },
+      title: 'Launch Checklist',
+      type: 'createNote',
+    })
+
+    expect(result.snapshot.selectedNoteId).toBe('Writing/Launch/launch-checklist-2.md')
+    expect(result.writes[0]).toEqual(expect.objectContaining({
+      path: 'Writing/Launch/launch-checklist-2.md',
+    }))
+  })
+
   it('creates saved-view YAML writes and updates the sidebar view section', () => {
     const result = applyMobileWorkspaceEditWithWrites(workspaceScenarioForId('default'), {
       definition: {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MobileWorkspaceAction } from '../components/workspace/MobileWorkspaceActionSheet'
 import type { MobileSidebarItemSelection } from '../components/workspace/MobileWorkspaceSidebar'
 import type {
+  MobileCreateNoteDefaults,
   MobileNote,
   MobilePropertyValue,
   MobileTypeDefinitions,
@@ -22,6 +23,7 @@ import { buildMobileDeepLinkForNote } from '../workspace/mobileDeepLinks'
 import { useTabletWorkspaceNavigation } from './tabletWorkspaceNavigation'
 import type { TabletReadOnlyForm } from './tabletWorkspaceTypes'
 import type { TabletSidebarSelection } from './tabletWorkspaceNavigation'
+import { createNoteDefaultsForSelection } from './tabletWorkspaceCreateDefaults'
 import { viewColorForSelection, viewFiltersForSelection } from './tabletWorkspaceViewHelpers'
 
 const emptyReadOnlyForm: TabletReadOnlyForm = {
@@ -341,7 +343,12 @@ function createWorkspaceActions({
   workspaceSnapshot: MobileWorkspaceSnapshot
 }) {
   return {
-    onCreateNote: () => createNote({ applyEdit, closeAction, title: readOnlyForm.createTitle }),
+    onCreateNote: () => createNote({
+      applyEdit,
+      closeAction,
+      defaults: createNoteDefaultsForSelection(navigation.sidebarSelection, workspaceSnapshot.views ?? []),
+      title: readOnlyForm.createTitle,
+    }),
     onCreateTitleChange: (value: string) => updateReadOnlyForm('createTitle', value),
     onCreateView: () => createView({
       applyEdit,
@@ -555,13 +562,15 @@ function openViewActions({
 function createNote({
   applyEdit,
   closeAction,
+  defaults,
   title,
 }: {
   applyEdit: (edit: MobileWorkspaceEdit) => void
   closeAction: () => void
+  defaults: MobileCreateNoteDefaults
   title: string
 }) {
-  applyEdit({ title, type: 'createNote' })
+  applyEdit({ defaults, title, type: 'createNote' })
   closeAction()
 }
 

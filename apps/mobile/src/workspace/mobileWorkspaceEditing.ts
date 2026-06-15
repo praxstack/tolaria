@@ -15,6 +15,7 @@ import {
   localVaultSnippet,
 } from './localVaultMarkdown'
 import type {
+  MobileCreateNoteDefaults,
   MobileNote,
   MobileProperty,
   MobilePropertyValue,
@@ -49,7 +50,7 @@ type WikilinkTarget = string
 export type MobileWorkspaceEdit =
   | { content: MarkdownContent; noteId: NoteId; type: 'updateNoteContent' }
   | { noteId: NoteId; title: NoteTitle; type: 'renameNoteTitle' }
-  | { title: NoteTitle; type: 'createNote' }
+  | { defaults?: MobileCreateNoteDefaults; title: NoteTitle; type: 'createNote' }
   | { noteId: NoteId; type: 'deleteNote' }
   | { noteId: NoteId; rawContent: MarkdownContent; type: 'hydrateNoteContent' }
   | { key: FrontmatterKey; noteId: NoteId; value: MobilePropertyValue; type: 'updateProperty' }
@@ -152,7 +153,7 @@ export function applyMobileWorkspaceEditWithWrites(
   edit: MobileWorkspaceEdit,
 ): MobileWorkspaceEditResult {
   if (edit.type === 'createNote') {
-    const nextSnapshot = createMobileNote(snapshot, edit.title)
+    const nextSnapshot = createMobileNote(snapshot, edit.title, edit.defaults)
     return { snapshot: nextSnapshot, writes: createNoteWrites(nextSnapshot) }
   }
   if (edit.type === 'createView') {
@@ -212,30 +213,35 @@ export function trailingWikilinkQuery(content: MarkdownContent): string | null {
   return match ? match[1] : null
 }
 
-function createMobileNote(snapshot: MobileWorkspaceSnapshot, title: NoteTitle): MobileWorkspaceSnapshot {
+function createMobileNote(
+  snapshot: MobileWorkspaceSnapshot,
+  title: NoteTitle,
+  defaults: MobileCreateNoteDefaults = {},
+): MobileWorkspaceSnapshot {
   const trimmedTitle = title.trim()
   if (!trimmedTitle) return snapshot
 
   const notePool = workspaceNotePool(snapshot)
-  const id = uniqueNoteId(notePool, `${slugifyTitle(trimmedTitle)}.md`)
+  const id = uniqueNoteId(notePool, createNotePath(trimmedTitle, defaults.folderPath))
   const now = Date.now()
-  const rawContent = `# ${trimmedTitle}\n\n`
+  const type = cleanTypeName(defaults.type ?? 'Note') || 'Note'
+  const rawContent = createNoteRawContent(trimmedTitle, defaults)
   const note = deriveEditableNote({
     fallback: {
       created: '0m ago',
       date: absoluteDate(now),
-      favorite: false,
+      favorite: defaults.favorite === true,
       id,
       links: 0,
       modified: '0m ago',
       path: id,
       rawContent,
       relationships: [],
-      status: '',
+      status: defaults.status ?? '',
       snippet: '',
-      tags: [],
+      tags: defaults.tags ?? [],
       title: trimmedTitle,
-      type: 'Note',
+      type,
       typeTone: 'gray',
       workspace: snapshot.source?.label ?? 'Tolaria Vault',
     },
@@ -248,6 +254,35 @@ function createMobileNote(snapshot: MobileWorkspaceSnapshot, title: NoteTitle): 
     [note, ...snapshot.notes],
     [note, ...notePool],
   )
+}
+
+function createNotePath(title: NoteTitle, folderPath: FolderPath | undefined): NoteId {
+  const filename = `${slugifyTitle(title)}.md`
+  const folder = folderPath ? normalizedFolderPath(folderPath) : ''
+  return folder ? `${folder}/${filename}` : filename
+}
+
+function createNoteRawContent(
+  title: NoteTitle,
+  defaults: MobileCreateNoteDefaults,
+): MarkdownContent {
+  return serializeDocument(createNoteFrontmatter(defaults), `# ${title}\n\n`)
+}
+
+function createNoteFrontmatter(defaults: MobileCreateNoteDefaults): LocalVaultFrontmatter {
+  const frontmatter: LocalVaultFrontmatter = {}
+  const type = cleanTypeName(defaults.type ?? '')
+
+  addFrontmatterValue(frontmatter, 'type', type && type !== 'Note' ? type : undefined)
+  addFrontmatterValue(frontmatter, 'Status', defaults.status)
+  addFrontmatterValue(frontmatter, 'tags', defaults.tags && defaults.tags.length > 0 ? defaults.tags : undefined)
+  addFrontmatterValue(frontmatter, '_favorite', defaults.favorite === true ? true : undefined)
+  addFrontmatterValue(frontmatter, '_archived', defaults.archived === true ? true : undefined)
+  addFrontmatterValue(frontmatter, '_organized', defaults.organized === true ? true : undefined)
+  mergeFrontmatter(frontmatter, defaults.properties ?? {})
+  mergeFrontmatter(frontmatter, defaults.relationships ?? {})
+
+  return frontmatter
 }
 
 function applyMobileNoteEdit(
@@ -882,7 +917,7 @@ function noteListSubtitle(notes: MobileNote[]): string {
 }
 
 function uniqueNoteId(notes: MobileNote[], baseId: NoteId): NoteId {
-  const existing = new Set(notes.map((note) => note.id))
+  const existing = new Set(notes.flatMap((note) => [note.id, note.path ?? '']).filter(Boolean))
   if (!existing.has(baseId)) return baseId
 
   const stem = baseId.replace(/\.md$/, '')
