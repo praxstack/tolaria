@@ -32,6 +32,7 @@ The machine-readable coverage source lives in `src/ui/mobileParityInventory.ts`.
 | `TabletEditorPanel` | `EditorTheme.css`, `theme.json` | Owns read-only tablet editor rendering for H1, paragraphs, headings, bullets, quotes, inline styles, and tables. |
 | `MobilePropertiesPanel` | `propertyPanelLayout.ts`, `RelationshipsPanel.tsx` | Owns properties and relationship display/removal. |
 | `MobileWorkspaceActionSheet` | Desktop command dialogs, note-list search, inspector forms | Owns search/create/property/relationship/more action flows against the editable snapshot. Search uses `mobileQuickOpen` for deterministic empty/no-result filtering and clamped keyboard selection. |
+| `MobilePropertyValueKindPicker` | Inspector property editors, shadcn segmented controls | Owns compact value-kind selection for string, list, number, and boolean property writes. |
 | `MobileViewFilterBuilder` | `FilterBuilder`, `FilterFieldCombobox` | Owns saved-view AND/OR groups, filter rows, field/value suggestions, operator selection, regex flag, and add/remove controls. |
 | `MobileSyncStatusBar` | `StatusBar.tsx` | Owns subtle bottom sync footer display. |
 | `TabletWorkspace` | Desktop four-panel layout | Owns tablet shell layout, selected-note state, and the in-process editable snapshot. |
@@ -66,6 +67,8 @@ The tablet landscape parity test now checks these computed-style contracts:
 The same Playwright suite also runs a source-drift check against desktop `src/index.css` and `src/theme.json`, plus a tablet-landscape pixel baseline for the primary iPad reference screen. The native iPad simulator metric gate also checks sidebar row insets, row heights, content heights, text line boxes, text vertical centering, folder indentation, section title height, count-pill text centering, note-list selected-row width, and note-row content padding so RN Web cannot hide device-only spacing regressions.
 
 Quick-open/search is covered as behavior, not just presentation: empty queries expose active notes, no-result queries show the sheet empty state, the search input receives focus, Enter selects the active result, and ArrowUp/ArrowDown are clamped to desktop quick-open semantics.
+
+Property editing is covered through real typed writes: scalar text, tag lists, number values, and boolean Yes/No values all pass through the same frontmatter write boundary as desktop-style property edits.
 
 React Native Web screenshots are a fast preflight only. Layout-sensitive mobile UI work must also pass the native iOS simulator metric check and produce a simulator screenshot before it is accepted, because spacing, safe-area, and text layout can diverge between web and the actual Expo app.
 

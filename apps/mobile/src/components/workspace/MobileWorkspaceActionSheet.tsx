@@ -21,6 +21,11 @@ import {
   mobileQuickOpenSelectedNote,
 } from '../../workspace/mobileQuickOpen'
 import {
+  isMobileListPropertyKey,
+  mobilePropertyValueKindForKey,
+  type MobilePropertyValueKind,
+} from '../../workspace/mobilePropertyValues'
+import {
   mobilePropertyKeySuggestions,
   mobilePropertyValueSuggestions,
   mobileFolderSuggestions,
@@ -28,6 +33,7 @@ import {
   mobileTypeSuggestions,
 } from '../../workspace/mobileWorkspaceSuggestions'
 import { MobileTypeIcon } from './MobileWorkspaceIcons'
+import { MobileBooleanPropertyValuePicker, MobilePropertyValueKindPicker } from './MobilePropertyValueKindPicker'
 import { MobileTypeSectionEditor } from './MobileTypeSectionEditor'
 import { MobileViewDisplayPropertiesPicker } from './MobileViewDisplayPropertiesPicker'
 import { MobileViewFilterBuilder } from './MobileViewFilterBuilder'
@@ -84,6 +90,7 @@ type MobileWorkspaceActionSheetProps = {
   onOpenRenameNoteFile: () => void
   onPropertyNameChange: (value: string) => void
   onPropertyValueChange: (value: string) => void
+  onPropertyValueKindChange: (value: MobilePropertyValueKind) => void
   onRelationshipNameChange: (value: string) => void
   onRelationshipNoteTitleChange: (value: string) => void
   onSaveProperty: () => void
@@ -102,6 +109,7 @@ type MobileWorkspaceActionSheetProps = {
   onViewPropertyQueryChange: (value: string) => void
   propertyName: string
   propertyValue: string
+  propertyValueKind: MobilePropertyValueKind
   relationshipName: string
   relationshipNoteTitle: string
   searchQuery: string
@@ -569,12 +577,16 @@ function AddPropertyContent({
   onClose,
   onPropertyNameChange,
   onPropertyValueChange,
+  onPropertyValueKindChange,
   onSaveProperty,
   propertyName,
   propertyValue,
+  propertyValueKind,
   selectedNote,
 }: MobileWorkspaceActionSheetProps) {
   const editingProperty = action === 'editProperty'
+  const lockedListKind = isMobileListPropertyKey(propertyName)
+  const selectedValueKind = mobilePropertyValueKindForKey(propertyName, propertyValueKind)
   const keySuggestions = editingProperty ? [] : mobilePropertyKeySuggestions(notes, selectedNote, propertyName)
   const valueSuggestions = mobilePropertyValueSuggestions(notes, propertyName, propertyValue)
 
@@ -597,13 +609,22 @@ function AddPropertyContent({
           onSelect={onPropertyNameChange}
         />
       ) : null}
+      <MobilePropertyValueKindPicker
+        lockedListKind={lockedListKind}
+        selectedKind={selectedValueKind}
+        onSelect={onPropertyValueKindChange}
+      />
       <MobileTextInput
+        keyboardType={selectedValueKind === 'number' ? 'numeric' : 'default'}
         label={mobileText('inspector.properties.valuePlaceholder')}
         placeholder={mobileText('inspector.properties.valuePlaceholder')}
         testID="workspace-property-value-input"
         value={propertyValue}
         onChangeText={onPropertyValueChange}
       />
+      {selectedValueKind === 'boolean' ? (
+        <MobileBooleanPropertyValuePicker value={propertyValue} onChange={onPropertyValueChange} />
+      ) : null}
       <MobileWorkspaceSuggestionList
         labels={valueSuggestions}
         testID="workspace-property-value-suggestions"

@@ -15,6 +15,7 @@ import type {
   MobileTypeSchemaProperty,
   MobileTypeSchemaRelationship,
 } from '../workspace/mobileTypeDefinitionSchema'
+import type { MobilePropertyValueKind } from '../workspace/mobilePropertyValues'
 import type {
   NoteCountText,
   NoteId,
@@ -24,8 +25,6 @@ import type {
 } from './tabletWorkspaceNavigation'
 
 export type TabletPanel = 'noteList' | 'properties' | 'sidebar'
-export type TabletPropertyValueKind = 'boolean' | 'list' | 'number' | 'string'
-
 export type TabletReadOnlyForm = {
   createTitle: ReadOnlyFormValue
   editingFolderPath: ReadOnlyFormValue
@@ -37,7 +36,7 @@ export type TabletReadOnlyForm = {
   noteType: ReadOnlyFormValue
   propertyName: ReadOnlyFormValue
   propertyValue: ReadOnlyFormValue
-  propertyValueKind: TabletPropertyValueKind
+  propertyValueKind: MobilePropertyValueKind
   relationshipName: ReadOnlyFormValue
   relationshipNoteTitle: ReadOnlyFormValue
   typeDisplayProperties: string[]
@@ -136,6 +135,7 @@ export type TabletWorkspaceChromeProps = {
   onSaveView: () => void
   onPropertyNameChange: (value: ReadOnlyFormValue) => void
   onPropertyValueChange: (value: ReadOnlyFormValue) => void
+  onPropertyValueKindChange: (value: MobilePropertyValueKind) => void
   onRelationshipNameChange: (value: ReadOnlyFormValue) => void
   onRelationshipNoteTitleChange: (value: ReadOnlyFormValue) => void
   onSearchQueryChange: (value: SearchQuery) => void

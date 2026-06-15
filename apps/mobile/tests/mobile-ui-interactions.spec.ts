@@ -115,6 +115,7 @@ async function retargetSelectedRelease(page: PageLike) {
   await changeSelectedReleaseType(page)
   await editSelectedReleaseStatus(page)
   await editSelectedReleaseTags(page)
+  await addTypedProperties(page)
   await moveAndRenameSelectedRelease(page)
   await assertSelectedReleaseDeepLink(page)
 }
@@ -143,12 +144,31 @@ async function editSelectedReleaseStatus(page: PageLike) {
 async function editSelectedReleaseTags(page: PageLike) {
   await page.getByTestId('property-tags-edit').click()
   await expect(page.getByTestId('workspace-property-name-input')).toHaveValue('tags')
+  await expect(page.getByTestId('workspace-property-kind-list')).toBeVisible()
   await expect(page.getByTestId('workspace-property-value-input')).toHaveValue('Tolaria MVP')
   await page.getByTestId('workspace-property-value-input').fill('Tolaria MVP, De')
   await page.getByTestId('workspace-property-value-suggestion-design').click()
   await expect(page.getByTestId('workspace-property-value-input')).toHaveValue('Tolaria MVP, Design')
   await page.getByTestId('workspace-action-sheet-editProperty').getByRole('button', { name: 'Save' }).click()
   await expect(page.getByTestId('property-tags-wrap')).toContainText('Design')
+}
+
+async function addTypedProperties(page: PageLike) {
+  await page.getByTestId('property-action-add-property').click()
+  await expect(page.getByTestId('workspace-property-name-input')).toBeVisible()
+  await page.getByTestId('workspace-property-name-input').fill('Estimate')
+  await page.getByTestId('workspace-property-kind-number').click()
+  await page.getByTestId('workspace-property-value-input').fill('13')
+  await page.getByTestId('workspace-action-sheet-addProperty').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('property-row-estimate')).toContainText('13')
+
+  await page.getByTestId('property-action-add-property').click()
+  await page.getByTestId('workspace-property-name-input').fill('Published')
+  await page.getByTestId('workspace-property-kind-boolean').click()
+  await expect(page.getByTestId('workspace-property-boolean-picker')).toBeVisible()
+  await page.getByTestId('workspace-property-boolean-no').click()
+  await page.getByTestId('workspace-action-sheet-addProperty').getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByTestId('property-row-published')).toContainText('No')
 }
 
 async function moveAndRenameSelectedRelease(page: PageLike) {

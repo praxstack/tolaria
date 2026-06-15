@@ -680,6 +680,11 @@ files:
     inspector.properties.pickDate: e8e91fbba934dc8adfd7e433f5193911
     inspector.properties.valuePlaceholder: 689202409e48743b914713f96d93947c
     inspector.properties.propertyName: 7e9982311d69d66d38809e5d85377a08
+    inspector.properties.valueKind: 4475920d50a2c224b86ebf6e79d38dc7
+    inspector.properties.valueKind.text: 9dffbf69ffba8bc38bc4e01abf4b1675
+    inspector.properties.valueKind.list: 4ee29ca12c7d126654bd0e5275de6135
+    inspector.properties.valueKind.number: b2ee912b91d69b435159c7c3f6df7f5f
+    inspector.properties.valueKind.boolean: 8ecd4db6773b5fc170ddd9d33129aae3
     inspector.relationship.add: ec211f7c20af43e742bf2570c3cb84f9
     inspector.relationship.addRelationship: d2b0cb45dcdbb00ee70db397c36f73ad
     inspector.relationship.name: 7ed3fccc071d6939eff211b1a6fd9696

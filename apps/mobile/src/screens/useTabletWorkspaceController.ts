@@ -40,6 +40,14 @@ import {
   mobileDefaultListPropertyDisplay,
   mobileListPropertySuggestions,
 } from '../workspace/mobileWorkspaceSuggestions'
+import {
+  mobilePropertyValueFormText,
+  mobilePropertyValueKind,
+  mobilePropertyValueKindForKey,
+  mobilePropertyValueTextForKindChange,
+  parseMobilePropertyValue,
+  type MobilePropertyValueKind,
+} from '../workspace/mobilePropertyValues'
 import { useTabletWorkspaceNavigation } from './tabletWorkspaceNavigation'
 import type { TabletReadOnlyForm } from './tabletWorkspaceTypes'
 import type { TabletSidebarSelection } from './tabletWorkspaceNavigation'
@@ -523,8 +531,15 @@ function propertyWorkspaceActions({
     onEditProperty: (_noteId: string, key: string, value: MobilePropertyValue) => {
       openAction('editProperty', editPropertyFields(key, value))
     },
-    onPropertyNameChange: (value: string) => updateReadOnlyForm('propertyName', value),
+    onPropertyNameChange: (value: string) => {
+      updateReadOnlyForm('propertyName', value)
+      updateReadOnlyForm('propertyValueKind', mobilePropertyValueKindForKey(value, readOnlyForm.propertyValueKind))
+    },
     onPropertyValueChange: (value: string) => updateReadOnlyForm('propertyValue', value),
+    onPropertyValueKindChange: (value: MobilePropertyValueKind) => {
+      updateReadOnlyForm('propertyValueKind', value)
+      updateReadOnlyForm('propertyValue', mobilePropertyValueTextForKindChange(readOnlyForm.propertyValue, value))
+    },
     onSaveProperty: () => saveSelectedEdit((noteId) => propertyEdit(readOnlyForm, noteId)),
   }
 }
@@ -639,8 +654,8 @@ function filenameStemForNote(note: MobileNote | null): string {
 function editPropertyFields(key: string, value: MobilePropertyValue): ReadOnlyFormField[] {
   return [
     { key: 'propertyName', value: key },
-    { key: 'propertyValue', value: propertyValueFormText(value) },
-    { key: 'propertyValueKind', value: propertyValueKind(key, value) },
+    { key: 'propertyValue', value: mobilePropertyValueFormText(value) },
+    { key: 'propertyValueKind', value: mobilePropertyValueKind(key, value) },
   ]
 }
 
@@ -1021,49 +1036,17 @@ function cloneFilterNode(node: MobileViewFilterNode): MobileViewFilterNode {
   }
 }
 
-function propertyValueFormText(value: MobilePropertyValue): string {
-  if (Array.isArray(value)) return value.join(', ')
-  return String(value)
-}
-
-function propertyValueKind(key: string, value: MobilePropertyValue): TabletReadOnlyForm['propertyValueKind'] {
-  if (isListPropertyKey(key) || Array.isArray(value)) return 'list'
-  if (typeof value === 'boolean') return 'boolean'
-  if (typeof value === 'number') return 'number'
-  return 'string'
-}
-
 function propertyEdit(form: TabletReadOnlyForm, noteId: string): MobileWorkspaceEdit {
   return {
     key: form.propertyName,
     noteId,
     type: 'updateProperty',
-    value: parsedPropertyValue(form),
+    value: parseMobilePropertyValue({
+      key: form.propertyName,
+      kind: form.propertyValueKind,
+      valueText: form.propertyValue,
+    }),
   }
-}
-
-function parsedPropertyValue(form: TabletReadOnlyForm): MobilePropertyValue {
-  if (isListPropertyKey(form.propertyName) || form.propertyValueKind === 'list') return listPropertyValue(form.propertyValue)
-  if (form.propertyValueKind === 'boolean') return booleanPropertyValue(form.propertyValue)
-  if (form.propertyValueKind === 'number') return numberPropertyValue(form.propertyValue)
-  return form.propertyValue.trim()
-}
-
-function listPropertyValue(value: string): string[] {
-  return value.split(',').map((item) => item.trim()).filter(Boolean)
-}
-
-function booleanPropertyValue(value: string): boolean {
-  return /^(true|yes|1|on)$/iu.test(value.trim())
-}
-
-function numberPropertyValue(value: string): number | string {
-  const parsed = Number(value.trim())
-  return Number.isFinite(parsed) ? parsed : value.trim()
-}
-
-function isListPropertyKey(key: string): boolean {
-  return key.trim().toLowerCase() === 'tags'
 }
 
 function relationshipEdit(form: TabletReadOnlyForm, noteId: string): MobileWorkspaceEdit {

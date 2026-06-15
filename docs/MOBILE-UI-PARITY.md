@@ -171,7 +171,7 @@ TOLARIA_MOBILE_FULL_GATE=1 git push
 | P0 | Editor shell | Native editor container | title, rich text preview, empty note | Copy desktop editor theme values for content width, title separator, headings, body, lists, quotes, and tables |
 | P0 | Properties panel | Native property rows | type, date, status, relationships, empty values | Copy compact 12px labels, 24px chips, full-width relationship rows, and property-action rows |
 | P1 | Search and quick open | Native search overlay/sheet | empty query, results, no results, keyboard focus | Results can be scanned quickly; touch, Enter, Escape, and clamped ArrowUp/ArrowDown selection are deterministic |
-| P1 | Create note/type/status actions | Native modal/sheet controls | valid input, invalid input, type selection, collision | Controls use Tolaria primitives; disabled/loading/error states are visible |
+| P1 | Create note/type/status/property actions | Native modal/sheet controls | valid input, invalid input, type selection, typed property values, collision | Controls use Tolaria primitives; disabled/loading/error states are visible |
 | P2 | Phone shell | Reduced navigation and panels | list-only, editor-only, properties sheet, back stack | Phone removes surfaces deliberately after tablet parity is established |
 
 ## Read-Only Interaction Boundary

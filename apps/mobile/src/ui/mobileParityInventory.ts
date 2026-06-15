@@ -113,6 +113,13 @@ export const mobileParityInventory = [
     surface: 'Read-only workspace action sheets',
   },
   {
+    assertions: ['typed property edit user-flow checks'],
+    contracts: ['desktopPropertyParity'],
+    desktopSource: 'Inspector property editors and shadcn segmented button controls',
+    mobileFile: 'src/components/workspace/MobilePropertyValueKindPicker.tsx',
+    surface: 'Property value kind picker',
+  },
+  {
     assertions: ['property and relationship suggestion user-flow checks'],
     contracts: ['desktopPropertyParity'],
     desktopSource: 'RelationshipsPanel note search dropdown and inspector property forms',
