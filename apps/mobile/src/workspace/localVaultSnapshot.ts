@@ -5,6 +5,7 @@ import {
   frontmatterRelationships,
   frontmatterScalar,
   parseLocalVaultDocument,
+  type LocalVaultFrontmatter,
 } from './localVaultFrontmatter'
 import {
   deriveLocalVaultTitle,
@@ -26,6 +27,8 @@ import type {
   MobileRelationshipValue,
   MobileSavedView,
   MobileTone,
+  MobileTypeDefinition,
+  MobileTypeDefinitions,
   MobileWorkspaceSnapshot,
 } from './mobileWorkspaceModel'
 
@@ -74,6 +77,7 @@ type LocalVaultEntry = {
   tags: string[]
   title: NoteTitle
   type: NoteTypeName
+  typeDefinition: MobileTypeDefinition
   typeTone: MobileTone
 }
 
@@ -89,6 +93,7 @@ export function buildLocalVaultWorkspaceSnapshot({
   vaultPath,
 }: LocalVaultSnapshotOptions): MobileWorkspaceSnapshot {
   const entries = applyTypeDefinitionTones(files.filter(isMarkdownFile).map(parseLocalVaultEntry))
+  const typeDefinitions = localTypeDefinitions(entries)
   const noteEntries = entries.filter((entry) => entry.type !== 'Type')
   const allNoteEntries = [...noteEntries].sort(compareByModifiedDate)
   const visibleEntries = visibleNoteEntries(noteEntries)
@@ -106,7 +111,7 @@ export function buildLocalVaultWorkspaceSnapshot({
     noteListSubtitle: noteListSubtitle(notes.length, visibleEntries.length),
     notes,
     selectedNoteId,
-    sidebarSections: buildMobileSidebarSections({ notes: allNotes, views }),
+    sidebarSections: buildMobileSidebarSections({ notes: allNotes, typeDefinitions, views }),
     source: {
       kind: 'localVault',
       label: vaultLabel,
@@ -115,6 +120,7 @@ export function buildLocalVaultWorkspaceSnapshot({
       visibleNotes: notes.length,
     },
     sync: { kind: 'synced', minutesAgo: 0 },
+    typeDefinitions,
     views,
   }
 }
@@ -163,8 +169,53 @@ function parseLocalVaultEntry(file: LocalVaultFile): LocalVaultEntry {
       filename,
     }),
     type,
+    typeDefinition: typeDefinitionFromFrontmatter(document.frontmatter),
     typeTone: toneFromDesktopColor(color, type),
   }
+}
+
+function typeDefinitionFromFrontmatter(frontmatter: LocalVaultFrontmatter): MobileTypeDefinition {
+  return {
+    label: frontmatterText(frontmatter, ['_sidebar_label', 'sidebar_label', 'sidebar label']),
+    listPropertiesDisplay: frontmatterList(frontmatter, [
+      '_list_properties_display',
+      'list_properties_display',
+      'listPropertiesDisplay',
+    ]),
+    order: frontmatterNumber(frontmatter, ['_order', 'order']),
+    sort: frontmatterText(frontmatter, ['_sort', 'sort']),
+    visible: frontmatterBoolean(frontmatter, ['visible']),
+  }
+}
+
+function frontmatterValue(frontmatter: LocalVaultFrontmatter, keys: string[]) {
+  for (const key of keys) {
+    if (Object.hasOwn(frontmatter, key)) return frontmatter[key]
+  }
+  return undefined
+}
+
+function frontmatterText(frontmatter: LocalVaultFrontmatter, keys: string[]) {
+  const value = frontmatterValue(frontmatter, keys)
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function frontmatterNumber(frontmatter: LocalVaultFrontmatter, keys: string[]) {
+  const value = frontmatterValue(frontmatter, keys)
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function frontmatterBoolean(frontmatter: LocalVaultFrontmatter, keys: string[]) {
+  const value = frontmatterValue(frontmatter, keys)
+  return typeof value === 'boolean' ? value : null
+}
+
+function localTypeDefinitions(entries: LocalVaultEntry[]): MobileTypeDefinitions {
+  return Object.fromEntries(
+    entries
+      .filter((entry) => entry.type === 'Type')
+      .map((entry) => [entry.title, entry.typeDefinition]),
+  )
 }
 
 function parseViewFile(file: LocalVaultFile, index: number): MobileSavedView | null {

@@ -94,6 +94,76 @@ _organized: false
     })
   })
 
+  it('preserves desktop type document sidebar metadata for mobile navigation', () => {
+    const snapshot = buildLocalVaultWorkspaceSnapshot({
+      files: [
+        vaultFile('types/project.md', `---
+type: Type
+color: red
+order: 2
+sidebar_label: Client Work
+sort: "property:Priority:asc"
+_list_properties_display:
+  - Priority
+  - belongs_to
+---
+# Project
+`),
+        vaultFile('types/secret.md', `---
+type: Type
+visible: false
+---
+# Secret
+`),
+        vaultFile('projects/high.md', `---
+type: Project
+Priority: High
+_organized: false
+---
+# High Project
+`),
+        vaultFile('projects/low.md', `---
+type: Project
+Priority: Low
+_organized: false
+---
+# Low Project
+`),
+        vaultFile('secret.md', `---
+type: Secret
+_organized: false
+---
+# Hidden Work
+`),
+        vaultFile('note.md', `---
+type: Note
+_organized: false
+---
+# Plain Note
+`),
+      ],
+      vaultLabel: 'Laputa',
+      vaultPath: '/Users/luca/Laputa',
+    })
+
+    expect(snapshot.typeDefinitions?.Project).toMatchObject({
+      label: 'Client Work',
+      listPropertiesDisplay: ['Priority', 'belongs_to'],
+      order: 2,
+      sort: 'property:Priority:asc',
+    })
+    expect(snapshot.typeDefinitions?.Secret).toMatchObject({ visible: false })
+
+    const typeItems = snapshot.sidebarSections.find((section) => section.id === 'types')?.items ?? []
+    expect(typeItems).toEqual([
+      expect.objectContaining({ count: '2', label: 'Client Work', typeName: 'Project' }),
+      expect.objectContaining({ count: '1', label: 'Notes', typeName: 'Note' }),
+    ])
+    expect(typeItems).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ typeName: 'Secret' })]),
+    )
+  })
+
   it('derives sidebar primary counts, type counts, and folder paths from local vault notes', () => {
     const snapshot = buildLocalVaultWorkspaceSnapshot({
       files: [

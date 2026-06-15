@@ -118,7 +118,7 @@ export function orderedMobileSavedViews(views: MobileSavedView[]): MobileSavedVi
 
 export function evaluateMobileSavedView(view: MobileSavedView, notes: MobileNote[]): MobileNote[] {
   const matchingNotes = notes.filter((note) => !note.archived && evaluateFilterGroup(view.definition.filters, note))
-  return sortMobileViewNotes(matchingNotes, view.definition.sort)
+  return sortMobileNotesBySort(matchingNotes, view.definition.sort)
 }
 
 export function mobileSavedViewId(filename: string) {
@@ -370,7 +370,7 @@ function resolvePropertyField(note: MobileNote, lowerField: FieldKey): ResolvedM
   return Array.isArray(property.value) ? arrayField(property.value) : scalarField(property.value)
 }
 
-function sortMobileViewNotes(notes: MobileNote[], sort: SortValue): MobileNote[] {
+export function sortMobileNotesBySort(notes: MobileNote[], sort: SortValue): MobileNote[] {
   const sortSpec = sortConfig(sort)
   if (!sortSpec) return notes
 

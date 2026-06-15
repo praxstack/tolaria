@@ -38,6 +38,7 @@ export type MobileSidebarItemSelection = {
   id: string
   label: string
   sectionId: string
+  typeName?: string
   viewId?: string
 }
 
@@ -228,6 +229,7 @@ function sidebarItemSelection(
     id: item.id,
     label,
     sectionId,
+    typeName: item.typeName,
     viewId: item.viewId,
   }
 }

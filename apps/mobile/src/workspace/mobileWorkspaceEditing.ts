@@ -407,6 +407,7 @@ function rebuildSnapshot(
     sidebarSections: buildMobileSidebarSections({
       notes: resolvedAllNotes,
       previousSections: snapshot.sidebarSections,
+      typeDefinitions: snapshot.typeDefinitions,
       views: snapshot.views,
     }),
   }
@@ -462,6 +463,7 @@ function createMobileView(
     sidebarSections: buildMobileSidebarSections({
       notes: workspaceNotePool(snapshot),
       previousSections: snapshot.sidebarSections,
+      typeDefinitions: snapshot.typeDefinitions,
       views,
     }),
     views,
@@ -529,6 +531,7 @@ function snapshotWithViews(
     sidebarSections: buildMobileSidebarSections({
       notes: workspaceNotePool(snapshot),
       previousSections: snapshot.sidebarSections,
+      typeDefinitions: snapshot.typeDefinitions,
       views,
     }),
     views,

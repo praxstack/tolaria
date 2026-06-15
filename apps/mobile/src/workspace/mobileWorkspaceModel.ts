@@ -51,6 +51,16 @@ export type MobileProperty = {
   value: MobilePropertyValue
 }
 
+export type MobileTypeDefinition = {
+  label?: string | null
+  listPropertiesDisplay?: string[]
+  order?: number | null
+  sort?: string | null
+  visible?: boolean | null
+}
+
+export type MobileTypeDefinitions = Record<string, MobileTypeDefinition>
+
 export type MobileSidebarIcon =
   | 'archive'
   | 'file'
@@ -68,6 +78,7 @@ export type MobileSidebarItem = {
   id: string
   label: string
   tone?: MobileTone
+  typeName?: string
   viewId?: string
 }
 
@@ -146,6 +157,7 @@ export type MobileWorkspaceSnapshot = {
   sidebarSections: MobileSidebarSection[]
   source?: MobileWorkspaceSource
   sync: MobileSyncStatus
+  typeDefinitions?: MobileTypeDefinitions
   views?: MobileSavedView[]
 }
 

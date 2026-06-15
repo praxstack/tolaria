@@ -5,7 +5,7 @@ import type {
   MobileSidebarItem,
   MobileWorkspaceSnapshot,
 } from '../workspace/mobileWorkspaceModel'
-import { evaluateMobileSavedView } from '../workspace/mobileSavedViews'
+import { evaluateMobileSavedView, sortMobileNotesBySort } from '../workspace/mobileSavedViews'
 import type {
   MobileSidebarFolderSelection,
   MobileSidebarItemSelection,
@@ -18,7 +18,7 @@ export type ReadOnlyFormValue = string
 export type SearchQuery = string
 export type SidebarLabel = string
 export type TabletSidebarSelection =
-  | { count?: NoteCountText; id: string; kind: 'item'; label: SidebarLabel; sectionId: string; viewId?: string }
+  | { count?: NoteCountText; id: string; kind: 'item'; label: SidebarLabel; sectionId: string; typeName?: string; viewId?: string }
   | { id: string; kind: 'folder'; label: SidebarLabel }
 type TabletSidebarItemSelection = Extract<TabletSidebarSelection, { kind: 'item' }>
 type SidebarNotesResolver = (
@@ -29,7 +29,7 @@ type SidebarNotesResolver = (
 
 const sidebarSectionResolvers: Record<string, SidebarNotesResolver> = {
   favorites: (_snapshot, notes, selection) => notes.filter((note) => note.favorite || note.title === selection.label),
-  types: (_snapshot, notes, selection) => notes.filter((note) => noteMatchesType(note, selection)),
+  types: (snapshot, notes, selection) => notesForTypeSelection(snapshot, notes, selection),
   views: (snapshot, _notes, selection) => notesForSavedView(snapshot, selection),
 }
 
@@ -84,6 +84,7 @@ export function useTabletWorkspaceNavigation(snapshot: MobileWorkspaceSnapshot, 
         kind: 'item',
         label: selection.label,
         sectionId: selection.sectionId,
+        typeName: selection.typeName,
         viewId: selection.viewId,
       })
     }, [selectSidebarSelection]),
@@ -131,7 +132,7 @@ function activeSidebarItem(item: MobileSidebarItem) {
   return item.active === true
 }
 
-function notesForSidebarSelection(snapshot: MobileWorkspaceSnapshot, selection: TabletSidebarSelection) {
+export function notesForSidebarSelection(snapshot: MobileWorkspaceSnapshot, selection: TabletSidebarSelection) {
   const notes = workspaceNotes(snapshot)
   if (selection.kind === 'folder') return notes.filter((note) => noteBelongsToFolder(note, selection))
 
@@ -161,12 +162,23 @@ function notesForSavedView(
   return evaluateMobileSavedView(view, workspaceNotes(snapshot))
 }
 
-function noteListPropertiesForSelection(
+function notesForTypeSelection(
+  snapshot: MobileWorkspaceSnapshot,
+  notes: MobileNote[],
+  selection: TabletSidebarItemSelection,
+) {
+  const matchingNotes = notes.filter((note) => noteMatchesType(note, selection))
+  return sortMobileNotesBySort(matchingNotes, typeDefinitionForSelection(snapshot, selection)?.sort ?? null)
+}
+
+export function noteListPropertiesForSelection(
   snapshot: MobileWorkspaceSnapshot,
   selection: TabletSidebarSelection,
 ) {
-  if (selection.kind !== 'item' || selection.sectionId !== 'views') return []
-  return savedViewForSelection(snapshot, selection)?.definition.listPropertiesDisplay ?? []
+  if (selection.kind !== 'item') return []
+  if (selection.sectionId === 'views') return savedViewForSelection(snapshot, selection)?.definition.listPropertiesDisplay ?? []
+  if (selection.sectionId === 'types') return typeDefinitionForSelection(snapshot, selection)?.listPropertiesDisplay ?? []
+  return []
 }
 
 function savedViewForSelection(
@@ -174,6 +186,27 @@ function savedViewForSelection(
   selection: TabletSidebarItemSelection,
 ) {
   return snapshot.views?.find((candidate) => candidate.id === selection.viewId || candidate.id === selection.id) ?? null
+}
+
+function typeDefinitionForSelection(
+  snapshot: MobileWorkspaceSnapshot,
+  selection: TabletSidebarItemSelection,
+) {
+  const typeName = typeNameForSelection(snapshot, selection)
+  return typeName ? snapshot.typeDefinitions?.[typeName] : null
+}
+
+function typeNameForSelection(
+  snapshot: MobileWorkspaceSnapshot,
+  selection: TabletSidebarItemSelection,
+) {
+  if (selection.typeName) return selection.typeName
+
+  return snapshot.sidebarSections
+    .find((section) => section.id === 'types')
+    ?.items
+    ?.find((item) => item.id === selection.id)
+    ?.typeName ?? null
 }
 
 function filterNotesBySearch(notes: MobileNote[], searchQuery: SearchQuery) {
@@ -208,6 +241,8 @@ function noteBelongsToFolder(note: MobileNote, selection: Extract<TabletSidebarS
 }
 
 function noteMatchesType(note: MobileNote, selection: TabletSidebarItemSelection) {
+  if (selection.typeName) return normalizedLabel(note.type) === normalizedLabel(selection.typeName)
+
   return normalizedLabel(selection.id) === normalizedLabel(`type-${note.type}`)
     || normalizedLabel(selection.label).replace(/s$/, '') === normalizedLabel(note.type)
 }

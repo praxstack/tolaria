@@ -7,11 +7,14 @@ import type {
   MobileSidebarItem,
   MobileSidebarSection,
   MobileTone,
+  MobileTypeDefinition,
+  MobileTypeDefinitions,
 } from './mobileWorkspaceModel'
 
 type BuildMobileSidebarSectionsInput = {
   notes: MobileNote[]
   previousSections?: MobileSidebarSection[]
+  typeDefinitions?: MobileTypeDefinitions
   views?: MobileSavedView[]
 }
 
@@ -19,6 +22,8 @@ type TypeCount = {
   count: number
   tone: MobileTone
 }
+
+type TypeSectionEntry = [type: string, value: TypeCount]
 
 const typeIcons: Record<string, MobileSidebarIcon> = {
   procedure: 'procedure',
@@ -28,6 +33,7 @@ const typeIcons: Record<string, MobileSidebarIcon> = {
 export function buildMobileSidebarSections({
   notes,
   previousSections = [],
+  typeDefinitions = {},
   views = [],
 }: BuildMobileSidebarSectionsInput): MobileSidebarSection[] {
   const activeNotes = notes.filter((note) => !note.archived)
@@ -36,7 +42,7 @@ export function buildMobileSidebarSections({
     primarySection(activeNotes, archivedNotes),
     favoritesSection(activeNotes),
     viewsSection(views, notes),
-    typesSection(activeNotes, previousSections),
+    typesSection(activeNotes, previousSections, typeDefinitions),
     foldersSection(notes),
   ]
 
@@ -91,21 +97,24 @@ function viewsSection(views: MobileSavedView[], notes: MobileNote[]): MobileSide
 function typesSection(
   notes: MobileNote[],
   previousSections: MobileSidebarSection[],
+  typeDefinitions: MobileTypeDefinitions,
 ): MobileSidebarSection {
   const previousItems = previousSections.find((section) => section.id === 'types')?.items ?? []
 
   return {
     count: countText(notes.length),
     id: 'types',
-    items: orderedTypeCounts(notes).map(([type, value]) => {
+    items: orderedTypeCounts(notes, typeDefinitions).map(([type, value]) => {
       const normalizedType = normalizedSidebarLabel(type)
+      const definition = typeDefinitions[type]
 
       return {
         count: countText(value.count),
         icon: typeIcons[normalizedType] ?? 'file',
         id: previousTypeItemId(previousItems, type) ?? `type-${slugifySidebarId(type)}`,
-        label: pluralizeType(type),
+        label: typeSectionLabel(type, definition),
         tone: value.tone,
+        typeName: type,
       }
     }),
     label: 'Types',
@@ -120,22 +129,55 @@ function foldersSection(notes: MobileNote[]): MobileSidebarSection {
   }
 }
 
-function orderedTypeCounts(notes: MobileNote[]) {
+function orderedTypeCounts(notes: MobileNote[], typeDefinitions: MobileTypeDefinitions) {
   const counts = new Map<string, TypeCount>()
   for (const note of notes) {
     const current = counts.get(note.type) ?? { count: 0, tone: note.typeTone }
     counts.set(note.type, { ...current, count: current.count + 1 })
   }
+  for (const [type, definition] of Object.entries(typeDefinitions)) {
+    if (!isVisibleTypeDefinition(definition)) continue
+    counts.set(type, counts.get(type) ?? { count: 0, tone: 'gray' })
+  }
 
   return [...counts.entries()]
-    .sort((left, right) => right[1].count - left[1].count || left[0].localeCompare(right[0]))
+    .filter(([type]) => isVisibleTypeDefinition(typeDefinitions[type]))
+    .sort((left, right) => compareTypeSectionEntries(left, right, typeDefinitions))
     .slice(0, 10)
 }
 
 function previousTypeItemId(items: MobileSidebarItem[], type: string): string | null {
   const label = normalizedSidebarLabel(pluralizeType(type))
-  const existing = items.find((item) => normalizedSidebarLabel(item.label) === label)
+  const existing = items.find((item) => item.typeName === type || normalizedSidebarLabel(item.label) === label)
   return existing?.id ?? null
+}
+
+function compareTypeSectionEntries(
+  left: TypeSectionEntry,
+  right: TypeSectionEntry,
+  typeDefinitions: MobileTypeDefinitions,
+) {
+  const leftDefinition = typeDefinitions[left[0]]
+  const rightDefinition = typeDefinitions[right[0]]
+  const orderResult = compareTypeOrder(leftDefinition, rightDefinition)
+  if (orderResult !== 0) return orderResult
+
+  return typeSectionLabel(left[0], leftDefinition).localeCompare(typeSectionLabel(right[0], rightDefinition))
+}
+
+function compareTypeOrder(left?: MobileTypeDefinition, right?: MobileTypeDefinition) {
+  const leftOrder = left?.order ?? Infinity
+  const rightOrder = right?.order ?? Infinity
+  if (leftOrder === rightOrder) return 0
+  return leftOrder < rightOrder ? -1 : 1
+}
+
+function typeSectionLabel(type: string, definition?: MobileTypeDefinition) {
+  return definition?.label ?? pluralizeType(type)
+}
+
+function isVisibleTypeDefinition(definition?: MobileTypeDefinition) {
+  return definition?.visible !== false
 }
 
 function folderTree(notes: MobileNote[]): MobileSidebarFolder[] {
