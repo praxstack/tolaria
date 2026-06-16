@@ -1,6 +1,16 @@
-import type { MobileNote, MobilePropertyValue, MobileRelationship, MobileTypeDefinition, MobileTypeDefinitions } from './mobileWorkspaceModel'
+import type { MobileNote, MobileRelationship, MobileTypeDefinitions } from './mobileWorkspaceModel'
 import { mobileNoteIdentityMatchesQuery, normalizedMobileSearchQuery } from './mobileNoteSearch'
 import { mobilePropertyValueKindForKey, type MobilePropertyValueKind } from './mobilePropertyValues'
+import {
+  allTypePropertyCandidates,
+  allTypeRelationshipCandidates,
+  normalizeMobileRelationshipKey,
+  propertyValueTextValues,
+  selectedTypePropertyCandidates,
+  selectedTypeRelationshipCandidates,
+  typePropertyValueCandidates,
+  typeViewValueSuggestionCandidates,
+} from './mobileTypeSuggestionCandidates'
 
 type PropertyKey = string
 type PropertyValueText = string
@@ -18,11 +28,14 @@ export type MobileViewValueSuggestion = {
 }
 type ViewValueResolver = (note: MobileNote) => ViewFieldValue[]
 type FolderPath = string
+type PropertyValueSuggestionOptions = {
+  selectedNote?: MobileNote | null
+  typeDefinitions?: MobileTypeDefinitions
+}
 
 const DESKTOP_SUGGESTED_PROPERTY_KEYS = ['Status', 'Date', 'URL'] as const
 const DESKTOP_SUGGESTED_RELATIONSHIP_KEYS = ['belongs_to', 'related_to', 'has'] as const
 const DESKTOP_VIEW_BUILT_IN_FIELDS = ['type', 'status', 'title', 'favorite', 'body'] as const
-const RELATIONSHIP_SCHEMA_KEYS = new Set(['belongs_to', 'has', 'related_to'])
 const BUILT_IN_VIEW_VALUE_RESOLVERS: Record<string, ViewValueResolver> = {
   archived: (note) => [String(note.archived === true)],
   body: (note) => note.snippet ? [note.snippet] : [],
@@ -32,11 +45,6 @@ const BUILT_IN_VIEW_VALUE_RESOLVERS: Record<string, ViewValueResolver> = {
   status: (note) => note.status ? [note.status] : [],
   title: (note) => [note.title],
   type: (note) => [note.type],
-}
-const CANONICAL_RELATIONSHIP_KEYS: Partial<Record<NormalizedSuggestionKey, RelationshipKey>> = {
-  belongs_to: 'belongs_to',
-  has: 'has',
-  related_to: 'related_to',
 }
 const RELATIONSHIP_KIND_KEYS: Partial<Record<MobileRelationship['kind'], RelationshipKey>> = {
   belongsTo: 'belongs_to',
@@ -60,11 +68,15 @@ export function mobilePropertyValueSuggestions(
   key: PropertyKey,
   query: SuggestionQuery,
   kind: MobilePropertyValueKind = 'string',
+  options: PropertyValueSuggestionOptions = {},
 ): PropertyValueText[] {
   const normalizedKey = canonicalSuggestionKey(key)
   if (!normalizedKey) return []
   const listQuery = propertyListQuery(query, mobilePropertyValueKindForKey(key, kind))
-  return visibleSuggestions(propertyValueCandidates(notes, normalizedKey), listQuery.query)
+  return visibleSuggestions(
+    propertyValueCandidates(notes, normalizedKey, options.typeDefinitions, options.selectedNote),
+    listQuery.query,
+  )
     .filter((value) => !listQuery.selected.has(canonicalSuggestionKey(value)))
 }
 
@@ -122,18 +134,20 @@ export function mobileViewValueSuggestions(
   notes: MobileNote[],
   field: ViewField,
   query: SuggestionQuery,
+  typeDefinitions?: MobileTypeDefinitions,
 ): ViewFieldValue[] {
-  return uniqueSuggestedKeys(mobileViewValueSuggestionItems(notes, field, query).map((item) => item.label))
+  return uniqueSuggestedKeys(mobileViewValueSuggestionItems(notes, field, query, typeDefinitions).map((item) => item.label))
 }
 
 export function mobileViewValueSuggestionItems(
   notes: MobileNote[],
   field: ViewField,
   query: SuggestionQuery,
+  typeDefinitions?: MobileTypeDefinitions,
 ): MobileViewValueSuggestion[] {
   const normalizedKey = canonicalSuggestionKey(field)
   if (!normalizedKey) return []
-  return visibleSuggestionItems(viewValueSuggestionCandidates(notes, normalizedKey), query)
+  return visibleSuggestionItems(viewValueSuggestionCandidates(notes, normalizedKey, typeDefinitions), query)
 }
 
 export function mobileListPropertySuggestions(
@@ -172,10 +186,7 @@ export function mobileDefaultListPropertyDisplay(
 }
 
 export function normalizeRelationshipKey(key: RelationshipKey): RelationshipKey {
-  const trimmed = key.trim()
-  const canonical = canonicalSuggestionKey(trimmed)
-  const relationshipKey = CANONICAL_RELATIONSHIP_KEYS[canonical]
-  return relationshipKey === undefined ? trimmed : relationshipKey
+  return normalizeMobileRelationshipKey(key)
 }
 
 function propertyKeyCandidates(
@@ -185,7 +196,7 @@ function propertyKeyCandidates(
 ): PropertyKey[] {
   return [
     ...DESKTOP_SUGGESTED_PROPERTY_KEYS,
-    ...typePropertyCandidates(selectedNote, typeDefinitions),
+    ...selectedTypePropertyCandidates(selectedNote, typeDefinitions),
     ...notes.flatMap((note) => propertiesForNote(note).map((property) => property.key)),
   ]
 }
@@ -193,8 +204,13 @@ function propertyKeyCandidates(
 function propertyValueCandidates(
   notes: MobileNote[],
   normalizedKey: NormalizedSuggestionKey,
+  typeDefinitions: MobileTypeDefinitions | undefined,
+  selectedNote: MobileNote | null | undefined,
 ): PropertyValueText[] {
-  return notes.flatMap((note) => propertyValuesForSuggestion(note, normalizedKey))
+  return [
+    ...typePropertyValueCandidates(normalizedKey, typeDefinitions, selectedNote),
+    ...notes.flatMap((note) => propertyValuesForSuggestion(note, normalizedKey)),
+  ]
 }
 
 function relationshipKeyCandidates(
@@ -204,70 +220,9 @@ function relationshipKeyCandidates(
 ): RelationshipKey[] {
   return [
     ...DESKTOP_SUGGESTED_RELATIONSHIP_KEYS,
-    ...typeRelationshipCandidates(selectedNote, typeDefinitions),
+    ...selectedTypeRelationshipCandidates(selectedNote, typeDefinitions),
     ...notes.flatMap((note) => note.relationships.map(relationshipFrontmatterKey)),
   ]
-}
-
-function typePropertyCandidates(
-  selectedNote: MobileNote | null,
-  typeDefinitions: MobileTypeDefinitions | undefined,
-): PropertyKey[] {
-  return Object.entries(typeDefinitionForNote(selectedNote, typeDefinitions)?.properties ?? {})
-    .filter(([key, value]) => isTypePropertyCandidate(key, value))
-    .map(([key]) => key)
-}
-
-function typeRelationshipCandidates(
-  selectedNote: MobileNote | null,
-  typeDefinitions: MobileTypeDefinitions | undefined,
-): RelationshipKey[] {
-  const definition = typeDefinitionForNote(selectedNote, typeDefinitions)
-  if (!definition) return []
-
-  return [
-    ...Object.entries(definition.relationships ?? {})
-      .filter(([, refs]) => refs.length > 0)
-      .map(([key]) => normalizeRelationshipKey(key)),
-    ...Object.keys(definition.properties ?? {})
-      .filter(isRelationshipSchemaKey)
-      .map(normalizeRelationshipKey),
-  ]
-}
-
-function allTypePropertyCandidates(typeDefinitions: MobileTypeDefinitions | undefined): PropertyKey[] {
-  return Object.values(typeDefinitions ?? {}).flatMap((definition) => {
-    return Object.entries(definition.properties ?? {})
-      .filter(([key, value]) => isTypePropertyCandidate(key, value))
-      .map(([key]) => key)
-  })
-}
-
-function allTypeRelationshipCandidates(typeDefinitions: MobileTypeDefinitions | undefined): RelationshipKey[] {
-  return Object.values(typeDefinitions ?? {}).flatMap((definition) => [
-    ...Object.entries(definition.relationships ?? {})
-      .filter(([, refs]) => refs.length > 0)
-      .map(([key]) => normalizeRelationshipKey(key)),
-    ...Object.keys(definition.properties ?? {})
-      .filter(isRelationshipSchemaKey)
-      .map(normalizeRelationshipKey),
-  ])
-}
-
-function typeDefinitionForNote(
-  selectedNote: MobileNote | null,
-  typeDefinitions: MobileTypeDefinitions | undefined,
-): MobileTypeDefinition | undefined {
-  if (!selectedNote || selectedNote.type === 'Type') return undefined
-  return typeDefinitions?.[selectedNote.type]
-}
-
-function isTypePropertyCandidate(key: PropertyKey, value: MobilePropertyValue): boolean {
-  return !isRelationshipSchemaKey(key) && !(Array.isArray(value) && value.length === 0)
-}
-
-function isRelationshipSchemaKey(key: RelationshipKey): boolean {
-  return RELATIONSHIP_SCHEMA_KEYS.has(canonicalSuggestionKey(key))
 }
 
 function folderPathForNote(note: MobileNote | null): FolderPath {
@@ -351,8 +306,12 @@ function visibleSuggestionItems(
 function viewValueSuggestionCandidates(
   notes: MobileNote[],
   normalizedKey: NormalizedSuggestionKey,
+  typeDefinitions: MobileTypeDefinitions | undefined,
 ): MobileViewValueSuggestion[] {
-  return notes.flatMap((note) => viewValueSuggestionsForNote(note, normalizedKey))
+  return [
+    ...typeViewValueSuggestionCandidates(notes, normalizedKey, typeDefinitions),
+    ...notes.flatMap((note) => viewValueSuggestionsForNote(note, normalizedKey)),
+  ]
 }
 
 function viewValueSuggestionsForNote(
@@ -438,7 +397,7 @@ function propertyValueTexts(
 ): PropertyValueText[] {
   const property = propertiesForNote(note).find((candidate) => canonicalSuggestionKey(candidate.key) === normalizedKey)
   if (!property) return []
-  return Array.isArray(property.value) ? property.value : [String(property.value)]
+  return propertyValueTextValues(property.value)
 }
 
 function propertyListQuery(

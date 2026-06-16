@@ -180,7 +180,7 @@ function FilterConditionEditor({
   const pathId = testPath(path)
   const fieldSuggestions = mobileViewFieldSuggestions(notes, condition.field, typeDefinitions)
   const valueText = String(condition.value ?? '')
-  const valueSuggestions = mobileViewValueSuggestionItems(notes, condition.field, valueText)
+  const valueSuggestions = mobileViewValueSuggestionItems(notes, condition.field, valueText, typeDefinitions)
 
   return (
     <View style={styles.condition} testID={`workspace-view-filter-row-${pathId}`}>

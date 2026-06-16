@@ -69,6 +69,29 @@ describe('mobile workspace suggestions', () => {
     expect(mobilePropertyValueSuggestions(withPriority.notes, 'Status', 'ship')).toEqual(['Shipped'])
   })
 
+  it('suggests Type-defined property values before they exist on note instances', () => {
+    const scenario = workspaceScenarioForId('default')
+    const selectedNote = scenario.notes.find((note) => note.id === 'workflow-orchestration') ?? null
+    const typeDefinitions = {
+      Essay: {
+        properties: {
+          Areas: ['Design', 'Research'],
+          Priority: 'High',
+        },
+      },
+      Procedure: {
+        properties: {
+          Priority: 'Low',
+        },
+      },
+    }
+
+    const options = { selectedNote, typeDefinitions }
+
+    expect(mobilePropertyValueSuggestions(scenario.notes, 'Priority', 'hi', 'string', options)).toEqual(['High'])
+    expect(mobilePropertyValueSuggestions(scenario.notes, 'Areas', 'res', 'list', options)).toEqual(['Research'])
+  })
+
   it('uses the active comma segment for every list-valued property suggestion query', () => {
     const withAreas = applyMobileWorkspaceEdit(workspaceScenarioForId('default'), {
       key: 'Areas',
@@ -205,6 +228,29 @@ describe('mobile workspace suggestions', () => {
     expect(mobileSortablePropertySuggestions(notes, '', typeDefinitions)).not.toEqual(
       expect.arrayContaining(['has', 'depends_on']),
     )
+  })
+
+  it('suggests Type-defined saved-view values before they exist on note instances', () => {
+    const notes = workspaceScenarioForId('default').notes
+    const typeDefinitions = {
+      Essay: {
+        properties: {
+          Priority: 'High',
+        },
+        relationships: {
+          depends_on: ['[[Tolaria/Mobile UI/How I Run an Open Source Project]]'],
+        },
+      },
+    }
+
+    expect(mobileViewValueSuggestions(notes, 'Priority', 'hi', typeDefinitions)).toEqual(['High'])
+    expect(mobileViewValueSuggestionItems(notes, 'depends_on', 'open', typeDefinitions)).toEqual([
+      expect.objectContaining({
+        label: 'How I Run an Open Source Project',
+        meta: '[[Tolaria/Mobile UI/How I Run an Open Source Project]]',
+        value: '[[Tolaria/Mobile UI/How I Run an Open Source Project]]',
+      }),
+    ])
   })
 
   it('suggests saved-view relationship values as display titles backed by canonical refs', () => {

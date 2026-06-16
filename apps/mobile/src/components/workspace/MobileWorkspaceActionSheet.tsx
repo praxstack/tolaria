@@ -624,7 +624,10 @@ function AddPropertyContent({
   const lockedListKind = isMobileListPropertyKey(propertyName)
   const selectedValueKind = mobilePropertyValueKindForKey(propertyName, propertyValueKind)
   const keySuggestions = editingProperty ? [] : mobilePropertyKeySuggestions(notes, selectedNote, propertyName, typeDefinitions)
-  const valueSuggestions = mobilePropertyValueSuggestions(notes, propertyName, propertyValue, selectedValueKind)
+  const valueSuggestions = mobilePropertyValueSuggestions(notes, propertyName, propertyValue, selectedValueKind, {
+    selectedNote,
+    typeDefinitions,
+  })
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" style={styles.scrollArea}>
