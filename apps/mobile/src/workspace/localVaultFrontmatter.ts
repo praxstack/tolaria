@@ -74,7 +74,7 @@ export function frontmatterRelationships(
   const relationships: Record<string, string[]> = {}
 
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (reservedFrontmatterKeys.has(key)) continue
+    if (isReservedFrontmatterKey(key)) continue
 
     const wikilinks = wikilinkValues(value)
     if (wikilinks.length > 0) relationships[key] = wikilinks
@@ -89,7 +89,7 @@ export function frontmatterProperties(
   const properties: Record<string, LocalVaultFrontmatterValue> = {}
 
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (reservedFrontmatterKeys.has(key) || wikilinkValues(value).length > 0) continue
+    if (isReservedFrontmatterKey(key) || wikilinkValues(value).length > 0) continue
     properties[key] = value
   }
 
@@ -238,7 +238,7 @@ const reservedFrontmatterKeys = new Set([
   'view',
   'visible',
   'width',
-])
+].map(normalizedFrontmatterKey))
 
 const quoteCharacters = new Set(['"', '\''])
 
@@ -246,7 +246,33 @@ function firstFrontmatterValue(
   frontmatter: LocalVaultFrontmatter,
   keys: LocalVaultFrontmatterKeys,
 ): LocalVaultFrontmatterValue | undefined {
-  return keys.map((key) => frontmatter[key]).find((value) => value !== undefined)
+  for (const key of keys) {
+    const exactValue = frontmatter[key]
+    if (exactValue !== undefined) return exactValue
+
+    const normalizedValue = normalizedFrontmatterValue(frontmatter, key)
+    if (normalizedValue !== undefined) return normalizedValue
+  }
+
+  return undefined
+}
+
+function normalizedFrontmatterValue(
+  frontmatter: LocalVaultFrontmatter,
+  key: FrontmatterKey,
+): LocalVaultFrontmatterValue | undefined {
+  const normalizedKey = normalizedFrontmatterKey(key)
+  return Object.entries(frontmatter).find(([candidateKey]) => (
+    normalizedFrontmatterKey(candidateKey) === normalizedKey
+  ))?.[1]
+}
+
+function isReservedFrontmatterKey(key: FrontmatterKey): boolean {
+  return reservedFrontmatterKeys.has(normalizedFrontmatterKey(key))
+}
+
+function normalizedFrontmatterKey(key: FrontmatterKey): FrontmatterKey {
+  return key.trim().toLowerCase().replace(/\s+/gu, '_')
 }
 
 function stringValue(value: LocalVaultFrontmatterValue | undefined): string | null {
