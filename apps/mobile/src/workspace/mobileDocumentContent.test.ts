@@ -106,6 +106,12 @@ Updated body.
     expect(html).toBe('<p>Intro</p>\n<p>$$<br>\\int_0^1 x\\,dx<br>$$</p>\n<p>Done</p>')
   })
 
+  it('hydrates explicit markdown hard breaks as TenTap line breaks', () => {
+    const html = mobileMarkdownBodyToTentapHtml('Line one  \nLine two\nSoft\nwrapped\n\nBackslash\\\nbreak\n')
+
+    expect(html).toBe('<p>Line one<br>Line two Soft wrapped</p>\n<p>Backslash<br>break</p>')
+  })
+
   it('renders standalone markdown images as TenTap image nodes without changing portable attachment refs', () => {
     const html = mobileMarkdownBodyToTentapHtml('![Architecture diagram](<attachments/mobile diagram.png>)\n')
 

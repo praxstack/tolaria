@@ -22,7 +22,7 @@ type MarkdownLines = MarkdownLine[]
 type NoteTitleText = string
 type PlainText = string
 type ReadHtmlBlockResult = { html: HtmlSnippet; nextIndex: number }
-type ReadParagraphResult = { nextIndex: number; text: PlainText }
+type ReadParagraphResult = { lines: MarkdownLines; nextIndex: number }
 type UrlText = string
 type WikilinkTarget = string
 
@@ -254,16 +254,31 @@ function readParagraph(lines: MarkdownLines, startIndex: number): ReadParagraphR
   while (index < lines.length) {
     const line = lines[index] ?? ''
     if (!line.trim() || isBlockStart(lines, index)) break
-    paragraph.push(line.trim())
+    paragraph.push(line)
     index += 1
   }
 
-  return { text: paragraph.join(' '), nextIndex: index }
+  return { lines: paragraph, nextIndex: index }
 }
 
 function readParagraphHtml(lines: MarkdownLines, startIndex: number): ReadHtmlBlockResult {
   const paragraph = readParagraph(lines, startIndex)
-  return { html: `<p>${inlineMarkdownToHtml(paragraph.text)}</p>`, nextIndex: paragraph.nextIndex }
+  return { html: `<p>${paragraphLinesToHtml(paragraph.lines)}</p>`, nextIndex: paragraph.nextIndex }
+}
+
+function paragraphLinesToHtml(lines: MarkdownLines): HtmlSnippet {
+  return lines.reduce((html, line) => {
+    const hardBreak = explicitMarkdownHardBreak(line)
+    const text = inlineMarkdownToHtml(hardBreak.text)
+    const separator = html && !html.endsWith('<br>') ? ' ' : ''
+    return `${html}${separator}${text}${hardBreak.break ? '<br>' : ''}`
+  }, '')
+}
+
+function explicitMarkdownHardBreak(line: MarkdownLine): { break: boolean; text: MarkdownLine } {
+  if (line.endsWith('\\')) return { break: true, text: line.slice(0, -1).trim() }
+  if (/ {2,}$/u.test(line)) return { break: true, text: line.replace(/ {2,}$/u, '').trim() }
+  return { break: false, text: line.trim() }
 }
 
 function isBlockStart(lines: MarkdownLines, index: number): boolean {
