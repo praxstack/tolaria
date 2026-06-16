@@ -20,7 +20,9 @@ Options:
   --out <path>          Output PNG path. Defaults to <dir>/ipad-landscape.png.
   --landscape           Set the Simulator device orientation to Landscape Right before capture.
   --orientation <value> Set orientation: portrait, landscape-left, or landscape-right.
-  --framebuffer         Capture the raw simulator framebuffer instead of the visible Simulator window.
+  --window              Capture the visible Simulator window instead of the selected device framebuffer.
+  --framebuffer         Capture the selected device framebuffer. This is the default.
+  --no-normalize        Do not rotate framebuffer screenshots to match the requested orientation.
   --open-url <url>      Open a simulator URL before capture. Use exp:// URLs for Expo Go native QA.
                        http(s) URLs are rejected because they open Mobile Safari, not the native app.
   --wait <ms>           Delay after opening a URL and before capture. Defaults to 3000.
@@ -90,16 +92,22 @@ function setSimulatorOrientation(value) {
   ])
 }
 
-function simulatorWindowRect() {
+function simulatorWindowRect(deviceName) {
+  const escapedDeviceName = escapeAppleScriptText(deviceName)
   const output = run('osascript', [
     '-e',
     'tell application "Simulator" to activate',
     '-e',
     `tell application "System Events"
       tell process "Simulator"
-        set windowPosition to position of window 1
-        set windowSize to size of window 1
-        return ((item 1 of windowPosition) as text) & "," & ((item 2 of windowPosition) as text) & "," & ((item 1 of windowSize) as text) & "," & ((item 2 of windowSize) as text)
+        repeat with candidateWindow in windows
+          if ((name of candidateWindow) as text) starts with "${escapedDeviceName}" then
+            set windowPosition to position of candidateWindow
+            set windowSize to size of candidateWindow
+            return ((item 1 of windowPosition) as text) & "," & ((item 2 of windowPosition) as text) & "," & ((item 1 of windowSize) as text) & "," & ((item 2 of windowSize) as text)
+          end if
+        end repeat
+        error "No Simulator window found for ${escapedDeviceName}"
       end tell
     end tell`,
   ])
@@ -110,19 +118,78 @@ function simulatorWindowRect() {
   return values.join(',')
 }
 
-function captureSimulatorWindow(outputPath) {
-  run('screencapture', ['-x', `-R${simulatorWindowRect()}`, outputPath])
+function selectedDeviceName(device) {
+  const devices = listBootedDevices()
+  const selected = devices.find((candidate) => candidate.udid === device)
+  if (!selected?.name) {
+    throw new Error(`Unable to find booted Simulator device for UDID ${device}`)
+  }
+  return selected.name
+}
+
+function escapeAppleScriptText(value) {
+  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
+}
+
+function raiseSimulatorWindow(deviceName) {
+  const escapedDeviceName = escapeAppleScriptText(deviceName)
+  run('osascript', [
+    '-e',
+    'tell application "Simulator" to activate',
+    '-e',
+    `tell application "System Events"
+      tell process "Simulator"
+        repeat with candidateWindow in windows
+          if ((name of candidateWindow) as text) starts with "${escapedDeviceName}" then
+            perform action "AXRaise" of candidateWindow
+            return
+          end if
+        end repeat
+      end tell
+      error "No Simulator window found for ${escapedDeviceName}"
+    end tell`,
+  ])
+}
+
+function captureSimulatorWindow(deviceName, outputPath) {
+  raiseSimulatorWindow(deviceName)
+  run('screencapture', ['-x', `-R${simulatorWindowRect(deviceName)}`, outputPath])
 }
 
 function captureSimulatorFramebuffer(device, outputPath) {
   run('xcrun', ['simctl', 'io', device, 'screenshot', outputPath])
 }
 
-async function main() {
-  const args = process.argv.slice(2)
+function normalizeFramebufferOrientation(outputPath, orientation) {
+  if (!orientation?.startsWith('landscape')) {
+    return
+  }
+
+  const { width, height } = imageSize(outputPath)
+  if (width > height) {
+    return
+  }
+
+  const rotation = orientation === 'landscape-left' ? '-90' : '90'
+  run('sips', ['-r', rotation, outputPath])
+}
+
+function imageSize(path) {
+  const output = run('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', path])
+  const widthMatch = output.match(/pixelWidth:\s*(\d+)/u)
+  const heightMatch = output.match(/pixelHeight:\s*(\d+)/u)
+  const width = Number(widthMatch?.[1])
+  const height = Number(heightMatch?.[1])
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    throw new Error(`Unable to read image size for ${path}`)
+  }
+  return { width, height }
+}
+
+function readCaptureOptions(args) {
   if (args.includes('--help')) {
     printHelp()
-    return
+    return undefined
   }
 
   const device = selectDevice(readOption(args, '--device', process.env.MOBILE_QA_SIMULATOR_UDID))
@@ -133,27 +200,71 @@ async function main() {
   const waitMs = Number(readOption(args, '--wait', '3000'))
   const url = readOption(args, '--open-url', undefined)
   const requestedOrientation = readOption(args, '--orientation', hasFlag(args, '--landscape') ? 'landscape-right' : undefined)
+  const useWindowCapture = hasFlag(args, '--window')
+  const useFramebufferCapture = hasFlag(args, '--framebuffer') || !useWindowCapture
+  const normalizeFramebuffer = !hasFlag(args, '--no-normalize')
 
-  await mkdir(dirname(outputPath), { recursive: true })
-
-  if (requestedOrientation) {
-    setSimulatorOrientation(requestedOrientation)
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1000))
+  if (hasFlag(args, '--window') && hasFlag(args, '--framebuffer')) {
+    throw new Error('Use either --window or --framebuffer, not both.')
   }
 
-  if (url) {
-    assertNativeQaOpenUrl(url, 'Native iOS simulator capture')
-    run('xcrun', ['simctl', 'openurl', device, url])
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, waitMs))
+  return {
+    device,
+    normalizeFramebuffer,
+    outputPath,
+    requestedOrientation,
+    url,
+    useFramebufferCapture,
+    waitMs,
+  }
+}
+
+async function orientSimulator(deviceName, requestedOrientation) {
+  if (!requestedOrientation) {
+    return
   }
 
-  if (hasFlag(args, '--framebuffer')) {
-    captureSimulatorFramebuffer(device, outputPath)
-  } else {
-    captureSimulatorWindow(outputPath)
+  raiseSimulatorWindow(deviceName)
+  setSimulatorOrientation(requestedOrientation)
+  await new Promise((resolveDelay) => setTimeout(resolveDelay, 1000))
+}
+
+async function openSimulatorUrl(device, url, waitMs) {
+  if (!url) {
+    return
   }
 
-  console.log(`Captured iOS Simulator screenshot: ${outputPath}`)
+  assertNativeQaOpenUrl(url, 'Native iOS simulator capture')
+  run('xcrun', ['simctl', 'openurl', device, url])
+  await new Promise((resolveDelay) => setTimeout(resolveDelay, waitMs))
+}
+
+function captureSelectedDevice(options, deviceName) {
+  if (options.useFramebufferCapture) {
+    captureSimulatorFramebuffer(options.device, options.outputPath)
+    if (options.normalizeFramebuffer) {
+      normalizeFramebufferOrientation(options.outputPath, options.requestedOrientation)
+    }
+    return
+  }
+
+  captureSimulatorWindow(deviceName, options.outputPath)
+}
+
+async function main() {
+  const options = readCaptureOptions(process.argv.slice(2))
+  if (!options) {
+    return
+  }
+
+  await mkdir(dirname(options.outputPath), { recursive: true })
+
+  const deviceName = selectedDeviceName(options.device)
+  await orientSimulator(deviceName, options.requestedOrientation)
+  await openSimulatorUrl(options.device, options.url, options.waitMs)
+  captureSelectedDevice(options, deviceName)
+
+  console.log(`Captured iOS Simulator screenshot: ${options.outputPath}`)
 }
 
 main().catch((error) => {
