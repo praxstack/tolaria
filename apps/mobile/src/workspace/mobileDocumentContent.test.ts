@@ -77,6 +77,32 @@ Updated body.
 `)
   })
 
+  it('preserves raw frontmatter text when only the wysiwyg body changes', () => {
+    const content = mobileDocumentWithBody(`---
+# Keep YAML comments and formatting exactly as authored.
+title: "Workflow: mobile"
+aliases: ["Mobile, UI", "Tablet"]
+related_to:
+  - "[[LLM Workflow]]"
+status: Draft
+---
+# Old title
+`, '# New title\n\nUpdated body.\n')
+
+    expect(content).toBe(`---
+# Keep YAML comments and formatting exactly as authored.
+title: "Workflow: mobile"
+aliases: ["Mobile, UI", "Tablet"]
+related_to:
+  - "[[LLM Workflow]]"
+status: Draft
+---
+# New title
+
+Updated body.
+`)
+  })
+
   it('renders markdown body as initial TenTap html without generating an H1', () => {
     const html = mobileMarkdownBodyToTentapHtml('Paragraph with **bold** and [[Project Alpha|project]].\n')
 

@@ -1,9 +1,4 @@
-import {
-  parseLocalVaultDocument,
-  serializeLocalVaultFrontmatterScalar,
-  type LocalVaultFrontmatter,
-  type LocalVaultFrontmatterValue,
-} from './localVaultFrontmatter'
+import { parseLocalVaultDocument } from './localVaultFrontmatter'
 import {
   normalizeMobileDisplayMathMarkdown,
   readMobileDisplayMathBlock,
@@ -14,7 +9,6 @@ import type { MobileNote } from './mobileWorkspaceModel'
 
 type MarkdownContent = string
 type MarkdownBody = string
-type FrontmatterKey = string
 type HtmlSnippet = string
 type LinkLabel = string
 type MarkdownLine = string
@@ -42,6 +36,8 @@ export type TiptapJsonNode = {
 type ListKind = 'bullet' | 'ordered' | 'task'
 
 const WIKILINK_HREF_PREFIX = 'tolaria://wikilink/'
+const FRONTMATTER_OPEN = /^---\r?\n/
+const FRONTMATTER_CLOSE = /\r?\n---(?:\r?\n|$)/
 
 type MobileEditableDocumentSource = Pick<MobileNote, 'editorBlocks' | 'rawContent' | 'title'> & {
   editorBullets?: string[]
@@ -67,8 +63,10 @@ export function mobileDocumentWithBody(
   content: MarkdownContent,
   body: MarkdownBody,
 ): MarkdownContent {
-  const document = parseLocalVaultDocument(content)
-  return serializeMobileDocument(document.frontmatter, body)
+  const boundary = rawFrontmatterBoundary(content)
+  if (!boundary) return body
+
+  return `${content.slice(0, boundary.bodyStart)}${body}`
 }
 
 export function mobileMarkdownBodyToTentapHtml(body: MarkdownBody): string {
@@ -96,31 +94,22 @@ export function tiptapJsonToMobileMarkdown(node: unknown): MarkdownBody {
   return serializeBlockChildren(node.content ?? []).trimEnd()
 }
 
-function serializeMobileDocument(
-  frontmatter: LocalVaultFrontmatter,
-  body: MarkdownBody,
-): MarkdownContent {
-  const entries = Object.entries(frontmatter).filter(([, value]) => value !== null && value !== undefined)
-  if (entries.length === 0) return body
-
-  const frontmatterText = entries
-    .map(([key, value]) => serializeFrontmatterEntry(key, value))
-    .join('\n')
-
-  return `---\n${frontmatterText}\n---\n${body}`
-}
-
-function serializeFrontmatterEntry(key: FrontmatterKey, value: LocalVaultFrontmatterValue): string {
-  if (Array.isArray(value)) {
-    return `${key}:\n${value.map((item) => `  - ${serializeLocalVaultFrontmatterScalar(item)}`).join('\n')}`
-  }
-
-  return `${key}: ${serializeLocalVaultFrontmatterScalar(value)}`
-}
-
 function optionalTitleHeading(title: NoteTitleText): string {
   const text = title.trim()
   return text ? `# ${text.replace(/\r?\n/gu, ' ')}` : ''
+}
+
+function rawFrontmatterBoundary(content: MarkdownContent): { bodyStart: number } | null {
+  const open = content.match(FRONTMATTER_OPEN)
+  if (!open) return null
+
+  const rest = content.slice(open[0].length)
+  const close = rest.match(FRONTMATTER_CLOSE)
+  if (!close || close.index === undefined) return null
+
+  return {
+    bodyStart: open[0].length + close.index + close[0].length,
+  }
 }
 
 function readCodeBlock(lines: MarkdownLines, startIndex: number): ReadHtmlBlockResult | null {
