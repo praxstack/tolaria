@@ -40,6 +40,7 @@ import {
 import {
   mobileDefaultListPropertyDisplay,
   mobileListPropertySuggestions,
+  mobileSortablePropertySuggestions,
 } from '../workspace/mobileWorkspaceSuggestions'
 import {
   mobilePropertyValueFormText,
@@ -468,7 +469,7 @@ function savedViewWorkspaceActions({
       editableViewPropertyNotes(readOnlyForm, workspaceSnapshot),
       readOnlyForm.viewPropertyQuery,
     ),
-    viewSortPropertyOptions: mobileListPropertySuggestions(
+    viewSortPropertyOptions: mobileSortablePropertySuggestions(
       editableViewPropertyNotes(readOnlyForm, workspaceSnapshot),
       '',
     ),
@@ -525,7 +526,7 @@ function typeSectionWorkspaceActions({
       readOnlyForm.typePropertyQuery,
     ),
     typeRelationshipTargetOptions: typeSchemaRelationshipTargetSuggestions(notes, readOnlyForm.typeSchemaRelationshipTarget),
-    typeSortPropertyOptions: mobileListPropertySuggestions(
+    typeSortPropertyOptions: mobileSortablePropertySuggestions(
       editableTypePropertyNotes(readOnlyForm, workspaceSnapshot),
       '',
     ),

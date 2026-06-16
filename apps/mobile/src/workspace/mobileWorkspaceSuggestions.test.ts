@@ -9,6 +9,7 @@ import {
   mobilePropertyValueSuggestions,
   mobileRelationshipKeySuggestions,
   mobileRelationshipTargetSuggestions,
+  mobileSortablePropertySuggestions,
   mobileTypeSuggestions,
   mobileViewFieldSuggestions,
   mobileViewValueSuggestionItems,
@@ -167,11 +168,22 @@ describe('mobile workspace suggestions', () => {
 
   it('suggests desktop note-list display properties and derives type defaults', () => {
     const scenario = workspaceScenarioForId('default')
-    const notes = scenario.notes
+    const notes = applyMobileWorkspaceEdit(scenario, {
+      key: 'Priority',
+      noteId: 'workflow-orchestration',
+      type: 'updateProperty',
+      value: 'High',
+    }).notes
 
     expect(mobileListPropertySuggestions(notes, '')).toEqual(
-      expect.arrayContaining(['belongs_to', 'Mentions', 'status', 'tags']),
+      expect.arrayContaining(['belongs_to', 'Mentions', 'Priority', 'status', 'tags']),
     )
+    const sortableProperties = mobileSortablePropertySuggestions(notes, '')
+    expect(sortableProperties).toContain('Priority')
+    expect(sortableProperties).not.toContain('belongs_to')
+    expect(sortableProperties).not.toContain('Mentions')
+    expect(sortableProperties).not.toContain('status')
+    expect(sortableProperties).not.toContain('tags')
     expect(mobileListPropertySuggestions(notes, 'bel')).toEqual(['belongs_to'])
     expect(mobileDefaultListPropertyDisplay(notes, {
       Essay: { listPropertiesDisplay: ['status', 'belongs_to'] },

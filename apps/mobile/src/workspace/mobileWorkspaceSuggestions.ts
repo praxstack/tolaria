@@ -136,6 +136,13 @@ export function mobileListPropertySuggestions(
   return sortedVisibleSuggestions(listPropertyCandidates(notes), query)
 }
 
+export function mobileSortablePropertySuggestions(
+  notes: MobileNote[],
+  query: SuggestionQuery,
+): PropertyKey[] {
+  return sortedVisibleSuggestions(sortablePropertyCandidates(notes), query)
+}
+
 export function mobileDefaultListPropertyDisplay(
   notes: MobileNote[],
   typeDefinitions: MobileTypeDefinitions | undefined,
@@ -214,6 +221,10 @@ function listPropertyCandidates(notes: MobileNote[]): PropertyKey[] {
     ...notes.flatMap((note) => propertiesForNote(note).map((property) => property.key)),
     ...notes.flatMap((note) => note.relationships.map(relationshipFrontmatterKey)),
   ]
+}
+
+function sortablePropertyCandidates(notes: MobileNote[]): PropertyKey[] {
+  return notes.flatMap((note) => propertiesForNote(note).map((property) => property.key))
 }
 
 function visibleSuggestions(
