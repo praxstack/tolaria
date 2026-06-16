@@ -181,7 +181,7 @@ function PhoneEditorScreen({
   openProperties,
   suggestionNotes,
 }: PhoneWorkspaceStateViewProps) {
-  const swipeHandlers = useHorizontalSwipe({ onSwipeRight: openList })
+  const swipeHandlers = useHorizontalSwipe({ onSwipeLeft: openProperties, onSwipeRight: openList })
   const handleNavigateWikilink = usePhoneWikilinkNavigation({ controller, suggestionNotes })
 
   return (

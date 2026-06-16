@@ -111,6 +111,7 @@ test.describe('mobile UI lab interactions', () => {
     await editPhoneProperty(page)
     await editPhoneMarkdownWithWikilink(page)
     await returnPhoneEditorToList(page)
+    await navigatePhoneSwipeGestures(page)
   })
 
   test('keeps large local-vault read-only interactions within tablet budgets', async ({ page }, testInfo) => {
@@ -338,6 +339,22 @@ async function returnPhoneEditorToList(page: PageLike) {
   await expect(page.getByTestId('note-row-workflow-orchestration')).toBeVisible()
 }
 
+async function navigatePhoneSwipeGestures(page: PageLike) {
+  await swipeHorizontally(page, { x: 12, y: 300 }, { x: 180, y: 300 })
+  await expect(page.getByTestId('phone-sidebar-screen')).toBeVisible()
+  await swipeHorizontally(page, { x: 220, y: 300 }, { x: 40, y: 300 })
+  await expect(page.getByTestId('phone-note-list-screen')).toBeVisible()
+
+  await page.getByTestId('note-row-workflow-orchestration').click()
+  await expect(page.getByTestId('phone-editor-screen')).toBeVisible()
+  await swipeHorizontally(page, { x: 360, y: 300 }, { x: 80, y: 300 })
+  await expect(page.getByTestId('phone-properties-screen')).toBeVisible()
+  await swipeHorizontally(page, { x: 80, y: 300 }, { x: 360, y: 300 })
+  await expect(page.getByTestId('phone-editor-screen')).toBeVisible()
+  await swipeHorizontally(page, { x: 80, y: 300 }, { x: 360, y: 300 })
+  await expect(page.getByTestId('phone-note-list-screen')).toBeVisible()
+}
+
 async function createSavedViewFromSidebar(page: PageLike) {
   await page.getByTestId('sidebar-section-create-views').click()
   await expect(page.getByTestId('workspace-create-view-name-input')).toBeVisible()
@@ -515,6 +532,33 @@ async function createAndDeleteTypeSection(page: PageLike) {
 
 async function longPress(page: PageLike, testId: string) {
   await longPressLocator(page, page.getByTestId(testId), testId)
+}
+
+async function swipeHorizontally(
+  page: PageLike,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+) {
+  const client = await page.context().newCDPSession(page)
+  const midpoint = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
+
+  await client.send('Input.dispatchTouchEvent', {
+    touchPoints: [start],
+    type: 'touchStart',
+  })
+  await client.send('Input.dispatchTouchEvent', {
+    touchPoints: [midpoint],
+    type: 'touchMove',
+  })
+  await client.send('Input.dispatchTouchEvent', {
+    touchPoints: [end],
+    type: 'touchMove',
+  })
+  await client.send('Input.dispatchTouchEvent', {
+    touchPoints: [],
+    type: 'touchEnd',
+  })
+  await client.detach()
 }
 
 async function longPressRoleButton(page: PageLike, name: string) {
