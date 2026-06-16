@@ -50,6 +50,27 @@ describe('tablet workspace navigation', () => {
     expect(filterNotesBySearch(notes, 'high', ['Priority']).map((candidate) => candidate.id)).toEqual(['workflow'])
     expect(filterNotesBySearch(notes, 'llm workflow', ['Priority'])).toEqual([])
   })
+
+  it('selects folders by path and includes descendants without matching duplicate labels', () => {
+    const snapshot = workspaceSnapshot([
+      note({ id: 'writing-root', path: 'Writing/Root.md', title: 'Root' }),
+      note({ id: 'writing-project', path: 'Writing/Projects/Alpha.md', title: 'Alpha' }),
+      note({ id: 'other-project', path: 'Other/Projects/Beta.md', title: 'Beta' }),
+      note({ id: 'other-root', path: 'Other/Root.md', title: 'Other root' }),
+    ])
+
+    expect(notesForSidebarSelection(snapshot, {
+      id: 'Writing',
+      kind: 'folder',
+      label: 'Writing',
+    }).map((candidate) => candidate.id)).toEqual(['writing-root', 'writing-project'])
+
+    expect(notesForSidebarSelection(snapshot, {
+      id: 'Writing/Projects',
+      kind: 'folder',
+      label: 'Projects',
+    }).map((candidate) => candidate.id)).toEqual(['writing-project'])
+  })
 })
 
 function workspaceSnapshot(notes: MobileNote[]): MobileWorkspaceSnapshot {

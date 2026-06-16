@@ -58,7 +58,7 @@ function FolderTreeRow({
 }) {
   const hasChildren = folder.children.length > 0
   const active = activeFolderId ? folder.id === activeFolderId : folder.active
-  const metricId = `sidebar.folder.${folder.id}`
+  const metricId = sidebarFolderMetricId(folder.id)
   const selection = { id: folder.id, name: folder.name }
 
   return (
@@ -105,6 +105,16 @@ function FolderTreeRow({
       ) : null}
     </View>
   )
+}
+
+function sidebarFolderMetricId(folderId: string) {
+  const segment = folderId
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return `sidebar.folder.${segment || 'folder'}`
 }
 
 const folderTreeLayoutStyles = StyleSheet.create({

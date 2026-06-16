@@ -227,9 +227,9 @@ function inboxNotes(notes: MobileNote[]) {
 function noteBelongsToFolder(note: MobileNote, selection: Extract<TabletSidebarSelection, { kind: 'folder' }>) {
   const folderPath = noteFolderPath(note)
   if (!folderPath) return false
-  if (normalizedFolderPath(folderPath) === normalizedFolderPath(selection.id)) return true
-
-  return folderPath.split('/').some((segment) => normalizedLabel(segment) === normalizedLabel(selection.label))
+  const normalizedNoteFolder = normalizedFolderPath(folderPath)
+  const normalizedSelection = normalizedFolderPath(selection.id)
+  return normalizedNoteFolder === normalizedSelection || normalizedNoteFolder.startsWith(`${normalizedSelection}/`)
 }
 
 function noteMatchesType(note: MobileNote, selection: TabletSidebarItemSelection) {

@@ -71,7 +71,7 @@ export async function assertSidebarRuntimeLayoutProbe(page: Page) {
     assertFolderLayout(metrics, id, desktopSidebarParity.folderRowContentInset)
   }
 
-  for (const id of ['sidebar.folder.writing-essays', 'sidebar.folder.writing-drafts', 'sidebar.folder.tolaria-mobile', 'sidebar.folder.tolaria-releases']) {
+  for (const id of ['sidebar.folder.writing-essays', 'sidebar.folder.writing-drafts', 'sidebar.folder.tolaria-mobile-ui', 'sidebar.folder.tolaria-releases']) {
     assertFolderLayout(metrics, id, desktopSidebarParity.folderRowContentInset + desktopSidebarParity.folderRowIndent)
   }
 }

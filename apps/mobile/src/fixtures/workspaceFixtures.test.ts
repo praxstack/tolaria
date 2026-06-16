@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { FixtureSidebarFolder, WorkspaceScenario } from './workspaceFixtures'
 import { fixtureEditorBlocks, fixtureEditorBullets, fixtureNotes, workspaceScenarioForId, workspaceScenarios } from './workspaceFixtures'
 
 describe('workspaceFixtures', () => {
@@ -22,4 +23,28 @@ describe('workspaceFixtures', () => {
     })
     expect(workspaceScenarioForId('missing')).toBe(workspaceScenarios.default)
   })
+
+  it('keeps fixture folder ids aligned with vault-relative paths', () => {
+    expect(folderIdsForScenario(workspaceScenarios.default)).toEqual(expect.arrayContaining([
+      'Writing',
+      'Writing/Essays',
+      'Tolaria',
+      'Tolaria/Mobile UI',
+      'Tolaria/Releases',
+    ]))
+    expect(folderIdsForScenario(workspaceScenarios['folder-tree'])).toEqual(expect.arrayContaining([
+      'Tolaria/Mobile UI/Tablet Shell',
+      'Tolaria/Mobile UI/Properties Panel',
+      'Attachments/Images',
+    ]))
+  })
 })
+
+function folderIdsForScenario(scenario: WorkspaceScenario) {
+  const folderSection = scenario.sidebarSections.find((section) => section.id === 'folders')
+  return flattenFolderIds(folderSection?.folders ?? [])
+}
+
+function flattenFolderIds(folders: FixtureSidebarFolder[]): string[] {
+  return folders.flatMap((folder) => [folder.id, ...flattenFolderIds(folder.children)])
+}

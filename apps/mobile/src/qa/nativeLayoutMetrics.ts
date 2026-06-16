@@ -141,7 +141,7 @@ const folderMetricSpecs = [
   { expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent, id: 'sidebar.folder.writing-essays' },
   { expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent, id: 'sidebar.folder.writing-drafts' },
   { expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset, id: 'sidebar.folder.tolaria' },
-  { expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent, id: 'sidebar.folder.tolaria-mobile' },
+  { expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent, id: 'sidebar.folder.tolaria-mobile-ui' },
   { expectedLeftInset: nativeSidebarMetricContract.folderRowContentInset + nativeSidebarMetricContract.folderRowIndent, id: 'sidebar.folder.tolaria-releases' },
 ] as const
 
@@ -670,7 +670,7 @@ function assertFolderTreeLayout(metrics: NativeLayoutMetricMap): NativeLayoutAss
       current: tree.tolariaReleases,
       currentId: 'sidebar.folder.tolaria-releases',
       previous: tree.tolariaMobile,
-      previousId: 'sidebar.folder.tolaria-mobile',
+      previousId: 'sidebar.folder.tolaria-mobile-ui',
     }),
   ]
 }
@@ -679,7 +679,7 @@ function folderTreeMetrics(metrics: NativeLayoutMetricMap): FolderTreeMetrics {
   return {
     root: metrics['sidebar.folderTree.root'],
     tolaria: metrics['sidebar.folder.tolaria.container'],
-    tolariaMobile: metrics['sidebar.folder.tolaria-mobile.container'],
+    tolariaMobile: metrics['sidebar.folder.tolaria-mobile-ui.container'],
     tolariaReleases: metrics['sidebar.folder.tolaria-releases.container'],
     writing: metrics['sidebar.folder.writing.container'],
     writingDrafts: metrics['sidebar.folder.writing-drafts.container'],

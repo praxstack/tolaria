@@ -445,22 +445,22 @@ const defaultSidebarSections: FixtureSidebarSection[] = [
     label: 'Folders',
     folders: [
       {
-        id: 'writing',
+        id: 'Writing',
         name: 'Writing',
         expanded: true,
         children: [
-          { id: 'writing-essays', name: 'Essays', children: [] },
-          { id: 'writing-drafts', name: 'Drafts', children: [] },
+          { id: 'Writing/Essays', name: 'Essays', children: [] },
+          { id: 'Writing/Drafts', name: 'Drafts', children: [] },
         ],
       },
       {
-        id: 'tolaria',
+        id: 'Tolaria',
         name: 'Tolaria',
         expanded: true,
         active: true,
         children: [
-          { id: 'tolaria-mobile', name: 'Mobile UI', children: [] },
-          { id: 'tolaria-releases', name: 'Releases', children: [] },
+          { id: 'Tolaria/Mobile UI', name: 'Mobile UI', children: [] },
+          { id: 'Tolaria/Releases', name: 'Releases', children: [] },
         ],
       },
     ],
@@ -518,40 +518,40 @@ const folderTreePressureSections: FixtureSidebarSection[] = [
     label: 'Folders',
     folders: [
       {
-        id: 'writing',
+        id: 'Writing',
         name: 'Writing',
         expanded: true,
         children: [
-          { id: 'writing-essays', name: 'Essays', children: [] },
-          { id: 'writing-drafts', name: 'Drafts', children: [] },
-          { id: 'writing-research', name: 'Research Backlog', children: [] },
+          { id: 'Writing/Essays', name: 'Essays', children: [] },
+          { id: 'Writing/Drafts', name: 'Drafts', children: [] },
+          { id: 'Writing/Research Backlog', name: 'Research Backlog', children: [] },
         ],
       },
       {
-        id: 'tolaria',
+        id: 'Tolaria',
         name: 'Tolaria',
         expanded: true,
         active: true,
         children: [
           {
-            id: 'tolaria-mobile',
+            id: 'Tolaria/Mobile UI',
             name: 'Mobile UI',
             expanded: true,
             children: [
-              { id: 'tolaria-mobile-tablet', name: 'Tablet Shell', children: [] },
-              { id: 'tolaria-mobile-properties', name: 'Properties Panel', children: [] },
+              { id: 'Tolaria/Mobile UI/Tablet Shell', name: 'Tablet Shell', children: [] },
+              { id: 'Tolaria/Mobile UI/Properties Panel', name: 'Properties Panel', children: [] },
             ],
           },
-          { id: 'tolaria-releases', name: 'Releases', children: [] },
+          { id: 'Tolaria/Releases', name: 'Releases', children: [] },
         ],
       },
       {
-        id: 'attachments',
+        id: 'Attachments',
         name: 'Attachments',
         expanded: true,
         children: [
-          { id: 'attachments-images', name: 'Images', children: [] },
-          { id: 'attachments-pdfs', name: 'PDFs', children: [] },
+          { id: 'Attachments/Images', name: 'Images', children: [] },
+          { id: 'Attachments/PDFs', name: 'PDFs', children: [] },
         ],
       },
     ],
