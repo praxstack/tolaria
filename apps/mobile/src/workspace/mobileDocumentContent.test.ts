@@ -85,6 +85,14 @@ Updated body.
     expect(html).not.toContain('<h1>')
   })
 
+  it('preserves desktop highlight markdown while leaving code spans literal', () => {
+    const html = mobileMarkdownBodyToTentapHtml('Use ==highlight== but keep `==literal==` as code.\n')
+
+    expect(html).toContain('<mark>highlight</mark>')
+    expect(html).toContain('<code>==literal==</code>')
+    expect(html).not.toContain('<code><mark>literal</mark></code>')
+  })
+
   it('keeps unsupported markdown table lines editable in TenTap basic mode', () => {
     const html = mobileMarkdownBodyToTentapHtml('| Surface | Target |\n| --- | --- |\n| Editor | WYSIWYG |\n')
 
@@ -107,6 +115,8 @@ Updated body.
             { text: 'Keep ', type: 'text' },
             { marks: [{ type: 'bold' }], text: 'relationships', type: 'text' },
             { text: ' visible with ', type: 'text' },
+            { marks: [{ type: 'highlight' }], text: 'highlighted context', type: 'text' },
+            { text: ' and ', type: 'text' },
             {
               marks: [{ attrs: { href: 'tolaria://wikilink/Tolaria%2FMobile%20UI' }, type: 'link' }],
               text: 'Mobile UI',
@@ -127,7 +137,7 @@ Updated body.
     expect(tiptapJsonToMobileMarkdown(document)).toBe([
       '# Workflow Orchestration Essay',
       '',
-      'Keep **relationships** visible with [[Tolaria/Mobile UI|Mobile UI]].',
+      'Keep **relationships** visible with ==highlighted context== and [[Tolaria/Mobile UI|Mobile UI]].',
       '',
       '- Copy desktop first',
     ].join('\n'))

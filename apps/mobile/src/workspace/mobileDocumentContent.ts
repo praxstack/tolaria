@@ -366,14 +366,23 @@ function isMarkdownTableDivider(line: MarkdownLine): boolean {
 }
 
 function inlineMarkdownToHtml(markdown: MarkdownLine): string {
-  return linkifyInlineMarkdown(escapeHtml(markdown))
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
+  const codeSpans: string[] = []
+  const escapedMarkdown = escapeHtml(markdown).replace(/`([^`]+)`/g, (_match, code: PlainText) => {
+    const token = codeSpanToken(codeSpans.length)
+    codeSpans.push(`<code>${code}</code>`)
+    return token
+  })
+
+  const html = linkifyInlineMarkdown(escapedMarkdown)
+    .replace(/==([^=]+)==/g, '<mark>$1</mark>')
     .replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/__([^_]+)__/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
     .replace(/_([^_]+)_/g, '<em>$1</em>')
     .replace(/~~([^~]+)~~/g, '<s>$1</s>')
+
+  return restoreCodeSpanTokens(html, codeSpans)
 }
 
 function linkifyInlineMarkdown(markdown: MarkdownLine): string {
@@ -482,6 +491,7 @@ function applyMark(text: PlainText, mark: TiptapJsonMark): string {
   if (mark.type === 'bold') return `**${text}**`
   if (mark.type === 'italic') return `*${text}*`
   if (mark.type === 'strike') return `~~${text}~~`
+  if (mark.type === 'highlight') return `==${text}==`
   if (mark.type === 'link') return linkMarkdown(text, mark.attrs)
   return text
 }
@@ -545,4 +555,14 @@ function unescapeHtml(value: PlainText): string {
 
 function escapeAttribute(value: UrlText): string {
   return escapeHtml(value)
+}
+
+function codeSpanToken(index: number): string {
+  return `\u0000CODESPAN${index}\u0000`
+}
+
+function restoreCodeSpanTokens(html: HtmlSnippet, codeSpans: HtmlSnippet[]): HtmlSnippet {
+  return codeSpans.reduce((current, codeSpan, index) => (
+    current.replaceAll(codeSpanToken(index), codeSpan)
+  ), html)
 }
