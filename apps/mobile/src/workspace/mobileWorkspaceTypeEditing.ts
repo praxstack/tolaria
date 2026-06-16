@@ -17,6 +17,13 @@ type RebuildMobileWorkspaceSnapshot = (
   notes: MobileNote[],
   allNotes?: MobileNote[],
 ) => MobileWorkspaceSnapshot
+const defaultTypeCanonicalCase = new Map([
+  ['event', 'Event'],
+  ['note', 'Note'],
+  ['person', 'Person'],
+  ['project', 'Project'],
+])
+const typeCreationAliases = new Map([['notes', 'Note']])
 
 export function applyMobileTypeEdit(
   snapshot: MobileWorkspaceSnapshot,
@@ -34,8 +41,8 @@ function createMobileTypeDefinition(
   typeName: NoteTitle,
   rebuildSnapshot: RebuildMobileWorkspaceSnapshot,
 ): MobileWorkspaceEditResult {
-  const cleanType = cleanTypeName(typeName)
-  if (!cleanType || snapshot.typeDefinitions?.[cleanType]) return { snapshot, writes: [] }
+  const cleanType = normalizeCreationTypeName(typeName)
+  if (!cleanType || equivalentTypeDefinitionName(snapshot.typeDefinitions, cleanType)) return { snapshot, writes: [] }
 
   const typeDefinitions = typeDefinitionsWithPatch(snapshot.typeDefinitions, cleanType, {})
   const definition = typeDefinitions[cleanType]
@@ -167,6 +174,31 @@ function typeSectionItems(snapshot: MobileWorkspaceSnapshot) {
 
 function cleanTypeName(value: string): string {
   return wikilinkTarget(value).replace(/\.md$/, '')
+}
+
+function normalizeCreationTypeName(value: string): string {
+  const cleanType = cleanTypeName(value)
+  const lowerType = cleanType.toLowerCase()
+  return typeCreationAliases.get(lowerType) ?? defaultTypeCanonicalCase.get(lowerType) ?? cleanType
+}
+
+function equivalentTypeDefinitionName(
+  definitions: MobileTypeDefinitions | undefined,
+  typeName: NoteTitle,
+): string | null {
+  const typeSlug = slugifyTypeName(typeName)
+  return Object.keys(definitions ?? {}).find((candidate) => (
+    candidate === typeName || slugifyTypeName(candidate) === typeSlug
+  )) ?? null
+}
+
+function slugifyTypeName(value: NoteTitle): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/gu, '')
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-|-$/gu, '') || 'type'
 }
 
 function wikilinkTarget(value: string): string {
