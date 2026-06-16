@@ -814,7 +814,7 @@ describe('applyMobileWorkspaceEdit', () => {
     expect(result.writes).toEqual([{ kind: 'deleteFolder', path: 'Tolaria' }])
   })
 
-  it('deduplicates created note paths against existing note paths and ids', () => {
+  it('blocks created note paths that collide with existing note paths and ids', () => {
     const base = workspaceScenarioForId('default')
     const existingPath = {
       ...base.notes[0],
@@ -831,10 +831,8 @@ describe('applyMobileWorkspaceEdit', () => {
       type: 'createNote',
     })
 
-    expect(result.snapshot.selectedNoteId).toBe('Writing/Launch/launch-checklist-2.md')
-    expect(result.writes[0]).toEqual(expect.objectContaining({
-      path: 'Writing/Launch/launch-checklist-2.md',
-    }))
+    expect(result.snapshot.selectedNoteId).toBe(base.selectedNoteId)
+    expect(result.writes).toEqual([])
   })
 
   it('creates saved-view YAML writes and updates the sidebar view section', () => {

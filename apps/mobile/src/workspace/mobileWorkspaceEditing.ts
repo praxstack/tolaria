@@ -208,10 +208,7 @@ const mobileNoteEditHandlers: Record<MobileNoteEdit['type'], MobileNoteEditHandl
 
 const mobileWorkspaceResultHandlers: MobileWorkspaceResultHandlerMap = {
   createFolder: (snapshot, edit) => applyMobileFolderEdit(snapshot, edit, rebuildSnapshot),
-  createNote: (snapshot, edit) => {
-    const nextSnapshot = createMobileNote(snapshot, edit.title, edit.defaults)
-    return { snapshot: nextSnapshot, writes: createNoteWrites(nextSnapshot) }
-  },
+  createNote: (snapshot, edit) => createMobileNoteResult(snapshot, edit.title, edit.defaults),
   createRelationshipTarget: (snapshot, edit) => createRelationshipTarget(snapshot, edit),
   createTypeDefinition: (snapshot, edit) => applyMobileTypeEdit(snapshot, edit, rebuildSnapshot),
   deleteFolder: (snapshot, edit) => applyMobileFolderEdit(snapshot, edit, rebuildSnapshot),
@@ -321,7 +318,10 @@ function createMobileNote(
   if (!trimmedTitle) return snapshot
 
   const notePool = workspaceNotePool(snapshot)
-  const id = uniqueMobileNotePath(notePool, createNotePath(trimmedTitle, defaults.folderPath))
+  const basePath = createNotePath(trimmedTitle, defaults.folderPath)
+  const id = uniqueMobileNotePath(notePool, basePath)
+  if (id !== basePath) return snapshot
+
   const now = Date.now()
   const type = cleanTypeName(defaults.type ?? 'Note') || 'Note'
   const rawContent = createNoteRawContent(trimmedTitle, defaults)
@@ -353,6 +353,16 @@ function createMobileNote(
     [note, ...snapshot.notes],
     [note, ...notePool],
   )
+}
+
+function createMobileNoteResult(
+  snapshot: MobileWorkspaceSnapshot,
+  title: NoteTitle,
+  defaults?: MobileCreateNoteDefaults,
+): MobileWorkspaceEditResult {
+  const nextSnapshot = createMobileNote(snapshot, title, defaults)
+  if (nextSnapshot === snapshot) return { snapshot, writes: [] }
+  return { snapshot: nextSnapshot, writes: createNoteWrites(nextSnapshot) }
 }
 
 function createNotePath(title: NoteTitle, folderPath: FolderPath | undefined): NoteId {
@@ -668,13 +678,14 @@ function createRelationshipTarget(
   const relationshipKey = normalizeRelationshipKey(edit.key)
   if (!sourceNote?.rawContent || !targetTitle || !relationshipKey) return { snapshot, writes: [] }
 
-  const targetSnapshot = createMobileNote(
+  const targetResult = createMobileNoteResult(
     snapshot,
     targetTitle,
     relationshipTargetDefaults(sourceNote, edit.defaults),
   )
+  const targetSnapshot = targetResult.snapshot
   const targetNote = workspaceNoteById(targetSnapshot, targetSnapshot.selectedNoteId ?? '')
-  if (!targetNote?.rawContent) return { snapshot, writes: [] }
+  if (!targetNote?.rawContent || targetResult.writes.length === 0) return { snapshot, writes: [] }
 
   const nextSnapshot = snapshotWithRelationshipTargetRef({
     relationshipKey,
@@ -686,7 +697,7 @@ function createRelationshipTarget(
   return {
     snapshot: nextSnapshot,
     writes: [
-      ...createNoteWrites(targetSnapshot),
+      ...targetResult.writes,
       ...saveNoteWrites(targetSnapshot, nextSnapshot, {
         key: relationshipKey,
         noteId: sourceNote.id,
