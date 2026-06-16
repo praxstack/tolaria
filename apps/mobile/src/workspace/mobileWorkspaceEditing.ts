@@ -324,7 +324,7 @@ function createMobileNote(
 
   const now = Date.now()
   const type = cleanTypeName(defaults.type ?? 'Note') || 'Note'
-  const rawContent = createNoteRawContent(trimmedTitle, defaults)
+  const rawContent = createNoteRawContent(trimmedTitle, type, defaults)
   const note = deriveEditableNote({
     fallback: {
       created: '0m ago',
@@ -373,21 +373,26 @@ function createNotePath(title: NoteTitle, folderPath: FolderPath | undefined): N
 
 function createNoteRawContent(
   title: NoteTitle,
+  type: NoteTitle,
   defaults: MobileCreateNoteDefaults,
 ): MarkdownContent {
-  return serializeDocument(createNoteFrontmatter(defaults), createNoteBody(title, defaults.template))
+  return serializeDocument(createNoteFrontmatter(title, type, defaults), createNoteBody(defaults.template))
 }
 
-function createNoteBody(title: NoteTitle, template?: MarkdownContent): MarkdownContent {
-  return template ? `# ${title}\n\n${template}` : `# ${title}\n\n`
+function createNoteBody(template?: MarkdownContent): MarkdownContent {
+  return template ? `\n${template}` : ''
 }
 
-function createNoteFrontmatter(defaults: MobileCreateNoteDefaults): LocalVaultFrontmatter {
+function createNoteFrontmatter(
+  title: NoteTitle,
+  type: NoteTitle,
+  defaults: MobileCreateNoteDefaults,
+): LocalVaultFrontmatter {
   const frontmatter: LocalVaultFrontmatter = {}
-  const type = cleanTypeName(defaults.type ?? '')
 
-  addFrontmatterValue(frontmatter, 'type', type && type !== 'Note' ? type : undefined)
-  addFrontmatterValue(frontmatter, 'Status', defaults.status)
+  addFrontmatterValue(frontmatter, 'title', title)
+  addFrontmatterValue(frontmatter, 'type', type)
+  addFrontmatterValue(frontmatter, 'status', defaults.status)
   addFrontmatterValue(frontmatter, 'tags', defaults.tags && defaults.tags.length > 0 ? defaults.tags : undefined)
   addFrontmatterValue(frontmatter, '_favorite', defaults.favorite === true ? true : undefined)
   addFrontmatterValue(frontmatter, '_archived', defaults.archived === true ? true : undefined)
@@ -1067,6 +1072,10 @@ function replaceMarkdownTitle(content: MarkdownContent, title: NoteTitle): Markd
   if (!cleanTitle) return content
 
   const document = parseLocalVaultDocument(content)
+  if (Object.prototype.hasOwnProperty.call(document.frontmatter, 'title')) {
+    return serializeDocument(writeMobileFrontmatterValue(document.frontmatter, 'title', cleanTitle), document.body)
+  }
+
   const lines = document.body.split(/\r?\n/)
   const firstContentIndex = lines.findIndex((line) => line.trim())
 

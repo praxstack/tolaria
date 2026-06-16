@@ -1,8 +1,186 @@
 import { describe, expect, it } from 'vitest'
 import { workspaceScenarioForId } from '../fixtures/workspaceFixtures'
-import { applyMobileWorkspaceEditWithWrites } from './mobileWorkspaceEditing'
+import {
+  applyMobileWorkspaceEdit,
+  applyMobileWorkspaceEditWithWrites,
+} from './mobileWorkspaceEditing'
 
 describe('mobile note creation parity', () => {
+  it('creates a selected editable note with desktop-style frontmatter content', () => {
+    const snapshot = applyMobileWorkspaceEdit(workspaceScenarioForId('default'), {
+      title: 'Mobile Editing Contract',
+      type: 'createNote',
+    })
+
+    expect(snapshot.selectedNoteId).toBe('mobile-editing-contract.md')
+    expect(snapshot.notes[0]).toMatchObject({
+      id: 'mobile-editing-contract.md',
+      rawContent: '---\ntitle: Mobile Editing Contract\ntype: Note\n---\n',
+      title: 'Mobile Editing Contract',
+      type: 'Note',
+    })
+  })
+
+  it('renames frontmatter-titled notes without adding a duplicate H1 title', () => {
+    const created = applyMobileWorkspaceEdit(workspaceScenarioForId('default'), {
+      title: 'Mobile Editing Contract',
+      type: 'createNote',
+    })
+    const snapshot = applyMobileWorkspaceEdit(created, {
+      noteId: 'mobile-editing-contract.md',
+      title: 'Revised Mobile Contract',
+      type: 'renameNoteTitle',
+    })
+
+    expect(snapshot.notes[0]).toMatchObject({
+      rawContent: '---\ntitle: Revised Mobile Contract\ntype: Note\n---\n',
+      title: 'Revised Mobile Contract',
+    })
+  })
+
+  it('creates typed notes with Type template body content', () => {
+    const result = applyMobileWorkspaceEditWithWrites(workspaceScenarioForId('default'), {
+      defaults: {
+        status: 'Active',
+        template: '## Objective\n\nLaunch mobile parity.\n',
+        type: 'Project',
+      },
+      title: 'Mobile Template Contract',
+      type: 'createNote',
+    })
+
+    const note = result.snapshot.notes[0]
+    expect(note).toMatchObject({
+      rawContent: [
+        '---',
+        'title: Mobile Template Contract',
+        'type: Project',
+        'status: Active',
+        '---',
+        '',
+        '## Objective',
+        '',
+        'Launch mobile parity.',
+        '',
+      ].join('\n'),
+      title: 'Mobile Template Contract',
+      type: 'Project',
+    })
+    expect(note?.editorBlocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'heading', level: 2, text: 'Objective' }),
+        expect.objectContaining({ kind: 'paragraph' }),
+      ]),
+    )
+    expect(result.writes).toEqual([{
+      content: note?.rawContent,
+      kind: 'createNote',
+      path: 'mobile-template-contract.md',
+    }])
+  })
+
+  it('plans create writes for new notes', () => {
+    const result = applyMobileWorkspaceEditWithWrites(workspaceScenarioForId('default'), {
+      title: 'Mobile Persistence Contract',
+      type: 'createNote',
+    })
+
+    expect(result.writes).toEqual([{
+      content: '---\ntitle: Mobile Persistence Contract\ntype: Note\n---\n',
+      kind: 'createNote',
+      path: 'mobile-persistence-contract.md',
+    }])
+  })
+
+  it('creates notes in the selected folder with frontmatter defaults', () => {
+    const result = applyMobileWorkspaceEditWithWrites(workspaceScenarioForId('default'), {
+      defaults: {
+        folderPath: 'Writing/Launch',
+        organized: false,
+        properties: { priority: 'High' },
+        relationships: { belongs_to: ['[[Tolaria MVP]]'] },
+        status: 'Active',
+        tags: ['Design', 'Mobile'],
+        type: 'Procedure',
+      },
+      title: 'Launch Checklist',
+      type: 'createNote',
+    })
+    const note = result.snapshot.notes[0]
+
+    expect(note).toMatchObject({
+      id: 'Writing/Launch/launch-checklist.md',
+      path: 'Writing/Launch/launch-checklist.md',
+      status: 'Active',
+      tags: ['Design', 'Mobile'],
+      title: 'Launch Checklist',
+      type: 'Procedure',
+      typeTone: 'purple',
+    })
+    expect(note.relationships.find((relationship) => relationship.key === 'belongs_to')?.values).toContainEqual(
+      expect.objectContaining({ title: 'Tolaria MVP', type: 'Note' }),
+    )
+    expect(note.rawContent).toContain('type: Procedure')
+    expect(note.rawContent).toContain('status: Active')
+    expect(note.rawContent).toContain('title: Launch Checklist')
+    expect(note.rawContent).toContain('tags:\n  - Design\n  - Mobile')
+    expect(note.rawContent).toContain('priority: High')
+    expect(note.rawContent).toContain('belongs_to:\n  - "[[Tolaria MVP]]"')
+    expect(result.writes).toEqual([{
+      content: note.rawContent,
+      kind: 'createNote',
+      path: 'Writing/Launch/launch-checklist.md',
+    }])
+  })
+
+  it('creates relationship targets beside the source note and links the exact created path', () => {
+    const base = workspaceScenarioForId('default')
+    const sourceNote = {
+      ...base.notes[0],
+      rawContent: '# Workflow Orchestration Essay\n\nSource body.\n',
+    }
+    const result = applyMobileWorkspaceEditWithWrites({
+      ...base,
+      allNotes: [sourceNote, ...base.notes.slice(1)],
+      notes: [sourceNote, ...base.notes.slice(1)],
+      selectedNoteId: sourceNote.id,
+    }, {
+      key: 'Related to',
+      sourceNoteId: sourceNote.id,
+      targetTitle: 'New Dependency',
+      type: 'createRelationshipTarget',
+    })
+    const target = result.snapshot.allNotes?.find((note) => note.path === 'Tolaria/Mobile UI/new-dependency.md')
+    const updatedSource = result.snapshot.allNotes?.find((note) => note.id === sourceNote.id)
+
+    expect(result.snapshot.selectedNoteId).toBe('Tolaria/Mobile UI/new-dependency.md')
+    expect(target).toMatchObject({
+      id: 'Tolaria/Mobile UI/new-dependency.md',
+      path: 'Tolaria/Mobile UI/new-dependency.md',
+      title: 'New Dependency',
+      type: 'Note',
+    })
+    expect(updatedSource?.rawContent).toContain('related_to:\n  - "[[Tolaria/Mobile UI/new-dependency]]"')
+    expect(updatedSource?.relationships.find((relationship) => relationship.key === 'related_to')?.values).toContainEqual(
+      expect.objectContaining({
+        id: target?.id,
+        title: 'New Dependency',
+      }),
+    )
+    expect(result.writes).toEqual([
+      {
+        content: '---\ntitle: New Dependency\ntype: Note\n---\n',
+        kind: 'createNote',
+        path: 'Tolaria/Mobile UI/new-dependency.md',
+      },
+      {
+        content: updatedSource?.rawContent,
+        kind: 'saveNote',
+        path: 'Tolaria/Mobile UI/Workflow Orchestration Essay.md',
+      },
+    ])
+  })
+
   it('blocks named note creation when the desktop target path already exists', () => {
     const base = workspaceScenarioForId('default')
     const existingNote = {
