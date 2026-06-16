@@ -7,6 +7,11 @@ import { mobileEditorBlocksToMarkdown, mobileFallbackBulletsToMarkdown } from '.
 import { isMobileMarkdownCodeFenceClose, readMobileMarkdownCodeFence } from './mobileMarkdownCodeFence'
 import { mobileMarkdownListHtml, type MobileMarkdownListItem } from './mobileMarkdownListHtml'
 import { mobileImageNodeMarkdown, mobileMarkdownImageHtml } from './mobileMarkdownImage'
+import {
+  normalizeUnsupportedHtmlBlockMarkdown,
+  readUnsupportedHtmlBlock,
+  unsupportedHtmlBlockToParagraphHtml,
+} from './mobileUnsupportedHtmlMarkdown'
 import type { MobileNote } from './mobileWorkspaceModel'
 
 type MarkdownContent = string
@@ -135,6 +140,7 @@ function readCodeBlock(lines: MarkdownLines, startIndex: number): ReadHtmlBlockR
 const htmlBlockReaders = [
   readCodeBlock,
   readDisplayMathBlock,
+  readUnsupportedHtmlSourceBlock,
   readImageBlock,
   readTable,
   readHorizontalRule,
@@ -156,6 +162,13 @@ function readDisplayMathBlock(lines: MarkdownLines, startIndex: number): ReadHtm
   const displayMath = readMobileDisplayMathBlock(lines, startIndex)
   return displayMath
     ? { html: `<p>${displayMath.lines.map(escapeHtml).join('<br>')}</p>`, nextIndex: displayMath.nextIndex }
+    : null
+}
+
+function readUnsupportedHtmlSourceBlock(lines: MarkdownLines, startIndex: number): ReadHtmlBlockResult | null {
+  const block = readUnsupportedHtmlBlock(lines, startIndex)
+  return block
+    ? { html: unsupportedHtmlBlockToParagraphHtml(block.lines, escapeHtml), nextIndex: block.nextIndex }
     : null
 }
 
@@ -360,6 +373,9 @@ const blockNodeSerializers: Record<string, (node: TiptapJsonNode) => MarkdownBod
 function normalizeMobileFallbackParagraphMarkdown(markdown: MarkdownBody): MarkdownBody {
   const displayMathMarkdown = normalizeMobileDisplayMathMarkdown(markdown)
   if (displayMathMarkdown !== markdown) return displayMathMarkdown
+
+  const htmlBlockMarkdown = normalizeUnsupportedHtmlBlockMarkdown(markdown)
+  if (htmlBlockMarkdown !== markdown) return htmlBlockMarkdown
 
   return normalizeUnsupportedTableMarkdown(markdown)
 }

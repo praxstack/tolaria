@@ -132,6 +132,23 @@ Updated body.
     expect(html).toBe('<p>Intro</p>\n<p>$$<br>\\int_0^1 x\\,dx<br>$$</p>\n<p>Done</p>')
   })
 
+  it('keeps unsupported details blocks editable as escaped markdown source', () => {
+    const html = mobileMarkdownBodyToTentapHtml([
+      '<details><summary>Manufacturing</summary>',
+      '',
+      'Made in Italy',
+      '',
+      '</details>',
+      '',
+      'Done',
+      '',
+    ].join('\n'))
+
+    expect(html).toBe(
+      '<p>&lt;details&gt;&lt;summary&gt;Manufacturing&lt;/summary&gt;<br><br>Made in Italy<br><br>&lt;/details&gt;</p>\n<p>Done</p>',
+    )
+  })
+
   it('hydrates nested desktop markdown lists without flattening indentation', () => {
     const html = mobileMarkdownBodyToTentapHtml('- Parent\n  - Child with **bold**\n- Sibling\n')
     const taskHtml = mobileMarkdownBodyToTentapHtml('- [x] Parent\n  - [ ] Child\n')
@@ -339,6 +356,34 @@ Updated body.
       '| Surface | Target |',
       '| --- | --- |',
       '| Editor | WYSIWYG |',
+    ].join('\n'))
+  })
+
+  it('keeps unsupported details paragraphs as editable markdown source after native saves', () => {
+    const document: TiptapJsonNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { text: '<details><summary>Manufacturing</summary>', type: 'text' },
+            { type: 'hardBreak' },
+            { type: 'hardBreak' },
+            { text: 'Made in Italy', type: 'text' },
+            { type: 'hardBreak' },
+            { type: 'hardBreak' },
+            { text: '</details>', type: 'text' },
+          ],
+        },
+      ],
+    }
+
+    expect(tiptapJsonToMobileMarkdown(document)).toBe([
+      '<details><summary>Manufacturing</summary>',
+      '',
+      'Made in Italy',
+      '',
+      '</details>',
     ].join('\n'))
   })
 
