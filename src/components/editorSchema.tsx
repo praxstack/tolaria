@@ -23,6 +23,7 @@ import { resolveEntry } from '../utils/wikilink'
 import { MATH_BLOCK_TYPE, MATH_INLINE_TYPE, renderMathToHtml } from '../utils/mathMarkdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown'
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
+import { CALLOUT_BLOCK_TYPE, calloutMeta } from '../utils/calloutMarkdown'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '../utils/markdownHighlightMarkdown'
 import type { VaultEntry } from '../types'
 import { createTolariaCodeBlockOptions } from './codeBlockOptions'
@@ -416,6 +417,39 @@ const mermaidBlock = MermaidBlock()
 const tldrawBlock = TldrawBlock()
 const videoBlock = VideoBlockSpec()
 
+const CalloutBlock = createReactBlockSpec(
+  {
+    type: CALLOUT_BLOCK_TYPE,
+    propSchema: {
+      calloutType: { default: 'note' },
+      title: { default: '' },
+      fold: { default: '' },
+      body: { default: '' },
+    },
+    content: 'none',
+  },
+  {
+    render: (props) => {
+      const { calloutType, title, body } = props.block.props
+      const meta = calloutMeta(calloutType)
+      const heading = title ? `${meta.label} — ${title}` : meta.label
+      return (
+        <div
+          className={`tola-callout tola-callout--${calloutType}`}
+          data-callout-type={calloutType}
+        >
+          <div className="tola-callout__title">
+            <span className="tola-callout__icon" aria-hidden="true">{meta.emoji}</span>
+            <span className="tola-callout__label">{heading}</span>
+          </div>
+          {body ? <div className="tola-callout__body">{body}</div> : null}
+        </div>
+      )
+    },
+  },
+)
+const calloutBlock = CalloutBlock()
+
 function markdownHighlightElement(): { dom: HTMLElement; contentDOM: HTMLElement } {
   const mark = document.createElement('mark')
   mark.className = 'markdown-highlight'
@@ -451,5 +485,6 @@ export const schema = BlockNoteSchema.create({
     tldrawBlock,
     codeBlock,
     video: videoBlock,
+    calloutBlock,
   },
 })

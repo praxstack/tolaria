@@ -13,6 +13,7 @@ import {
 } from './fileAttachmentMarkdown'
 import { restoreMarkdownHighlightsInBlocks } from './markdownHighlightMarkdown'
 import { serializeMathAwareBlocks } from './mathMarkdown'
+import { isCalloutBlock, serializeCalloutBlock } from './calloutMarkdown'
 import { mermaidMarkdownCodec } from './mermaidMarkdown'
 import { tldrawMarkdownCodec } from './tldrawMarkdown'
 
@@ -37,6 +38,29 @@ export function injectDurableEditorMarkdownBlocks(blocks: unknown[]): unknown[] 
   return injectFileAttachmentBlocks(withDurableBlocks)
 }
 
+function serializeCalloutAndMathAwareBlocks(editor: MarkdownSerializer, blocks: unknown[]): string {
+  const chunks: string[] = []
+  let pending: unknown[] = []
+
+  const flush = () => {
+    if (pending.length === 0) return
+    const markdown = serializeMathAwareBlocks(editor, restoreMarkdownHighlightsInBlocks(pending)).trimEnd()
+    if (markdown) chunks.push(markdown)
+    pending = []
+  }
+
+  for (const block of blocks) {
+    if (isCalloutBlock(block as Parameters<typeof isCalloutBlock>[0])) {
+      flush()
+      chunks.push(serializeCalloutBlock(block as Parameters<typeof serializeCalloutBlock>[0]))
+      continue
+    }
+    pending.push(block)
+  }
+  flush()
+  return chunks.join('\n\n')
+}
+
 export function serializeDurableEditorBlocks(
   editor: MarkdownSerializer,
   blocks: unknown[],
@@ -48,9 +72,9 @@ export function serializeDurableEditorBlocks(
     serializeOrdinaryBlocks: ordinaryBlocks => serializeDurableMarkdownBlocks({
       blocks: ordinaryBlocks,
       codecs: EDITOR_DURABLE_MARKDOWN_CODECS,
-      serializeOrdinaryBlocks: durableOrdinaryBlocks => serializeMathAwareBlocks(
+      serializeOrdinaryBlocks: durableOrdinaryBlocks => serializeCalloutAndMathAwareBlocks(
         editor,
-        restoreMarkdownHighlightsInBlocks(durableOrdinaryBlocks),
+        durableOrdinaryBlocks,
       ),
     }),
   })

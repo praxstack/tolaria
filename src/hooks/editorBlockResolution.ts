@@ -2,6 +2,7 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import { preProcessWikilinks, injectWikilinks } from '../utils/wikilinks'
 import { preProcessMathMarkdown, injectMathInBlocks } from '../utils/mathMarkdown'
 import { injectDurableEditorMarkdownBlocks, preProcessDurableEditorMarkdown } from '../utils/editorDurableMarkdown'
+import { injectCalloutBlocks } from '../utils/calloutMarkdown'
 import { injectMarkdownHighlightsInBlocks } from '../utils/markdownHighlightMarkdown'
 import { resolveImageUrls } from '../utils/vaultImages'
 import { repairMalformedEditorBlocks } from './editorBlockRepair'
@@ -148,7 +149,8 @@ function injectEditorMarkdownBlocks(blocks: EditorBlocks): EditorBlocks {
   const withWikilinks = injectWikilinks(blocks)
   const withMath = injectMathInBlocks(withWikilinks)
   const withHighlights = injectMarkdownHighlightsInBlocks(withMath)
-  return injectDurableEditorMarkdownBlocks(withHighlights) as EditorBlocks
+  const withDurable = injectDurableEditorMarkdownBlocks(withHighlights)
+  return injectCalloutBlocks(withDurable) as EditorBlocks
 }
 
 function repairParsedMarkdownBlocks(parsed: MarkdownParseResult): EditorBlocks {

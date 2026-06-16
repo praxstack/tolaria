@@ -516,3 +516,63 @@ body.mac-chrome .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadc
     padding: 12px 0;
   }
 }
+
+/* Obsidian-style callouts (rendered from `> [!type]` blockquotes). */
+.tola-callout {
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 6px;
+  border-left: 4px solid var(--callout-accent, var(--color-border));
+  background: color-mix(in srgb, var(--callout-accent, var(--color-muted)) 8%, var(--color-background));
+}
+
+.tola-callout__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+}
+
+.tola-callout__icon {
+  line-height: 1;
+}
+
+.tola-callout__body {
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
+  color: var(--color-foreground);
+}
+
+/* Type families mapped to the app's existing semantic feedback palette. */
+.tola-callout--note,
+.tola-callout--abstract,
+.tola-callout--summary,
+.tola-callout--tldr,
+.tola-callout--info,
+.tola-callout--todo,
+.tola-callout--quote,
+.tola-callout--cite { --callout-accent: var(--feedback-info); }
+
+.tola-callout--tip,
+.tola-callout--hint,
+.tola-callout--success,
+.tola-callout--check,
+.tola-callout--done { --callout-accent: var(--feedback-success); }
+
+.tola-callout--important,
+.tola-callout--warning,
+.tola-callout--caution,
+.tola-callout--attention,
+.tola-callout--question,
+.tola-callout--help,
+.tola-callout--faq { --callout-accent: var(--feedback-warning); }
+
+.tola-callout--failure,
+.tola-callout--fail,
+.tola-callout--missing,
+.tola-callout--danger,
+.tola-callout--error,
+.tola-callout--bug { --callout-accent: var(--feedback-error); }
+
+.tola-callout--example { --callout-accent: var(--color-accent); }
