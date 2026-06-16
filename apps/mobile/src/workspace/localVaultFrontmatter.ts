@@ -152,7 +152,11 @@ function flushList(
   key: FrontmatterKey | null,
   items: LocalVaultFrontmatterScalar[],
 ) {
-  if (key && items.length > 0) assignFrontmatterValue(frontmatter, key, items)
+  if (key && items.length > 0) assignFrontmatterValue(frontmatter, key, collapseList(items))
+}
+
+function collapseList(items: LocalVaultFrontmatterScalar[]): LocalVaultFrontmatterValue {
+  return items.length === 1 ? items[0] : items
 }
 
 function assignFrontmatterValue(

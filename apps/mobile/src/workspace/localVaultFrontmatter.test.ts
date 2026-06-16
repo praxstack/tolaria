@@ -128,4 +128,20 @@ Body.
     expect(document.frontmatter.quoted).toBe('null')
     expect(document.frontmatter.values).toEqual(['null', 'null'])
   })
+
+  it('collapses one-item frontmatter lists to scalars like desktop', () => {
+    const document = parseLocalVaultDocument(`---
+owner:
+  - Luca
+tags:
+  - Design
+  - Mobile
+---
+Body.
+`)
+
+    expect(document.frontmatter.owner).toBe('Luca')
+    expect(document.frontmatter.tags).toEqual(['Design', 'Mobile'])
+    expect(frontmatterList(document.frontmatter, ['owner'])).toEqual(['Luca'])
+  })
 })
