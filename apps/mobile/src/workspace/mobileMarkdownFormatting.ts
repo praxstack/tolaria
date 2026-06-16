@@ -2,11 +2,17 @@ export type MobileMarkdownFormatAction =
   | 'bold'
   | 'bulletList'
   | 'code'
+  | 'codeBlock'
+  | 'divider'
   | 'heading2'
   | 'heading3'
+  | 'highlight'
   | 'italic'
+  | 'orderedList'
   | 'quote'
+  | 'strike'
   | 'table'
+  | 'taskList'
   | 'wikilink'
 
 export type MobileMarkdownSelection = {
@@ -36,18 +42,32 @@ type MarkdownLine = {
 }
 
 type LineMarker = {
-  value: '- ' | '> ' | '## ' | '### '
+  value: '- ' | '- [ ] ' | '> ' | '## ' | '### '
 }
 
 type MarkdownReplacement = {
   value: string
 }
 
-const inlineFormats = {
+type NumberedLine = MarkdownLine & {
+  index: number
+}
+
+const inlineFormats: Partial<Record<MobileMarkdownFormatAction, InlineFormat>> = {
   bold: { placeholder: 'bold text', prefix: '**', suffix: '**' },
   code: { placeholder: 'code', prefix: '`', suffix: '`' },
+  highlight: { placeholder: 'highlighted text', prefix: '==', suffix: '==' },
   italic: { placeholder: 'italic text', prefix: '*', suffix: '*' },
-} as const satisfies Record<'bold' | 'code' | 'italic', InlineFormat>
+  strike: { placeholder: 'strikethrough text', prefix: '~~', suffix: '~~' },
+}
+
+const lineMarkers: Partial<Record<MobileMarkdownFormatAction, LineMarker>> = {
+  bulletList: { value: '- ' },
+  heading2: { value: '## ' },
+  heading3: { value: '### ' },
+  quote: { value: '> ' },
+  taskList: { value: '- [ ] ' },
+}
 
 const markdownTableSnippet = [
   '| Column | Value |',
@@ -75,14 +95,19 @@ class MarkdownEditSession {
   }
 
   apply(): MobileMarkdownFormatResult {
-    if (this.action === 'heading2') return this.applyLineTransform((line) => this.headingLine(line, { value: '## ' }))
-    if (this.action === 'heading3') return this.applyLineTransform((line) => this.headingLine(line, { value: '### ' }))
-    if (this.action === 'bulletList') return this.applyLineTransform((line) => this.prefixedLine(line, { value: '- ' }))
-    if (this.action === 'quote') return this.applyLineTransform((line) => this.prefixedLine(line, { value: '> ' }))
+    const inlineFormat = inlineFormats[this.action]
+    if (inlineFormat) return this.applyInlineFormat(inlineFormat)
+
+    const lineMarker = lineMarkers[this.action]
+    if (lineMarker) return this.applyMarkedLineTransform(lineMarker)
+
+    if (this.action === 'orderedList') return this.applyLineTransform((line) => this.numberedLine(line))
+    if (this.action === 'codeBlock') return this.insertCodeBlock()
+    if (this.action === 'divider') return this.insertDivider()
     if (this.action === 'table') return this.insertTable()
     if (this.action === 'wikilink') return this.applyWikilinkFormat()
 
-    return this.applyInlineFormat(inlineFormats[this.action])
+    return { selection: this.range, text: this.text }
   }
 
   private applyInlineFormat(format: InlineFormat): MobileMarkdownFormatResult {
@@ -114,12 +139,18 @@ class MarkdownEditSession {
     }
   }
 
-  private applyLineTransform(transform: (line: MarkdownLine) => string): MobileMarkdownFormatResult {
+  private applyMarkedLineTransform(marker: LineMarker): MobileMarkdownFormatResult {
+    return this.applyLineTransform((line) => (
+      marker.value.startsWith('#') ? this.headingLine(line, marker) : this.prefixedLine(line, marker)
+    ))
+  }
+
+  private applyLineTransform(transform: (line: NumberedLine) => string): MobileMarkdownFormatResult {
     const range = this.selectedLineRange()
     const segment = this.text.slice(range.start, range.end)
     const replacement = segment
       .split('\n')
-      .map((line) => transform({ value: line }))
+      .map((line, index) => transform({ index, value: line }))
       .join('\n')
 
     return {
@@ -137,6 +168,37 @@ class MarkdownEditSession {
     if (line.value.trim().length === 0) return marker.value
     if (line.value.startsWith(marker.value)) return line.value
     return `${marker.value}${line.value}`
+  }
+
+  private numberedLine(line: NumberedLine): string {
+    const marker = `${line.index + 1}. `
+    if (line.value.trim().length === 0) return marker
+    return `${marker}${line.value.replace(/^\d+[.)]\s+/u, '')}`
+  }
+
+  private insertCodeBlock(): MobileMarkdownFormatResult {
+    const selected = this.selectedText()
+    const code = selected || 'code'
+    const before = this.blockPrefix()
+    const after = this.blockSuffix()
+    const replacement = `${before}\`\`\`text\n${code}\n\`\`\`${after}`
+    const codeStart = this.range.start + before.length + '```text\n'.length
+
+    return {
+      selection: selected ? collapsedSelection(this.range.start + replacement.length) : { start: codeStart, end: codeStart + code.length },
+      text: this.replaceRange({ value: replacement }),
+    }
+  }
+
+  private insertDivider(): MobileMarkdownFormatResult {
+    const before = this.blockPrefix()
+    const after = this.blockSuffix()
+    const replacement = `${before}---${after}`
+
+    return {
+      selection: collapsedSelection(this.range.start + replacement.length),
+      text: this.replaceRange({ value: replacement }),
+    }
   }
 
   private insertTable(): MobileMarkdownFormatResult {

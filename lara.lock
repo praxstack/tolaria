@@ -618,12 +618,17 @@ files:
     editor.formatting.toolbar: 767042e4dbdd6d8f737786f122d66d4f
     editor.formatting.bold: 114c3050111d8b8ddd830b99ccebd246
     editor.formatting.italic: 1d874710ccdcd46b95397049d2e7500c
+    editor.formatting.strikethrough: 926a51baad949d12035107e5d06e2fdb
     editor.formatting.code: ca0dbad92a874b2f69b549293387925e
     editor.formatting.wikilink: e0ee5416c95077b05ea46d40dee513a7
     editor.formatting.heading2: ea59935a58010a876f94374fb2f41d51
     editor.formatting.heading3: 652864eb81a28bd7164f1605ab52a26a
     editor.formatting.bulletList: 7e0df159e037db49a0ce97098f05b5ac
+    editor.formatting.orderedList: 4b985b57aabbd3110aac1d53b1a921c1
+    editor.formatting.taskList: a5d727df2ce2d168bae39c78df4b9054
     editor.formatting.quote: c48e929b2b1eabba2ba036884433345e
+    editor.formatting.divider: 2908050e771fb91a3afbb7809972e90c
+    editor.formatting.codeBlock: 10a7314bd561c0d130bd189a6f836e5e
     editor.formatting.table: 51c45b795d5d18a3e4e0c37e8b20a141
     editor.whiteboard.enterFullscreen: 606bf766125ecff4b33ca98122222c72
     editor.whiteboard.exitFullscreen: afd0a0414d79d047f00319921e4d4944

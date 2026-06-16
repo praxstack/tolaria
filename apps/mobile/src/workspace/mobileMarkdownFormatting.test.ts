@@ -16,6 +16,17 @@ describe('mobile markdown formatting', () => {
     })
   })
 
+  it('matches desktop durable highlight and strikethrough markdown', () => {
+    expect(applyMobileMarkdownFormat('Make this visible', { start: 5, end: 9 }, 'highlight')).toEqual({
+      selection: { start: 13, end: 13 },
+      text: 'Make ==this== visible',
+    })
+    expect(applyMobileMarkdownFormat('Remove this later', { start: 7, end: 11 }, 'strike')).toEqual({
+      selection: { start: 15, end: 15 },
+      text: 'Remove ~~this~~ later',
+    })
+  })
+
   it('feeds the existing wikilink autocomplete when no text is selected', () => {
     expect(applyMobileMarkdownFormat('See ', { start: 4, end: 4 }, 'wikilink')).toEqual({
       selection: { start: 6, end: 6 },
@@ -37,14 +48,26 @@ describe('mobile markdown formatting', () => {
     })
   })
 
-  it('prefixes every selected line for list and quote commands', () => {
-    expect(applyMobileMarkdownFormat('One\nTwo', { start: 0, end: 7 }, 'bulletList')).toEqual({
-      selection: { start: 11, end: 11 },
-      text: '- One\n- Two',
+  it.each([
+    ['bulletList', '- One\n- Two', 11],
+    ['quote', '> One\n> Two', 11],
+    ['orderedList', '1. One\n2. Two', 13],
+    ['taskList', '- [ ] One\n- [ ] Two', 19],
+  ] as const)('formats selected lines with the %s command', (action, text, cursor) => {
+    expect(applyMobileMarkdownFormat('One\nTwo', { start: 0, end: 7 }, action)).toEqual({
+      selection: { start: cursor, end: cursor },
+      text,
     })
-    expect(applyMobileMarkdownFormat('One\nTwo', { start: 0, end: 7 }, 'quote')).toEqual({
-      selection: { start: 11, end: 11 },
-      text: '> One\n> Two',
+  })
+
+  it('inserts code blocks and dividers as separated markdown blocks', () => {
+    expect(applyMobileMarkdownFormat('Intro', { start: 5, end: 5 }, 'codeBlock')).toEqual({
+      selection: { start: 15, end: 19 },
+      text: 'Intro\n\n```text\ncode\n```',
+    })
+    expect(applyMobileMarkdownFormat('Intro', { start: 5, end: 5 }, 'divider')).toEqual({
+      selection: { start: 10, end: 10 },
+      text: 'Intro\n\n---',
     })
   })
 

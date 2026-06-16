@@ -1,13 +1,18 @@
 import {
   Code,
+  CodeBlock,
   LinkSimple,
   ListBullets,
+  ListChecks,
+  ListNumbers,
+  Minus,
   Quotes,
   Table,
   TextB,
   TextHThree,
   TextHTwo,
   TextItalic,
+  TextStrikethrough,
 } from 'phosphor-react-native'
 import type { ReactNode } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -38,10 +43,22 @@ const formattingCommands: FormattingCommand[] = [
     testID: 'editor-format-italic',
   },
   {
+    action: 'strike',
+    icon: (color) => <TextStrikethrough color={color} size={desktopToolbarActionParity.iconSize} />,
+    label: mobileText('editor.formatting.strikethrough'),
+    testID: 'editor-format-strike',
+  },
+  {
     action: 'code',
     icon: (color) => <Code color={color} size={desktopToolbarActionParity.iconSize} />,
     label: mobileText('editor.formatting.code'),
     testID: 'editor-format-code',
+  },
+  {
+    action: 'highlight',
+    icon: (color) => <TextB color={color} size={desktopToolbarActionParity.iconSize} weight="fill" />,
+    label: mobileText('editor.formatting.highlight'),
+    testID: 'editor-format-highlight',
   },
   {
     action: 'wikilink',
@@ -68,10 +85,34 @@ const formattingCommands: FormattingCommand[] = [
     testID: 'editor-format-bullet-list',
   },
   {
+    action: 'orderedList',
+    icon: (color) => <ListNumbers color={color} size={desktopToolbarActionParity.iconSize} />,
+    label: mobileText('editor.formatting.orderedList'),
+    testID: 'editor-format-ordered-list',
+  },
+  {
+    action: 'taskList',
+    icon: (color) => <ListChecks color={color} size={desktopToolbarActionParity.iconSize} />,
+    label: mobileText('editor.formatting.taskList'),
+    testID: 'editor-format-task-list',
+  },
+  {
     action: 'quote',
     icon: (color) => <Quotes color={color} size={desktopToolbarActionParity.iconSize} />,
     label: mobileText('editor.formatting.quote'),
     testID: 'editor-format-quote',
+  },
+  {
+    action: 'divider',
+    icon: (color) => <Minus color={color} size={desktopToolbarActionParity.iconSize} />,
+    label: mobileText('editor.formatting.divider'),
+    testID: 'editor-format-divider',
+  },
+  {
+    action: 'codeBlock',
+    icon: (color) => <CodeBlock color={color} size={desktopToolbarActionParity.iconSize} />,
+    label: mobileText('editor.formatting.codeBlock'),
+    testID: 'editor-format-code-block',
   },
   {
     action: 'table',
