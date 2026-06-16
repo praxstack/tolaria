@@ -6,6 +6,13 @@ import {
   localVaultPath,
   type LocalVaultSnapshotState,
 } from './local-vault-snapshot-loader'
+import { workspaceScenarioForId } from '../src/fixtures/workspaceFixtures'
+import {
+  HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY,
+  HOST_WORKSPACE_SNAPSHOT_GLOBAL_KEY,
+  HOST_WORKSPACE_SNAPSHOT_STORAGE_KEY,
+  HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY,
+} from '../src/workspace/readOnlyWorkspaceRepository'
 
 const mobileClipboardAttemptsGlobalKey = '__TOLARIA_MOBILE_CLIPBOARD_ATTEMPTS__'
 
@@ -125,6 +132,34 @@ test.describe('mobile UI lab interactions', () => {
     await assertSavedViewNavigationBudget(page, state)
     await assertTypeNavigationBudget(page, state)
     await assertFolderNavigationBudget(page, state)
+  })
+
+  test('surfaces host write failures in the tablet status bar', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'tablet-landscape', 'Host persistence status checks use the full-width tablet layout.')
+
+    await installFixtureHostWorkspace(page)
+    await page.goto('/?source=host-vault')
+
+    await expect(page.getByTestId('editor-title')).toHaveText('Workflow Orchestration Essay')
+    await page.getByTestId('note-list-create-action').click()
+    await page.getByTestId('workspace-create-note-title-input').fill('Persistence Warmup Draft')
+    await page.getByTestId('workspace-action-sheet-createNote').getByRole('button', { exact: true, name: 'Create' }).click()
+    await expect(page.getByTestId('note-row-persistence-warmup-draft.md')).toBeVisible()
+    await expect(hostWorkspaceWriteCount(page)).resolves.toBe(1)
+
+    await page.evaluate((failureKey) => {
+      Reflect.set(window, failureKey, 'Host write failed in QA')
+    }, HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY)
+    await expect(page.evaluate((failureKey) => {
+      return (window as unknown as Record<string, unknown>)[failureKey]
+    }, HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY)).resolves.toBe('Host write failed in QA')
+    await page.getByTestId('note-list-create-action').click()
+    await page.getByTestId('workspace-create-note-title-input').fill('Persistence Failure Draft')
+    await page.getByTestId('workspace-action-sheet-createNote').getByRole('button', { exact: true, name: 'Create' }).click()
+    await expect(page.getByTestId('note-row-persistence-failure-draft.md')).toBeVisible()
+
+    await expect(page.getByTestId('sync-status-label')).toHaveText('Not synced')
+    await expect(page.getByTestId('sync-status-detail')).toHaveText('Sync failed')
   })
 })
 
@@ -816,6 +851,32 @@ async function installRequiredLocalVaultSnapshot(page: PageLike): Promise<LocalV
   test.skip(!state, `Local vault path is not readable: ${localVaultPath}`)
   if (!state) throw new Error(`Local vault path is not readable: ${localVaultPath}`)
   return state
+}
+
+async function installFixtureHostWorkspace(page: PageLike) {
+  const snapshot = workspaceScenarioForId('default')
+
+  await page.addInitScript(
+    ({ contentKey, globalKey, key, snapshot, value }) => {
+      Reflect.set(window, globalKey, snapshot)
+      Reflect.set(window, contentKey, {})
+      window.localStorage.setItem(key, value)
+    },
+    {
+      contentKey: HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY,
+      globalKey: HOST_WORKSPACE_SNAPSHOT_GLOBAL_KEY,
+      key: HOST_WORKSPACE_SNAPSHOT_STORAGE_KEY,
+      snapshot,
+      value: JSON.stringify(snapshot),
+    },
+  )
+}
+
+async function hostWorkspaceWriteCount(page: PageLike): Promise<number> {
+  return page.evaluate(() => {
+    const writes = (window as unknown as { __TOLARIA_MOBILE_WORKSPACE_WRITES__?: unknown[] }).__TOLARIA_MOBILE_WORKSPACE_WRITES__
+    return writes?.length ?? 0
+  })
 }
 
 function assertSnapshotBuildBudgets(state: LocalVaultSnapshotState) {

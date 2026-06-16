@@ -5,6 +5,7 @@ import {
   HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY,
   HOST_WORKSPACE_SNAPSHOT_GLOBAL_KEY,
   HOST_WORKSPACE_SNAPSHOT_STORAGE_KEY,
+  HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY,
   HOST_WORKSPACE_WRITES_GLOBAL_KEY,
   readOnlyWorkspaceRepository,
 } from './readOnlyWorkspaceRepository'
@@ -138,5 +139,21 @@ describe('fixtureReadOnlyWorkspaceRepository', () => {
 
     Reflect.deleteProperty(globalThis, HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY)
     Reflect.deleteProperty(globalThis, HOST_WORKSPACE_WRITES_GLOBAL_KEY)
+  })
+
+  it('rejects host writes when the injected failure flag is set', async () => {
+    const noteContents: Record<string, string> = {}
+    Reflect.set(globalThis, HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY, noteContents)
+    Reflect.set(globalThis, HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY, 'Host write failed in QA')
+
+    await expect(readOnlyWorkspaceRepository.persistWrites([{
+      content: '# Blocked\n',
+      kind: 'createNote',
+      path: 'blocked.md',
+    }], { source: 'host' })).rejects.toThrow('Host write failed in QA')
+    expect(noteContents).toEqual({})
+
+    Reflect.deleteProperty(globalThis, HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY)
+    Reflect.deleteProperty(globalThis, HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY)
   })
 })

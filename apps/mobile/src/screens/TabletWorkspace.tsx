@@ -43,7 +43,7 @@ export function TabletWorkspace({
         layoutProbe={layoutProbe}
         {...controller}
       />
-      <MobileSyncStatusBar sync={snapshot.sync} />
+      <MobileSyncStatusBar sync={controller.snapshot.sync} />
     </View>
   )
 }

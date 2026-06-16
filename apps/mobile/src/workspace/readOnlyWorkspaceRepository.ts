@@ -27,12 +27,14 @@ export const HOST_WORKSPACE_SNAPSHOT_STORAGE_KEY = 'tolaria:mobile-workspace-sna
 export const HOST_WORKSPACE_SNAPSHOT_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_SNAPSHOT__'
 export const HOST_WORKSPACE_NOTE_CONTENTS_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_NOTE_CONTENTS__'
 export const HOST_WORKSPACE_WRITES_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_WRITES__'
+export const HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY = '__TOLARIA_MOBILE_WORKSPACE_WRITE_FAILURE__'
 
 const nativeWorkspaceRepository = createFileSystemWorkspaceRepository(expoWorkspaceFileSystem)
 
 export const readOnlyWorkspaceRepository: ReadOnlyWorkspaceRepository = {
   persistWrites: async (writes, request) => {
     if (request?.source === 'host') {
+      throwHostWriteFailure()
       persistHostWrites(writes)
     } else if (request?.source === 'native') {
       await nativeWorkspaceRepository.persistWrites(writes, request)
@@ -164,6 +166,20 @@ function ensureHostWriteLog(): MobileWorkspaceWrite[] {
   const writes: MobileWorkspaceWrite[] = []
   Reflect.set(globalThis, HOST_WORKSPACE_WRITES_GLOBAL_KEY, writes)
   return writes
+}
+
+function throwHostWriteFailure() {
+  const writeFailure = hostWriteFailure()
+  if (writeFailure) throw new Error(writeFailure)
+}
+
+function hostWriteFailure(): string | null {
+  const failure = (globalThis as Record<string, unknown>)[HOST_WORKSPACE_WRITE_FAILURE_GLOBAL_KEY]
+  if (failure instanceof Error) return failure.message
+  if (typeof failure === 'string' && failure.trim()) return failure
+  if (failure) return 'Host workspace write failed'
+
+  return null
 }
 
 function hostStorage(): Pick<Storage, 'getItem'> | null {

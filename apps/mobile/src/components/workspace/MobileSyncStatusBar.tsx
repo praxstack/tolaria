@@ -27,6 +27,7 @@ export function MobileSyncStatusBar({ sync }: { sync: MobileSyncStatus }) {
 
 function syncStatusColor(sync: MobileSyncStatus) {
   if (sync.kind === 'conflict') return mobileColors.danger
+  if (sync.kind === 'writeFailed') return mobileColors.danger
   if (sync.kind === 'pullRequired') return mobileColors.orange
 
   return mobileColors.green
@@ -34,6 +35,7 @@ function syncStatusColor(sync: MobileSyncStatus) {
 
 function syncStatusDetail(sync: MobileSyncStatus) {
   if (sync.kind === 'conflict') return mobileText('status.sync.resolveConflicts')
+  if (sync.kind === 'writeFailed') return mobileText('status.sync.failed')
   if (sync.kind === 'pullRequired') return mobileText('status.sync.pullAndPush')
   if (sync.minutesAgo) return mobileText('status.sync.minutesAgo').replace('{minutes}', `${sync.minutesAgo}`)
 
@@ -42,6 +44,7 @@ function syncStatusDetail(sync: MobileSyncStatus) {
 
 function syncStatusLabel(sync: MobileSyncStatus) {
   if (sync.kind === 'conflict') return mobileText('status.sync.conflict')
+  if (sync.kind === 'writeFailed') return mobileText('status.sync.notSynced')
   if (sync.kind === 'pullRequired') return mobileText('status.sync.pullRequired')
 
   return mobileText('status.sync.synced')

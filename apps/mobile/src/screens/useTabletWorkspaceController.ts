@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { MobileWorkspaceAction } from '../components/workspace/MobileWorkspaceActionSheet'
 import type {
   MobileSidebarFolderSelection,
@@ -59,6 +59,7 @@ import type { TabletReadOnlyForm } from './tabletWorkspaceTypes'
 import type { TabletSidebarSelection } from './tabletWorkspaceNavigation'
 import { createNoteDefaultsForSelection } from './tabletWorkspaceCreateDefaults'
 import { selectAfterWorkspaceEdit } from './tabletWorkspaceEditSelection'
+import { useWorkspaceEditPipeline } from './tabletWorkspacePersistence'
 import {
   createFolderFields,
   folderActionFields,
@@ -252,35 +253,6 @@ function useSaveSelectedEdit({
     applyEdit(toEdit(selectedNote.id))
     closeAction()
   }, [applyEdit, closeAction, selectedNote])
-}
-
-function useWorkspaceEditPipeline({
-  repository,
-  repositoryRequest,
-  snapshot,
-}: {
-  repository: ReadOnlyWorkspaceRepository
-  repositoryRequest?: ReadOnlyWorkspaceRequest
-  snapshot: MobileWorkspaceSnapshot
-}) {
-  const [workspaceSnapshot, setWorkspaceSnapshot] = useState(snapshot)
-  const workspaceSnapshotRef = useRef(workspaceSnapshot)
-  const applyWorkspaceEdit = useCallback((edit: MobileWorkspaceEdit) => {
-    const result = applyMobileWorkspaceEditWithWrites(workspaceSnapshotRef.current, edit)
-    workspaceSnapshotRef.current = result.snapshot
-    setWorkspaceSnapshot(result.snapshot)
-    if (result.writes.length > 0) void repository.persistWrites(result.writes, repositoryRequest)
-    return result
-  }, [repository, repositoryRequest])
-
-  useEffect(() => {
-    workspaceSnapshotRef.current = workspaceSnapshot
-  }, [workspaceSnapshot])
-
-  return {
-    applyWorkspaceEdit,
-    workspaceSnapshot,
-  }
 }
 
 function useReadOnlyFormState() {
