@@ -122,7 +122,7 @@ function parseFrontmatterLines(lines: FrontmatterLine[]): LocalVaultFrontmatter 
     }
 
     const parsedValue = parseValue(value)
-    if (parsedValue !== undefined) frontmatter[key] = parsedValue
+    if (parsedValue !== undefined) assignFrontmatterValue(frontmatter, key, parsedValue)
   }
 
   flushList(frontmatter, listKey, listItems)
@@ -151,7 +151,19 @@ function flushList(
   key: FrontmatterKey | null,
   items: LocalVaultFrontmatterScalar[],
 ) {
-  if (key && items.length > 0) frontmatter[key] = items
+  if (key && items.length > 0) assignFrontmatterValue(frontmatter, key, items)
+}
+
+function assignFrontmatterValue(
+  frontmatter: LocalVaultFrontmatter,
+  key: FrontmatterKey,
+  value: LocalVaultFrontmatterValue,
+) {
+  const previousKey = Object.keys(frontmatter).find((candidateKey) => (
+    normalizedFrontmatterKey(candidateKey) === normalizedFrontmatterKey(key)
+  ))
+  if (previousKey && previousKey !== key) Reflect.deleteProperty(frontmatter, previousKey)
+  frontmatter[key] = value
 }
 
 function parseValue(value: FrontmatterText): LocalVaultFrontmatterValue | undefined {
@@ -228,6 +240,20 @@ function truthyText(value: FrontmatterText): boolean {
   return lower === 'true' || lower === 'yes' || lower === '1'
 }
 
+const quoteCharacters = new Set(['"', '\''])
+
+const canonicalFrontmatterAliases = new Map([
+  ['archived', '_archived'],
+  ['icon', '_icon'],
+  ['is_a', 'type'],
+  ['sidebar_label', '_sidebar_label'],
+  ['belongs_to', 'belongs_to'],
+  ['related_to', 'related_to'],
+  ['order', '_order'],
+  ['sort', '_sort'],
+  ['width', '_width'],
+])
+
 function wikilinkValues(value: LocalVaultFrontmatterValue): string[] {
   if (typeof value === 'string' && value.includes('[[')) return [value]
   if (!Array.isArray(value)) return []
@@ -271,21 +297,22 @@ const reservedFrontmatterKeys = new Set([
   'width',
 ].map(normalizedFrontmatterKey))
 
-const quoteCharacters = new Set(['"', '\''])
-
 function firstFrontmatterValue(
   frontmatter: LocalVaultFrontmatter,
   keys: LocalVaultFrontmatterKeys,
 ): LocalVaultFrontmatterValue | undefined {
-  for (const key of keys) {
-    const exactValue = frontmatter[key]
-    if (exactValue !== undefined) return exactValue
+  return keys.reduce<LocalVaultFrontmatterValue | undefined>(
+    (match, key) => match === undefined ? frontmatterValueForKey(frontmatter, key) : match,
+    undefined,
+  )
+}
 
-    const normalizedValue = normalizedFrontmatterValue(frontmatter, key)
-    if (normalizedValue !== undefined) return normalizedValue
-  }
-
-  return undefined
+function frontmatterValueForKey(
+  frontmatter: LocalVaultFrontmatter,
+  key: FrontmatterKey,
+): LocalVaultFrontmatterValue | undefined {
+  const exactValue = frontmatter[key]
+  return exactValue === undefined ? normalizedFrontmatterValue(frontmatter, key) : exactValue
 }
 
 function normalizedFrontmatterValue(
@@ -303,7 +330,8 @@ function isReservedFrontmatterKey(key: FrontmatterKey): boolean {
 }
 
 function normalizedFrontmatterKey(key: FrontmatterKey): FrontmatterKey {
-  return key.trim().toLowerCase().replace(/\s+/gu, '_')
+  const normalizedKey = key.trim().toLowerCase().replace(/\s+/gu, '_')
+  return canonicalFrontmatterAliases.get(normalizedKey) ?? normalizedKey
 }
 
 function stringValue(value: LocalVaultFrontmatterValue | undefined): string | null {

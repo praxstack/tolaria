@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   frontmatterList,
   frontmatterProperties,
+  frontmatterRelationships,
   frontmatterScalar,
   parseLocalVaultDocument,
 } from './localVaultFrontmatter'
@@ -60,5 +61,27 @@ Body.
 
     expect(frontmatterScalar(document.frontmatter, ['status'])).toBe('Active')
     expect(frontmatterProperties(document.frontmatter)).toEqual({})
+  })
+
+  it('uses desktop canonical last-wins semantics for colliding frontmatter keys', () => {
+    const document = parseLocalVaultDocument(`---
+Status: Draft
+status: Active
+is a: Project
+type: Essay
+Owner: Luca
+owner: Giulia
+Belongs to:
+  - "[[Old Project]]"
+belongs_to:
+  - "[[New Project]]"
+---
+Body.
+`)
+
+    expect(frontmatterScalar(document.frontmatter, ['Status', 'status'])).toBe('Active')
+    expect(frontmatterScalar(document.frontmatter, ['type', 'Is A', 'is_a'])).toBe('Essay')
+    expect(frontmatterProperties(document.frontmatter)).toEqual({ owner: 'Giulia' })
+    expect(frontmatterRelationships(document.frontmatter)).toEqual({ belongs_to: ['[[New Project]]'] })
   })
 })
