@@ -1,15 +1,16 @@
 import { readFileSync } from 'node:fs'
-import { RUNTIME_STYLE_NONCE_SOURCE } from '../lib/runtimeStyleNonce'
 
 describe('Tauri Content Security Policy', () => {
-  it('allows nonce-tagged runtime style elements and React style attributes', () => {
+  it('allows runtime style elements and React style attributes', () => {
     const config = JSON.parse(readFileSync(`${process.cwd()}/src-tauri/tauri.conf.json`, 'utf8'))
     const csp = config.app.security.csp as Record<string, string>
 
     expect(csp['style-src']).toContain("'unsafe-inline'")
-    expect(csp['style-src-elem']).toContain(RUNTIME_STYLE_NONCE_SOURCE)
+    expect(csp['style-src-elem']).not.toContain("'nonce-")
+    expect(csp['style-src-elem']).toContain("'unsafe-inline'")
     expect(csp['style-src-elem']).toContain('https://fonts.googleapis.com')
     expect(csp['style-src-attr']).toBe("'unsafe-inline'")
+    expect(config.app.security.dangerousDisableAssetCspModification).toContain('style-src')
   })
 
   it('allows PDF object previews from scoped Tauri asset URLs', () => {
@@ -42,6 +43,7 @@ describe('Tauri Content Security Policy', () => {
 
     expect(productionCsp['script-src']).not.toContain("'unsafe-inline'")
     expect(productionCsp['script-src']).not.toContain("'unsafe-eval'")
+    expect(productionCsp['script-src']).toContain("'wasm-unsafe-eval'")
     expect(devCsp).toContain("'unsafe-inline'")
     expect(devCsp).toContain("'unsafe-eval'")
     expect(devCsp).toContain('ws://localhost:5202')
