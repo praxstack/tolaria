@@ -35,6 +35,22 @@ describe('editor schema callout integration', () => {
     expect(await roundTrip('> [!tip] Title\n> body one')).toBe('> [!tip] Title\n> body one')
   })
 
+  it('round-trips a multi-line (3+) callout body end-to-end', async () => {
+    expect(await roundTrip('> [!tip] T\n> a\n> b')).toBe('> [!tip] T\n> a\n> b')
+  })
+
+  it('round-trips a multi-line body with a fold modifier', async () => {
+    expect(await roundTrip('> [!example]+ Open\n> line one\n> line two')).toBe('> [!example]+ Open\n> line one\n> line two')
+  })
+
+  it('does not emit a spurious bare ">" when the marker title is whitespace-only', async () => {
+    expect(await roundTrip('> [!tip]    \n> body')).toBe('> [!tip]\n> body')
+  })
+
+  it('does not emit a trailing bare ">" for an interior-blank callout body', async () => {
+    expect(await roundTrip('> [!tip] T\n> a\n>\n> b')).toBe('> [!tip] T\n> a\n> b')
+  })
+
   it('leaves an ordinary blockquote unchanged', async () => {
     const editor = BlockNoteEditor.create({ schema })
     const parsed = await editor.tryParseMarkdownToBlocks('> just a quote')

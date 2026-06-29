@@ -65,6 +65,15 @@ describe('readQuoteCallout', () => {
   it('handles marker-only quote (no body)', () => {
     expect(readQuoteCallout(quote('[!note]'))).toEqual({ marker: { type: 'note', fold: '', title: '' }, body: '' })
   })
+  it('strips the single trailing newline BlockNote appends to quote text', () => {
+    // BlockNote serialises quote text with a trailing "\n" (and collapses
+    // interior blanks), so "a\nb" reaches us as "a\nb\n". Stripping exactly one
+    // trailing newline keeps the body from emitting a spurious trailing bare ">".
+    expect(readQuoteCallout(quote('[!tip] T\na\nb\n'))).toEqual({
+      marker: { type: 'tip', fold: '', title: 'T' },
+      body: 'a\nb',
+    })
+  })
   it('returns null for ordinary quotes', () => {
     expect(readQuoteCallout(quote('a normal quotation'))).toBeNull()
   })
@@ -136,6 +145,12 @@ describe('callout edge cases (round-trip safety)', () => {
   })
   it('treats marker with only whitespace title as marker-only', () => {
     expect(serializeCalloutBlock(buildCalloutBlock(quote('[!note]   ')))).toBe('> [!note]')
+  })
+  it('drops the blank separator line when a whitespace-only title precedes a body', () => {
+    // The editor collapses a whitespace-only title line to an empty line, so the
+    // quote text reaches us as `[!type]\n\nbody`. Without trimming the single
+    // leading body newline this emits a spurious bare ">" before the body.
+    expect(serializeCalloutBlock(buildCalloutBlock(quote('[!tip]\n\nbody')))).toBe('> [!tip]\n> body')
   })
   it('preserves a blank body line as a bare ">"', () => {
     expect(serializeCalloutBlock(buildCalloutBlock(quote('[!tip] T\na\n\nb')))).toBe('> [!tip] T\n> a\n>\n> b')

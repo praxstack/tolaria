@@ -133,7 +133,19 @@ export function readQuoteCallout(block: BlockLike): { marker: CalloutMarker; bod
   const marker = parseCalloutMarker(firstLine)
   if (!marker) return null
 
-  const body = newlineIndex === -1 ? '' : text.slice(newlineIndex + 1)
+  // A whitespace-only title collapses to an empty marker line, which leaves the
+  // body starting with a blank line. Drop exactly that one leading separator
+  // newline so we do not emit a spurious bare ">"; a deliberate blank first body
+  // line is content and is preserved.
+  //
+  // BlockNote also appends a trailing newline to quote text (and collapses
+  // interior blank lines), so a body such as "a\nb" arrives as "a\nb\n". Drop
+  // exactly that one trailing newline as well, for the same reason — otherwise
+  // serialisation emits a spurious trailing bare ">". A deliberate blank final
+  // body line stays preserved because at most one newline is stripped.
+  const rawBody = newlineIndex === -1 ? '' : text.slice(newlineIndex + 1)
+  const leadingStripped = marker.title === '' && rawBody.startsWith('\n') ? rawBody.slice(1) : rawBody
+  const body = leadingStripped.endsWith('\n') ? leadingStripped.slice(0, -1) : leadingStripped
   return { marker, body }
 }
 
