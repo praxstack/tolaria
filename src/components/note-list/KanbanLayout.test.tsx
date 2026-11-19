@@ -16,6 +16,10 @@ function renderBoard(overrides: Partial<Parameters<typeof KanbanLayout>[0]> = {}
     properties: ['owner'],
     columnOrder: [],
     onColumnOrderChange: vi.fn(),
+    collapsedColumns: [] as string[],
+    hiddenColumns: [] as string[],
+    onToggleColumnCollapsed: vi.fn(),
+    onToggleColumnHidden: vi.fn(),
     onOpen: vi.fn(),
     onMove: vi.fn(),
     locale: 'en' as const,
@@ -41,6 +45,18 @@ describe('KanbanLayout', () => {
     const alphaCard = screen.getByRole('button', { name: 'Alpha' })
     expect(within(alphaCard).getByTestId('property-chips')).toHaveTextContent('Ada')
     expect(alphaCard).toHaveAttribute('data-selected', 'true')
+  })
+
+  it('shows the note icon before the title and keeps iconless titles unchanged', () => {
+    const withIcon = makeEntry({ path: '/vault/icon.md', title: 'Icon note', status: 'Doing', icon: '✨' })
+    const withoutIcon = makeEntry({ path: '/vault/plain.md', title: 'Plain note', status: 'Doing' })
+    renderBoard({ entries: [withIcon, withoutIcon], allEntries: [withIcon, withoutIcon] })
+
+    const iconCard = screen.getByRole('button', { name: 'Icon note' })
+    const icon = within(iconCard).getByTestId('kanban-card-title-icon')
+    expect(icon).toHaveTextContent('✨')
+    expect(iconCard.querySelector('[data-testid="kanban-card-title"]')?.firstElementChild).toContainElement(icon)
+    expect(within(screen.getByRole('button', { name: 'Plain note' })).queryByTestId('kanban-card-title-icon')).not.toBeInTheDocument()
   })
 
   it('resolves linked card fields against the whole vault, like list rows', () => {
@@ -85,5 +101,43 @@ describe('KanbanLayout', () => {
     expect(screen.getByRole('region', { name: 'Nessun valore, 1 nota' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Doing' })).toHaveAttribute('aria-roledescription', 'colonna')
     expect(screen.getByRole('button', { name: 'Alpha' })).toHaveAttribute('aria-roledescription', 'scheda')
+  })
+
+  it('collapses and hides a column from its header without touching any note', () => {
+    const props = renderBoard()
+    const doing = screen.getByRole('region', { name: 'Doing, 1 note' })
+    fireEvent.click(within(doing).getByRole('button', { name: 'Collapse Doing' }))
+    expect(props.onToggleColumnCollapsed).toHaveBeenCalledWith('Doing')
+    fireEvent.click(within(screen.getByRole('region', { name: 'No value, 1 note' })).getByRole('button', { name: 'Hide No value' }))
+    expect(props.onToggleColumnHidden).toHaveBeenCalledWith('')
+    expect(props.onMove).not.toHaveBeenCalled()
+  })
+
+  it('shows a collapsed column as a strip with its name and count that expands on click', () => {
+    const props = renderBoard({ collapsedColumns: ['Doing'] })
+    const doing = screen.getByRole('region', { name: 'Doing, 1 note' })
+    expect(doing).toHaveAttribute('data-collapsed', 'true')
+    expect(within(doing).queryByRole('button', { name: 'Alpha' })).not.toBeInTheDocument()
+    const strip = within(doing).getByRole('button', { name: 'Expand Doing' })
+    expect(strip).toHaveTextContent('1Doing')
+    expect(strip).toHaveAttribute('aria-roledescription', 'column')
+    fireEvent.click(strip)
+    expect(props.onToggleColumnCollapsed).toHaveBeenCalledWith('Doing')
+  })
+
+  it('leaves hidden columns off the board and lists them with counts so they can be shown again', () => {
+    const props = renderBoard({ hiddenColumns: ['', 'Archived'] })
+    expect(screen.getAllByTestId('kanban-column').map((column) => column.dataset.kanbanColumn)).toEqual(['Doing'])
+    const hidden = screen.getByRole('region', { name: 'Hidden columns' })
+    const show = within(hidden).getByRole('button', { name: 'Show No value' })
+    expect(show).toHaveTextContent('No value1')
+    expect(within(hidden).getAllByRole('button')).toHaveLength(1)
+    fireEvent.click(show)
+    expect(props.onToggleColumnHidden).toHaveBeenCalledWith('')
+  })
+
+  it('has no hidden columns list while every column is shown', () => {
+    renderBoard()
+    expect(screen.queryByTestId('kanban-hidden-columns')).not.toBeInTheDocument()
   })
 })

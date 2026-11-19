@@ -1,4 +1,5 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { presentationFromViewDefinition } from '../../collections/presentationConfig'
 import type { NoteActionsConfig } from '../../hooks/useNoteActions'
@@ -10,17 +11,31 @@ import { CollectionLayoutBody } from './CollectionLayoutBody'
 import { type CollectionLayoutSource, supportsLayouts, useCollectionLayout } from './useCollectionLayout'
 import { CollectionLayoutHeaderControls } from './CollectionLayoutControls'
 import { layoutPropertyPicker } from './kanbanCardFieldsPicker'
+import { useKanbanPanelOutsideClose } from './useKanbanPanelOutsideClose'
 
-const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }))
+const { invoke, trackEvent } = vi.hoisted(() => ({ invoke: vi.fn(), trackEvent: vi.fn() }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke }))
+vi.mock('../../lib/telemetry', () => ({ trackEvent }))
 vi.mock('./KanbanLayout', () => ({
-  KanbanLayout: ({ entries, onMove, onOpen }: { entries: VaultEntry[]; onMove: (entry: VaultEntry, value: string | null) => void; onOpen: (entry: VaultEntry, event: React.MouseEvent) => void }) => (
-    <div data-testid="kanban-board">
+  KanbanLayout: ({ entries, onMove, onOpen, collapsedColumns, hiddenColumns, onToggleColumnCollapsed, onToggleColumnHidden }: MockKanbanProps) => (
+    <div data-testid="kanban-board" data-collapsed-columns={JSON.stringify(collapsedColumns)} data-hidden-columns={JSON.stringify(hiddenColumns)}>
       <button type="button" onClick={() => onMove(entries[0], null)}>drop first card in No value</button>
       <button type="button" onClick={(event) => onOpen(entries[0], event)}>open first card</button>
+      <button type="button" onClick={() => onToggleColumnCollapsed('Doing')}>toggle Doing collapsed</button>
+      <button type="button" onClick={() => onToggleColumnHidden('')}>toggle No value hidden</button>
     </div>
   ),
 }))
+
+type MockKanbanProps = {
+  entries: VaultEntry[]
+  onMove: (entry: VaultEntry, value: string | null) => void
+  onOpen: (entry: VaultEntry, event: React.MouseEvent) => void
+  collapsedColumns: string[]
+  hiddenColumns: string[]
+  onToggleColumnCollapsed: (group: string) => void
+  onToggleColumnHidden: (group: string) => void
+}
 
 type HarnessProps = Partial<CollectionLayoutSource> & {
   onMove?: (entry: VaultEntry, property: string, value: string | null) => void
@@ -41,9 +56,11 @@ function Harness({ onMove = vi.fn(), onOpen = vi.fn(), ...overrides }: HarnessPr
     ...overrides,
   }
   const layout = useCollectionLayout(source)
+  const rootRef = useRef<HTMLDivElement>(null)
+  useKanbanPanelOutsideClose({ rootRef, ...layout.panel })
   const picker = layoutPropertyPicker(layout, { scope: 'all', availableProperties: ['priority'], currentDisplay: ['priority'], onSave: vi.fn(), triggerTitle: 'Customize columns' }, 'en')
   return (
-    <div data-collection-layout={layout.layout} data-kanban-panel={layout.panel.open ? 'open' : 'closed'} data-testid="layout-root">
+    <div data-collection-layout={layout.layout} data-kanban-panel={layout.panel.open ? 'open' : 'closed'} data-testid="layout-root" ref={rootRef}>
       <CollectionLayoutHeaderControls layout={layout.layout} groupBy={layout.groupBy} groups={layout.groups} locale="en" onLayoutChange={layout.changeLayout} onGroupByChange={layout.changeGroupBy} />
       <output data-testid="card-fields">{picker?.currentDisplay.join(',')}</output>
       <button type="button" onClick={() => picker?.onSave(['owner'])}>show owner on cards</button>
@@ -124,12 +141,35 @@ describe('collection layouts', () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledWith('save_collection_layout_cmd', {
       vaultPath: '/vault',
       collection: 'builtin:all',
-      presentation: { type: 'kanban', groupBy: 'priority', columnOrder: [], properties: ['owner'] },
+      presentation: { type: 'kanban', groupBy: 'priority', columnOrder: [], properties: ['owner'], collapsedColumns: [], hiddenColumns: [] },
     }))
   })
 
+  it('saves collapsed and hidden columns in the vault layout file and restores them on reopen', async () => {
+    invoke.mockResolvedValueOnce({ 'builtin:all': { type: 'kanban', groupBy: 'status', collapsedColumns: ['Done'] } })
+    const first = render(<Harness />)
+    await waitFor(() => expect(screen.getByTestId('kanban-board')).toHaveAttribute('data-collapsed-columns', '["Done"]'))
+
+    fireEvent.click(screen.getByText('toggle Doing collapsed'))
+    fireEvent.click(screen.getByText('toggle No value hidden'))
+    expect(trackEvent).toHaveBeenCalledWith('kanban_column_visibility_changed', { action: 'collapse' })
+    expect(trackEvent).toHaveBeenCalledWith('kanban_column_visibility_changed', { action: 'hide' })
+
+    const saved = { type: 'kanban', groupBy: 'status', columnOrder: [], properties: [], collapsedColumns: ['Done', 'Doing'], hiddenColumns: [''] }
+    expect(invoke).toHaveBeenLastCalledWith('save_collection_layout_cmd', { vaultPath: '/vault', collection: 'builtin:all', presentation: saved })
+    first.unmount()
+
+    invoke.mockResolvedValueOnce({ 'builtin:all': saved })
+    render(<Harness />)
+    await waitFor(() => expect(screen.getByTestId('kanban-board')).toHaveAttribute('data-hidden-columns', '[""]'))
+    expect(screen.getByTestId('kanban-board')).toHaveAttribute('data-collapsed-columns', '["Done","Doing"]')
+    fireEvent.click(screen.getByText('toggle No value hidden'))
+    expect(screen.getByTestId('kanban-board')).toHaveAttribute('data-hidden-columns', '[]')
+    expect(trackEvent).toHaveBeenLastCalledWith('kanban_column_visibility_changed', { action: 'show' })
+  })
+
   it('preserves Kanban View settings across repeated List and Kanban switches', async () => {
-    const view = savedView({ type: 'kanban', groupBy: 'status', properties: ['owner'], columnOrder: ['Done', 'Doing'] })
+    const view = savedView({ type: 'kanban', groupBy: 'status', properties: ['owner'], columnOrder: ['Done', 'Doing'], collapsedColumns: ['Done'], hiddenColumns: [''] })
     const selection: SidebarSelection = { kind: 'view', filename: view.filename }
     let currentView = view
     const updateView = vi.fn((_filename: string, patch: Partial<ViewFile['definition']>) => {
@@ -147,7 +187,7 @@ describe('collection layouts', () => {
     expect(currentView.definition.presentation).toEqual(expect.objectContaining({
       type: 'list',
       properties: ['priority'],
-      kanbanConfig: { groupBy: 'status', properties: ['owner'], columnOrder: ['Done', 'Doing'] },
+      kanbanConfig: { groupBy: 'status', properties: ['owner'], columnOrder: ['Done', 'Doing'], collapsedColumns: ['Done'], hiddenColumns: [''] },
     }))
     first.unmount()
 
@@ -156,7 +196,9 @@ describe('collection layouts', () => {
       await chooseMenuOption('layout-menu-button', 'layout-option-kanban')
       expect(screen.getByTestId('group-by-menu-button')).toHaveAccessibleName('Group by status')
       expect(screen.getByTestId('card-fields')).toHaveTextContent('owner')
-      expect(currentView.definition.presentation).toEqual(expect.objectContaining({ type: 'kanban', groupBy: 'status', properties: ['owner'], columnOrder: ['Done', 'Doing'] }))
+      expect(currentView.definition.presentation).toEqual(expect.objectContaining({
+        type: 'kanban', groupBy: 'status', properties: ['owner'], columnOrder: ['Done', 'Doing'], collapsedColumns: ['Done'], hiddenColumns: [''],
+      }))
       await chooseMenuOption('layout-menu-button', 'layout-option-list')
       mount.unmount()
     }
@@ -206,6 +248,18 @@ describe('collection layouts', () => {
 
     rendered.rerender(<Harness selectedNotePath="/vault/b.md" onOpen={onOpen} />)
     expect(screen.getByTestId('layout-root')).toHaveAttribute('data-kanban-panel', 'open')
+  })
+
+  it('closes the Kanban editor panel from a click on empty board space', () => {
+    render(<Harness selectedNotePath="/vault/a.md" />)
+    fireEvent.keyDown(window, { key: 'g', ctrlKey: true, shiftKey: true })
+    fireEvent.click(screen.getByText('open first card'))
+    expect(screen.getByTestId('layout-root')).toHaveAttribute('data-kanban-panel', 'open')
+
+    const board = screen.getByTestId('kanban-board')
+    fireEvent.pointerDown(board)
+    fireEvent.click(board)
+    expect(screen.getByTestId('layout-root')).toHaveAttribute('data-kanban-panel', 'closed')
   })
 
   it('explains a missing group property and offers List instead', () => {
