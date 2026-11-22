@@ -10,7 +10,7 @@ overrides:
   '@hono/node-server': 2.0.12
   body-parser: 2.4.0
   express-rate-limit: 8.2.2
-  hono: 4.13.11
+  hono: 4.13.16
   ip-address: 10.7.4
   mermaid>uuid: 11.1.1
   path-to-regexp: 8.4.0
@@ -29,7 +29,8 @@ overrides:
   postcss: 8.5.25
   protobufjs: 7.6.5
   linkify-it: 5.0.2
-  qs: 6.16.0
+  qs: 6.16.1
+  node-forge: 1.4.3
   rollup: 4.59.0
   undici: 7.30.1
   form-data: 4.0.6
@@ -124,6 +125,9 @@ patchedDependencies:
   '@tiptap/extension-link@3.19.0':
     hash: fbe59b1b8b798ba3fefa371c0729b5aa3458e1ea70a4b86cd5267f9f62529284
     path: patches/@tiptap__extension-link@3.19.0.patch
+  eslint-plugin-security-node@1.1.4:
+    hash: 162f95cbb428f2a990ede857986ade9d6086d2bc147f9d944aa4fee9757b7208
+    path: patches/eslint-plugin-security-node@1.1.4.patch
   prosemirror-tables@1.8.5:
     hash: cd456f0d1d88a3ce11bcf53122a0e0575c0d82810eddd887adae21d6ec570a8b
     path: patches/prosemirror-tables@1.8.5.patch
@@ -279,12 +283,18 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      d3-force:
+        specifier: 3.0.0
+        version: 3.0.0
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
       dompurify:
         specifier: 3.4.17
         version: 3.4.17
+      graphology:
+        specifier: 0.26.0
+        version: 0.26.0(graphology-types@0.24.8)
       katex:
         specifier: 0.18.2
         version: 0.18.2
@@ -327,6 +337,9 @@ importers:
       safe-regex2:
         specifier: 5.1.1
         version: 5.1.1
+      sigma:
+        specifier: 4.0.6
+        version: 4.0.6(graphology-types@0.24.8)
       tailwind-merge:
         specifier: ^3.4.1
         version: 3.4.1
@@ -370,6 +383,9 @@ importers:
       '@translated/lara-cli':
         specifier: ^1.3.2
         version: 1.3.2(@types/node@24.10.13)
+      '@types/d3-force':
+        specifier: 3.0.10
+        version: 3.0.10
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.13
@@ -405,7 +421,7 @@ importers:
         version: 4.0.1
       eslint-plugin-security-node:
         specifier: ^1.1.4
-        version: 1.1.4
+        version: 1.1.4(patch_hash=162f95cbb428f2a990ede857986ade9d6086d2bc147f9d944aa4fee9757b7208)
       eslint-plugin-xss:
         specifier: ^0.1.12
         version: 0.1.12
@@ -415,6 +431,9 @@ importers:
       globals:
         specifier: ^16.5.0
         version: 16.5.0
+      graphology-types:
+        specifier: 0.24.8
+        version: 0.24.8
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -1984,7 +2003,7 @@ packages:
     resolution: {integrity: sha512-eWpQYr67tqJLeaSUl0Q+TquuYfUdTibpOJlUMV2FfUP7+KqCC5TufnwnlXL6mobZBJbGAYRd7ZvEBDCbLInjhg==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: 4.13.11
+      hono: 4.13.16
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -6824,6 +6843,19 @@ packages:
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
+  graphology-types@0.24.8:
+    resolution: {integrity: sha512-hDRKYXa8TsoZHjgEaysSRyPdT6uB78Ci8WnjgbStlQysz7xR52PInxNsmnB7IBOM1BhikxkNyCVEFgmPKnpx3Q==}
+
+  graphology-utils@2.5.2:
+    resolution: {integrity: sha512-ckHg8MXrXJkOARk56ZaSCM1g1Wihe2d6iTmz1enGOz4W/l831MBCKSayeFQfowgF8wd+PQ4rlch/56Vs/VZLDQ==}
+    peerDependencies:
+      graphology-types: '>=0.23.0'
+
+  graphology@0.26.0:
+    resolution: {integrity: sha512-8SSImzgUUYC89Z042s+0r/vMibY7GX/Emz4LDO5e7jYXhuoWfHISPFJYjpRLUSJGq6UQ6xlenvX1p/hJdfXuXg==}
+    peerDependencies:
+      graphology-types: '>=0.24.0'
+
   gray-matter@4.0.3:
     resolution: {integrity: sha512-5v6yZd4JK3eMI3FqqCouswVqwugaA9r4dNZB1wwcmrD02QkV5H0y7XBQW8QwQqEaZY1pM9aqORSORhJRdNK44Q==}
     engines: {node: '>=6.0'}
@@ -6939,8 +6971,8 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.13.11:
-    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -8073,8 +8105,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.3:
+    resolution: {integrity: sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==}
     engines: {node: '>= 6.13.0'}
 
   node-int64@0.4.0:
@@ -8613,8 +8645,8 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
-  qs@6.16.0:
-    resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
+  qs@6.16.1:
+    resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
     engines: {node: '>=0.6'}
 
   query-selector-shadow-dom@1.0.1:
@@ -9193,6 +9225,9 @@ packages:
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
+
+  sigma@4.0.6:
+    resolution: {integrity: sha512-3yD7On7NLHGMkBcG2fyhIECxkliqZ+lVcTBS1Lfm/qnndQVGMB+Xp2qL1A/co1qUJAM5bKank3cSrNO5L6J9Zw==}
 
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
@@ -11550,7 +11585,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.0
+      node-forge: 1.4.3
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.4
@@ -11586,7 +11621,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.3
 
   '@expo/config-plugins@57.0.10(typescript@6.0.3)':
     dependencies:
@@ -11930,9 +11965,9 @@ snapshots:
       prosemirror-transform: 1.12.2
       prosemirror-view: 1.42.3(patch_hash=ad873cf71e74409eef54c46fee61b24b053997b4be85cf3fcb14f091917749bc)
 
-  '@hono/node-server@2.0.12(hono@4.13.11)':
+  '@hono/node-server@2.0.12(hono@4.13.16)':
     dependencies:
-      hono: 4.13.11
+      hono: 4.13.16
 
   '@humanfs/core@0.19.1': {}
 
@@ -12240,7 +12275,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.1(zod@4.6.7)':
     dependencies:
-      '@hono/node-server': 2.0.12(hono@4.13.11)
+      '@hono/node-server': 2.0.12(hono@4.13.16)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -12250,7 +12285,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
-      hono: 4.13.11
+      hono: 4.13.16
       jose: 6.1.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -15913,7 +15948,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       on-finished: 2.4.1
-      qs: 6.16.0
+      qs: 6.16.1
       raw-body: 3.0.2
       type-is: 2.1.0
     transitivePeerDependencies:
@@ -16726,7 +16761,7 @@ snapshots:
     dependencies:
       eslint: 9.39.2(jiti@2.6.1)
 
-  eslint-plugin-security-node@1.1.4: {}
+  eslint-plugin-security-node@1.1.4(patch_hash=162f95cbb428f2a990ede857986ade9d6086d2bc147f9d944aa4fee9757b7208): {}
 
   eslint-plugin-security@4.0.1:
     dependencies:
@@ -17145,7 +17180,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.8
-      qs: 6.16.0
+      qs: 6.16.1
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -17433,6 +17468,17 @@ snapshots:
 
   graphemer@1.4.0: {}
 
+  graphology-types@0.24.8: {}
+
+  graphology-utils@2.5.2(graphology-types@0.24.8):
+    dependencies:
+      graphology-types: 0.24.8
+
+  graphology@0.26.0(graphology-types@0.24.8):
+    dependencies:
+      events: 3.3.0
+      graphology-types: 0.24.8
+
   gray-matter@4.0.3:
     dependencies:
       js-yaml: 3.15.2
@@ -17635,7 +17681,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.13.11: {}
+  hono@4.13.16: {}
 
   hookable@5.5.3: {}
 
@@ -18933,7 +18979,7 @@ snapshots:
     optionalDependencies:
       encoding: 0.1.13
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.3: {}
 
   node-int64@0.4.0: {}
 
@@ -19429,7 +19475,7 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  qs@6.16.0:
+  qs@6.16.1:
     dependencies:
       es-define-property: 1.0.1
       side-channel: 1.1.1
@@ -20313,6 +20359,13 @@ snapshots:
       side-channel-weakmap: 1.0.2
 
   siginfo@2.0.0: {}
+
+  sigma@4.0.6(graphology-types@0.24.8):
+    dependencies:
+      events: 3.3.0
+      graphology-utils: 2.5.2(graphology-types@0.24.8)
+    transitivePeerDependencies:
+      - graphology-types
 
   signal-exit@3.0.7: {}
 

@@ -1,0 +1,142 @@
+/* Graph layout (TOL-385): a WebGL canvas with an HTML label layer and corner zoom controls. */
+.graph-layout {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.graph-canvas {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.graph-stage {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+}
+
+.graph-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.graph-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  max-width: 180px;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.graph-label[data-emphasis="hover"] {
+  z-index: 2;
+}
+
+.graph-label[data-selected="true"] {
+  z-index: 1;
+}
+
+/* Hover and dim ease on the inner chip, so per-frame positioning on the outer element never animates. */
+.graph-label__chip {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  transform-origin: 50% 0;
+  transition: transform 200ms ease-out, opacity 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+.graph-label[data-emphasis="hover"] .graph-label__chip {
+  background: var(--background);
+  box-shadow: 0 0 0 1px var(--border), 0 4px 12px -6px var(--shadow-strong);
+  font-weight: 600;
+  transform: scale(1.4);
+}
+
+.graph-label[data-emphasis="dim"] .graph-label__chip {
+  opacity: 0.15;
+}
+
+.graph-label[data-selected="true"] .graph-label__chip {
+  background: var(--background);
+  box-shadow: 0 0 0 1.5px var(--primary);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graph-label__chip {
+    transition: none;
+  }
+}
+
+.graph-label__icon {
+  flex: none;
+}
+
+.graph-label__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graph-zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 4px 12px -6px var(--shadow-medium);
+}
+
+.graph-legend-edge {
+  display: inline-block;
+  width: 16px;
+  flex: none;
+  border-top: 2px solid var(--muted-foreground);
+}
+
+.graph-legend-edge--dashed {
+  border-top-style: dashed;
+  opacity: 0.6;
+}
+
+.graph-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 999px;
+}
+
+.graph-filter-menu {
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.graph-filter-menu::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

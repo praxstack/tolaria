@@ -49,17 +49,9 @@ No proof, no push. Collect proof before pushing; it goes inline in Ready for QA:
 
 Risky areas also need a review of the diff by a fresh-context agent (a new session with no shared history) before push, and you fix what it finds. Risky areas are note save/serialization, sync/Git, the updater, and release/CI workflows. Luca never reviews code.
 
-### UI and motion evidence before In Review
+### Product and UI card skills
 
-For any card that changes visible UI or motion, passing metrics or tests are not enough. Before moving the card to In Review, the coding agent itself must:
-
-- Capture key frames from a real render (for motion: about 25%, 50%, 75%, 100%, and the end state).
-- Open and look at those frames itself.
-- Compare each frame against the card's spec, point by point, and write PASS or FAIL for each point on the card.
-- Embed the end-state frame on the card.
-- Not move the card to In Review if any point fails or cannot be shown from a frame.
-
-Luca and Karn are last-resort reviewers, not the default.
+For product/UI cards, follow the shared skills in `.agents/skills/`: research comparables before building when the design is undecided, attach visual evidence before handoff, and review the work against the card. Claude Code discovers the same skill files through `.claude/skills/` links.
 
 ### Done gate (full CI)
 
@@ -73,6 +65,7 @@ Move a card to In Review only when every job in the CircleCI `validation` workfl
 
 Every incident or revert adds a regression test. If it's a pattern, also add one line to this file.
 
+- Desktop color tokens feed the mobile app (ADR 0213): after editing `src/index.css` or `src/styles/*.css`, regenerate `apps/mobile/src/ui/theme/desktopThemes.generated.json` (`node apps/mobile/scripts/generate-desktop-themes.ts`) and run `pnpm mobile:test`, or mobile-ota-quality turns main red (TOL-406).
 - Web Playwright in WebKit (also the iPhone/iPad projects): the offline service worker can stall every later load of a page (a cancelled worker-served body, TOL-230; a navigation just as the new worker takes over, sharing.spec.ts). A spec that is not about offline read and hits such a stall blocks the worker (`serviceWorkers: "block"`, as sync-pill and sharing do) instead of retrying.
 
 ### Start working on a task

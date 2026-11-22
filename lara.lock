@@ -6,6 +6,7 @@ files:
     layout.list: 4ee29ca12c7d126654bd0e5275de6135
     layout.kanban: 39b32dd45982038aa5704ca2728334ee
     layout.calendar: 8ff922bbcd8ad41cdfc48d3c5163b2ab
+    layout.graph: 4cdbd2bafa8193091ba09509cedf94fd
     calendar.dateProperty: 7adcd66b5fe1377fdc9f3cb8e3776412
     calendar.dateMenu: 2a9d832baa5148bcda1c372a25000ece
     calendar.endDate: b7de7e4247d4ab279ef031b7a44c201d
@@ -39,6 +40,44 @@ files:
     calendar.useCreated: 9ab2dd6f26cb4fdfd038dcf7fdfe073b
     calendar.useModified: 6c4991aa0200cba076dd7db44eecb1aa
     calendar.clearEndDate: a37ef33e7e2e4d05e1a073cf3c11e213
+    graph.noType: 11e3386d0e16c0eb5c6a782bc6f6646d
+    graph.filters.label: ac0f33646f37509ba6c48e5e56a0d64a
+    graph.filters.edges: bd908db5ccb07777ced8023dffc802f4
+    graph.filters.wikiLinks: a632110383678ec9a5c2ff75d0bac224
+    graph.filters.types: f2d346b1bb7c1c85ab6f7f21e3666b9f
+    graph.filters.display: 498f79c4c5bbde77f1bceb6c86fd0f6d
+    graph.filters.orphans: ed0d14c3f05b743de2c6607d96003406
+    graph.filters.labels: 3ad6cb6100190c8f81e99fd52debf7ef
+    graph.zoomIn: 7b91156d64b76a5dda815937fce9119d
+    graph.zoomOut: 52ebc26c2921d5b84fc670dff9891821
+    graph.fit: f63ca3deba069ca98f9c093f7fafa444
+    graph.canvasLabel: b54cbdf241ddb967b5790ea2358b6aca
+    graph.empty.title: 47d6911e6b1cd3f834c69d51c6901a86
+    graph.empty.body: bca5080a63b333292a44d5021a242195
+    graph.empty.filteredTitle: 47bb82327badbdec79f2b5321d56ceff
+    graph.empty.filteredBody: a2af0bd155b517f402099fa214b14e78
+    graph.empty.resetFilters: 8bca92e006f955be7219f997638e7e63
+    graph.settings.label: c86f4a28325d45ac0aa0a862556e4dc4
+    graph.settings.search: 13348442cc6a27032d2b4aa28b75a5d3
+    graph.settings.searchPlaceholder: bb86081e93d96cff56201108a6204c1a
+    graph.settings.groups: a37ede293936e29279ed543129451ec3
+    graph.settings.groupsHint: fa5a78a0ce0012790793558d5be4a76d
+    graph.settings.newGroup: 6124d758cdbddbfb7966fa23c8922e5c
+    graph.settings.groupQuery: 4edf488b76ab0585232fa8912b9eff41
+    graph.settings.moveUp: f77af7695f71323808f9b6e2795cde86
+    graph.settings.moveDown: dd9f0c7e1bb3b749bd423e3544b4a8e3
+    graph.settings.deleteGroup: 14d65465b75a0ec3382e3a92a4c07188
+    graph.settings.display: b9987a246a537f4fe86f1f2e3d10dbdb
+    graph.settings.textFadeThreshold: 7492a5d8eb10c0751f6006c64a436d0f
+    graph.settings.nodeSizeScale: 576be828257fef81586078e09f023f12
+    graph.settings.linkThickness: 3e1fe1c1ac40eb8547754562ba75077b
+    graph.settings.showArrows: 4e05974b02cc4aa95db4d85baef6b6b4
+    graph.settings.forces: a106ee7abe6c52a7443defa96e17b7af
+    graph.settings.centerForce: 26db3c086e9c2a720b79b4148530230b
+    graph.settings.repelForce: 8d52c65d4cd828b9fc56ac558bee9451
+    graph.settings.linkForce: 492bd4f9633145746d35b1dca27cf033
+    graph.settings.linkDistance: 5d85712c51ee828074da8b0b6b7b5912
+    graph.settings.restoreDefaults: 9fa0d187c8f26d348e17d4b5b58e67e5
     layout.current: af25ac292368a061ee5af1c300ef4491
     layout.groupBy: be87d8c3de2675bbc53f9442af9d8feb
     layout.groupByProperty: 5e966c47c22f541912c31875824828cc
@@ -251,6 +290,7 @@ files:
     command.view.showAsList: e8178b8eb11d413ab5274517c8ff9c94
     command.view.showAsKanban: ea4311ef93611d278090e14b675ccaf6
     command.view.showAsCalendar: 173ae197736af419e2e1a2662ebfcc68
+    command.view.showAsGraph: 4e356576ee006ae864f41b2b0450b658
     command.view.toggleDiff: 148a10ef6f04f897e73289f529ecae86
     command.view.toggleRaw: 9b622257cd6345ceaf58e42b1410899b
     command.view.noteWidthNormal: d29ab88a55ae178bf4b5257201e51801
@@ -657,6 +697,12 @@ files:
     noteList.searchPlaceholder: 4857cd2689a0a40eb4a77cdc745c518e
     noteList.mobileSearchPlaceholder: 13348442cc6a27032d2b4aa28b75a5d3
     noteList.searchAction: 5012120fc480c67686dd22ee2f9493cd
+    noteList.tooltip.layout: a7a6670e8ae5e850d9e36e6cd8414351
+    noteList.tooltip.sort: c382335c1d1c38616b82825e51662951
+    noteList.tooltip.groupBy: ab63d5b038f99c97b46b27f3445e257f
+    noteList.tooltip.search: 5012120fc480c67686dd22ee2f9493cd
+    noteList.tooltip.properties: 5bf2a26f6cc6ad155a7fefc7dbaf6d04
+    noteList.tooltip.graphFilters: 6836237b5b80b9ad3d271d616672d8a6
     noteList.clearSearch: 9983381c21069a3d6e4432e0aaea0079
     noteList.recentSearches: 8173dbf786c0d6bc93bdb6f54d6889d3
     noteList.recentlyOpened: c1c9cdb573086d9ba74d34dba49eb3ef
@@ -1446,3 +1492,6 @@ files:
     mobile.workspace.actionFailure.unorganized: 33df835c54ec9bac04ad3fdc245e792b
     mobile.workspace.actionFailure.relationshipRemoved: a39d152cf9b483d106e48617f610cef0
     mobile.workspace.actionFailure.multiple: b6352ef2b1623ff79cbc7cb6e74f2bc7
+    calendar.quarter: b25cde1e74f3d27f678c2e309e06102e
+    calendar.year: 537c66b24ef5c83b7382cdc3f34885f2
+    calendar.showIcons: 04ccea90e9182ecac0a147e36a26803b
