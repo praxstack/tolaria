@@ -1,27 +1,17 @@
 import { useEffect, useRef, type ComponentType, type MouseEvent as ReactMouseEvent } from 'react'
-import type { SidebarSelection, VaultEntry, WorkspaceIdentity } from '../types'
+import type { SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
+import { isSelectionActive } from '../utils/sidebarSelection'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import type { IconProps } from '@phosphor-icons/react'
-import { SIDEBAR_ITEM_PADDING } from './sidebar/sidebarStyles'
+import { SIDEBAR_COUNT_ACTIVE_CLASS, SIDEBAR_COUNT_HOVER_CLASS, SIDEBAR_ITEM_HOVER_CLASS, SIDEBAR_ITEM_PADDING, type SidebarItemStyle } from './sidebar/sidebarStyles'
 import { useSidebarInlineRenameInput } from './sidebar/sidebarHooks'
-import { Button } from './ui/button'
-import { Checkbox } from './ui/checkbox'
+import { SidebarCountPill, SIDEBAR_COUNT_PILL_IDLE_CLASS } from './sidebar/SidebarNavItem'
 import { Input } from './ui/input'
 import { translate, type AppLocale } from '../lib/i18n'
-import { WorkspaceInitialsBadge } from './WorkspaceInitialsBadge'
-import { collectTypeVisibilityWorkspaces, findTypeDefinitionForWorkspace } from '../utils/typeVisibility'
 
-const SIDEBAR_COUNT_PILL_STYLE = {
-  borderRadius: 9999,
-  padding: '0 6px',
-  fontSize: 10,
-  fontVariantNumeric: 'tabular-nums',
-} as const
-
-/** Idle count pill: the same fill as a hovered row; a hovered row lifts the pill one step so it stays distinct. */
-export const SIDEBAR_COUNT_PILL_IDLE_CLASS =
-  'bg-count-pill text-count-pill-text group-hover/sidebar-row:bg-count-pill-hover group-hover/sidebar-row:text-count-pill-text-hover'
+export { NavItem, SidebarCountPill, SidebarLoadingCountPill, SIDEBAR_COUNT_PILL_IDLE_CLASS } from './sidebar/SidebarNavItem'
+export { VisibilityPopover } from './sidebar/SidebarVisibilityPopover'
 
 export interface SectionGroup {
   label: string
@@ -29,322 +19,6 @@ export interface SectionGroup {
   Icon: ComponentType<IconProps>
   customColor?: string | null
 }
-
-function resolveSectionColors(type: string, customColor?: string | null) {
-  return {
-    sectionColor: getTypeColor(type, customColor),
-    sectionLightColor: getTypeLightColor(type, customColor),
-  }
-}
-
-// eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
-export function isSelectionActive(current: SidebarSelection, check: SidebarSelection): boolean {
-  if (current.kind !== check.kind) return false
-  switch (check.kind) {
-    case 'filter':
-      return (current as typeof check).filter === check.filter
-    case 'sectionGroup':
-      return (current as typeof check).type === check.type
-    case 'folder':
-      return (current as typeof check).path === check.path
-    case 'entity':
-      return (current as typeof check).entry.path === check.entry.path
-    case 'view': {
-      const currentView = current as typeof check
-      return currentView.filename === check.filename && (currentView.rootPath ?? '') === (check.rootPath ?? '')
-    }
-    default:
-      return false
-  }
-}
-
-// --- NavItem ---
-
-function hasSidebarCount(count?: number): count is number {
-  return count !== undefined && count > 0
-}
-
-function getNavItemPadding(compact: boolean | undefined, hasCount: boolean) {
-  if (compact) return hasCount ? SIDEBAR_ITEM_PADDING.compactWithCount : SIDEBAR_ITEM_PADDING.compact
-  return hasCount ? SIDEBAR_ITEM_PADDING.withCount : SIDEBAR_ITEM_PADDING.regular
-}
-
-function getNavItemIconSize(compact?: boolean) {
-  return compact ? 14 : 16
-}
-
-function getNavItemTextClass(compact?: boolean) {
-  return compact ? 'text-[12px]' : 'text-[13px]'
-}
-
-function resolveBadgeClassName(
-  isActive: boolean | undefined,
-  activeBadgeClassName: string | undefined,
-  badgeClassName: string | undefined,
-) {
-  if (isActive && activeBadgeClassName) return activeBadgeClassName
-  return badgeClassName
-}
-
-function resolveBadgeStyle(
-  isActive: boolean | undefined,
-  activeBadgeClassName: string | undefined,
-  activeBadgeStyle: React.CSSProperties | undefined,
-  badgeStyle: React.CSSProperties | undefined,
-) {
-  if (isActive && activeBadgeClassName) return activeBadgeStyle
-  return badgeStyle
-}
-
-function SidebarNavIcon({
-  Icon,
-  emoji,
-  iconSize,
-  isActive,
-}: {
-  Icon: ComponentType<IconProps>
-  emoji?: string | null
-  iconSize: number
-  isActive?: boolean
-}) {
-  if (emoji)
-    return (
-      <span
-        style={{
-          fontSize: iconSize,
-          lineHeight: 1,
-          width: iconSize,
-          textAlign: 'center',
-        }}
-      >
-        {emoji}
-      </span>
-    )
-  return <Icon size={iconSize} weight={isActive ? 'fill' : 'regular'} />
-}
-
-export function SidebarCountPill({
-  count,
-  className,
-  style,
-  compact,
-  testId = 'sidebar-count-chip',
-}: {
-  count: number
-  className?: string
-  style?: React.CSSProperties
-  compact?: boolean
-  testId?: string
-}) {
-  return (
-    <span
-      data-testid={testId}
-      className={cn('flex items-center justify-center', className)}
-      style={{
-        height: compact ? 18 : 20,
-        ...SIDEBAR_COUNT_PILL_STYLE,
-        ...style,
-      }}
-    >
-      {count}
-    </span>
-  )
-}
-
-export function SidebarLoadingCountPill({
-  compact,
-  testId = 'sidebar-count-skeleton',
-}: {
-  compact?: boolean
-  testId?: string
-}) {
-  return (
-    <span
-      aria-hidden="true"
-      data-testid={testId}
-      className="inline-flex animate-pulse rounded-full bg-muted"
-      style={{ width: compact ? 22 : 28, height: compact ? 18 : 20 }}
-    />
-  )
-}
-
-function NavItemLabel({ label, compact }: { label: string; compact?: boolean }) {
-  return (
-    <span className={cn('min-w-0 flex-1 truncate text-left font-medium', getNavItemTextClass(compact))}>{label}</span>
-  )
-}
-
-function NavItemCount({
-  count,
-  countLoading,
-  className,
-  style,
-  compact,
-}: {
-  count?: number
-  countLoading?: boolean
-  className?: string
-  style?: React.CSSProperties
-  compact?: boolean
-}) {
-  if (countLoading) return <SidebarLoadingCountPill compact={compact} />
-  if (!hasSidebarCount(count)) return null
-  return <SidebarCountPill count={count} className={className} style={style} compact={compact} />
-}
-
-function DisabledNavItem({
-  Icon,
-  emoji,
-  label,
-  compact,
-  disabledTooltip,
-  padding,
-}: {
-  Icon: ComponentType<IconProps>
-  emoji?: string | null
-  label: string
-  compact?: boolean
-  disabledTooltip?: string
-  padding: ReturnType<typeof getNavItemPadding>
-}) {
-  return (
-    <div
-      className="flex select-none items-center gap-2 rounded text-foreground"
-      style={{ padding, borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }}
-      title={disabledTooltip ?? 'Coming soon'}
-    >
-      <SidebarNavIcon Icon={Icon} emoji={emoji} iconSize={getNavItemIconSize(compact)} />
-      <NavItemLabel label={label} compact={compact} />
-    </div>
-  )
-}
-
-function ClickableNavItem(options: {
-  Icon: ComponentType<IconProps>
-  emoji?: string | null
-  label: string
-  count?: number
-  countLoading?: boolean
-  isActive?: boolean
-  activeClassName: string
-  badgeClassName?: string
-  badgeStyle?: React.CSSProperties
-  activeBadgeClassName?: string
-  activeBadgeStyle?: React.CSSProperties
-  onClick?: () => void
-  compact?: boolean
-  padding: ReturnType<typeof getNavItemPadding>
-}) {
-  const {
-    Icon,
-    emoji,
-    label,
-    count,
-    countLoading,
-    isActive,
-    activeClassName,
-    badgeClassName,
-    badgeStyle,
-    activeBadgeClassName,
-    activeBadgeStyle,
-    onClick,
-    compact,
-    padding,
-  } = options
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className={cn(
-        'group/sidebar-row h-auto w-full cursor-pointer select-none justify-start rounded text-left transition-colors',
-        isActive ? activeClassName : 'text-foreground hover:bg-accent',
-      )}
-      style={{ padding, borderRadius: 4 }}
-      onClick={onClick}
-    >
-      <SidebarNavIcon Icon={Icon} emoji={emoji} iconSize={getNavItemIconSize(compact)} isActive={isActive} />
-      <NavItemLabel label={label} compact={compact} />
-      <NavItemCount
-        count={count}
-        countLoading={countLoading}
-        className={resolveBadgeClassName(isActive, activeBadgeClassName, badgeClassName)}
-        style={resolveBadgeStyle(isActive, activeBadgeClassName, activeBadgeStyle, badgeStyle)}
-        compact={compact}
-      />
-    </Button>
-  )
-}
-
-export function NavItem(options: {
-  icon: ComponentType<IconProps>
-  emoji?: string | null
-  label: string
-  count?: number
-  countLoading?: boolean
-  isActive?: boolean
-  activeClassName?: string
-  badgeClassName?: string
-  badgeStyle?: React.CSSProperties
-  activeBadgeClassName?: string
-  activeBadgeStyle?: React.CSSProperties
-  onClick?: () => void
-  disabled?: boolean
-  disabledTooltip?: string
-  compact?: boolean
-}) {
-  const {
-    icon: Icon,
-    emoji,
-    label,
-    count,
-    countLoading,
-    isActive,
-    activeClassName = 'bg-[var(--accent-blue-light)] text-[var(--accent-blue)]',
-    badgeClassName,
-    badgeStyle,
-    activeBadgeClassName,
-    activeBadgeStyle,
-    onClick,
-    disabled,
-    disabledTooltip,
-    compact,
-  } = options
-  const padding = getNavItemPadding(compact, countLoading || hasSidebarCount(count))
-  if (disabled) {
-    return (
-      <DisabledNavItem
-        Icon={Icon}
-        emoji={emoji}
-        label={label}
-        compact={compact}
-        disabledTooltip={disabledTooltip}
-        padding={padding}
-      />
-    )
-  }
-
-  return (
-    <ClickableNavItem
-      Icon={Icon}
-      emoji={emoji}
-      label={label}
-      count={count}
-      countLoading={countLoading}
-      isActive={isActive}
-      activeClassName={activeClassName}
-      badgeClassName={badgeClassName}
-      badgeStyle={badgeStyle}
-      activeBadgeClassName={activeBadgeClassName}
-      activeBadgeStyle={activeBadgeStyle}
-      onClick={onClick}
-      compact={compact}
-      padding={padding}
-    />
-  )
-}
-
-// --- Section Content ---
 
 export interface SectionContentProps {
   group: SectionGroup
@@ -361,6 +35,71 @@ export interface SectionContentProps {
   onSelectTypeNote?: (type: string) => void
   locale?: AppLocale
 }
+
+interface InlineRenameInputProps {
+  initialValue: string
+  onSubmit: (value: string) => void
+  onCancel: () => void
+  locale?: AppLocale
+}
+
+interface SectionHeaderLabelProps {
+  type: string
+  label: string
+  isActive: boolean
+  sectionColor: string
+  isRenaming?: boolean
+  renameInitialValue?: string
+  onRenameSubmit?: (value: string) => void
+  onRenameCancel?: () => void
+  onStartRename?: () => void
+  locale?: AppLocale
+}
+
+interface SectionHeaderCountPillProps {
+  itemCount: number
+  isActive: boolean
+}
+
+interface SectionHeaderProps {
+  label: string
+  type: string
+  Icon: ComponentType<IconProps>
+  sectionColor: string
+  sectionLightColor: string
+  itemCount: number
+  isActive: boolean
+  onSelect: () => void
+  onContextMenu: (e: React.MouseEvent) => void
+  dragHandleProps?: Record<string, unknown>
+  isRenaming?: boolean
+  renameInitialValue?: string
+  onRenameSubmit?: (value: string) => void
+  onRenameCancel?: () => void
+  onStartRename?: () => void
+  onSelectTypeNote?: () => void
+  locale?: AppLocale
+}
+
+interface InlineRenameOptions {
+  isRenaming?: boolean
+  onRenameCancel?: () => void
+  onRenameSubmit?: (value: string) => void
+}
+
+interface InlineRenameHandlers {
+  onRenameCancel: () => void
+  onRenameSubmit: (value: string) => void
+}
+
+function resolveSectionColors(type: string, customColor?: string | null) {
+  return {
+    sectionColor: getTypeColor(type, customColor),
+    sectionLightColor: getTypeLightColor(type, customColor),
+  }
+}
+
+// --- Section Content ---
 
 export function SectionContent(options: SectionContentProps) {
   const {
@@ -404,42 +143,6 @@ export function SectionContent(options: SectionContentProps) {
   )
 }
 
-function InlineRenameInput({
-  initialValue,
-  onSubmit,
-  onCancel,
-  locale,
-}: {
-  initialValue: string
-  onSubmit: (value: string) => void
-  onCancel: () => void
-  locale?: AppLocale
-}) {
-  const { handleKeyDown, inputRef, setValue, submitValue, value } = useSidebarInlineRenameInput({
-    initialValue,
-    onCancel,
-    onSubmit: (nextValue) => {
-      onSubmit(nextValue.trim())
-      return true
-    },
-  })
-
-  return (
-    <Input
-      ref={inputRef}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={handleKeyDown}
-      onBlur={() => {
-        void submitValue()
-      }}
-      onClick={(e) => e.stopPropagation()}
-      aria-label={translate(locale ?? 'en', 'sidebar.section.name')}
-      className="h-auto min-h-0 flex-1 rounded border-primary bg-background px-1 py-px text-[13px] font-medium text-foreground"
-    />
-  )
-}
-
 function getSectionHeaderBackground(isActive: boolean, sectionLightColor: string) {
   if (!isActive) return undefined
   return { background: sectionLightColor }
@@ -468,30 +171,12 @@ function resolveInlineRenameHandlers({
   isRenaming,
   onRenameCancel,
   onRenameSubmit,
-}: {
-  isRenaming?: boolean
-  onRenameCancel?: () => void
-  onRenameSubmit?: (value: string) => void
-}): {
-  onRenameCancel: () => void
-  onRenameSubmit: (value: string) => void
-} | null {
+}: InlineRenameOptions): InlineRenameHandlers | null {
   if (!isRenaming || !onRenameSubmit || !onRenameCancel) return null
   return { onRenameCancel, onRenameSubmit }
 }
 
-function SectionHeaderLabel(options: {
-  type: string
-  label: string
-  isActive: boolean
-  sectionColor: string
-  isRenaming?: boolean
-  renameInitialValue?: string
-  onRenameSubmit?: (value: string) => void
-  onRenameCancel?: () => void
-  onStartRename?: () => void
-  locale?: AppLocale
-}) {
+function SectionHeaderLabel(options: SectionHeaderLabelProps) {
   const {
     type,
     label,
@@ -543,41 +228,17 @@ function SectionHeaderLabel(options: {
 function SectionHeaderCountPill({
   itemCount,
   isActive,
-  sectionColor,
-}: {
-  itemCount: number
-  isActive: boolean
-  sectionColor: string
-}) {
+}: SectionHeaderCountPillProps) {
   if (itemCount <= 0) return null
   return (
     <SidebarCountPill
       count={itemCount}
-      className={!isActive ? SIDEBAR_COUNT_PILL_IDLE_CLASS : undefined}
-      style={isActive ? { background: sectionColor, color: 'var(--text-inverse)' } : undefined}
+      className={cn(isActive ? SIDEBAR_COUNT_ACTIVE_CLASS : SIDEBAR_COUNT_PILL_IDLE_CLASS, SIDEBAR_COUNT_HOVER_CLASS)}
     />
   )
 }
 
-function SectionHeader(options: {
-  label: string
-  type: string
-  Icon: ComponentType<IconProps>
-  sectionColor: string
-  sectionLightColor: string
-  itemCount: number
-  isActive: boolean
-  onSelect: () => void
-  onContextMenu: (e: React.MouseEvent) => void
-  dragHandleProps?: Record<string, unknown>
-  isRenaming?: boolean
-  renameInitialValue?: string
-  onRenameSubmit?: (value: string) => void
-  onRenameCancel?: () => void
-  onStartRename?: () => void
-  onSelectTypeNote?: () => void
-  locale?: AppLocale
-}) {
+function SectionHeader(options: SectionHeaderProps) {
   const {
     label,
     type,
@@ -601,6 +262,14 @@ function SectionHeader(options: {
   const selectHandler = getSectionSelectHandler(isRenaming, onSelect)
   const contextMenuHandler = getSectionContextMenuHandler(isRenaming, onContextMenu)
   const doubleClickHandler = !isRenaming ? onSelectTypeNote : undefined
+  const rowStyle: SidebarItemStyle = {
+    '--sidebar-active-bg': sectionLightColor,
+    '--sidebar-active-fg': sectionColor,
+    padding: SIDEBAR_ITEM_PADDING.withCount,
+    borderRadius: 4,
+    gap: 4,
+    ...getSectionHeaderBackground(isActive, sectionLightColor),
+  }
 
   useEffect(() => {
     const header = headerRef.current
@@ -625,14 +294,9 @@ function SectionHeader(options: {
       ref={headerRef}
       className={cn(
         'group/section group/sidebar-row flex cursor-pointer select-none items-center justify-between rounded transition-colors',
-        !isActive && 'hover:bg-accent',
+        SIDEBAR_ITEM_HOVER_CLASS,
       )}
-      style={{
-        padding: SIDEBAR_ITEM_PADDING.withCount,
-        borderRadius: 4,
-        gap: 4,
-        ...getSectionHeaderBackground(isActive, sectionLightColor),
-      }}
+      style={rowStyle}
       {...dragHandleProps}
     >
       <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
@@ -650,245 +314,38 @@ function SectionHeader(options: {
           locale={locale}
         />
       </div>
-      {!isRenaming && <SectionHeaderCountPill itemCount={itemCount} isActive={isActive} sectionColor={sectionColor} />}
+      {!isRenaming && <SectionHeaderCountPill itemCount={itemCount} isActive={isActive} />}
     </div>
   )
 }
 
-type VisibilityToggleHandler = (type: string, typeEntryPath?: string) => void
-
-function VisibilityPopoverItem({
-  group,
-  isVisible,
-  onToggle,
-  locale = 'en',
-}: {
-  group: SectionGroup
-  isVisible: boolean
-  onToggle: VisibilityToggleHandler
-  locale?: AppLocale
-}) {
-  const { label, type, Icon, customColor } = group
-  const { sectionColor } = resolveSectionColors(type, customColor)
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-auto w-full justify-start rounded-none px-3 py-1.5"
-      style={{ padding: '6px 12px', gap: 8 }}
-      onClick={() => onToggle(type)}
-      aria-label={translate(locale, 'sidebar.section.toggle', { label })}
-    >
-      <Icon size={14} style={{ color: sectionColor }} />
-      <span className="flex-1 text-left text-[13px] text-foreground">{label}</span>
-      <ToggleSwitch on={isVisible} />
-    </Button>
-  )
-}
-
-function VisibilityMatrixHeader({ workspaces }: { workspaces: WorkspaceIdentity[] }) {
-  return (
-    <div
-      className="grid items-center gap-2 px-3 pb-1"
-      style={{
-        gridTemplateColumns: `minmax(96px, 1fr) repeat(${workspaces.length}, 28px)`,
-      }}
-    >
-      <div />
-      {workspaces.map((workspace) => (
-        <div key={workspace.path} className="flex justify-center">
-          <WorkspaceInitialsBadge workspace={workspace} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function VisibilityMatrixCell({
-  group,
-  typeEntry,
-  workspace,
-  onToggle,
+function InlineRenameInput({
+  initialValue,
+  onSubmit,
+  onCancel,
   locale,
-}: {
-  group: SectionGroup
-  typeEntry: VaultEntry | null
-  workspace: WorkspaceIdentity
-  onToggle: VisibilityToggleHandler
-  locale: AppLocale
-}) {
-  if (!typeEntry) {
-    return <span aria-hidden="true" className="mx-auto h-px w-3 bg-border" />
-  }
+}: InlineRenameInputProps) {
+  const { handleKeyDown, inputRef, setValue, submitValue, value } = useSidebarInlineRenameInput({
+    initialValue,
+    onCancel,
+    onSubmit: (nextValue) => {
+      onSubmit(nextValue.trim())
+      return true
+    },
+  })
 
   return (
-    <Checkbox
-      checked={typeEntry.visible !== false}
-      onCheckedChange={() => onToggle(group.type, typeEntry.path)}
-      aria-label={translate(locale, 'sidebar.section.toggle', {
-        label: `${group.label} ${workspace.shortLabel}`,
-      })}
-      className="mx-auto"
+    <Input
+      ref={inputRef}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => {
+        void submitValue()
+      }}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={translate(locale ?? 'en', 'sidebar.section.name')}
+      className="h-auto min-h-0 flex-1 rounded border-primary bg-background px-1 py-px text-[13px] font-medium text-foreground"
     />
-  )
-}
-
-function VisibilityMatrixRow({
-  entries,
-  group,
-  locale,
-  onToggle,
-  workspaces,
-}: {
-  entries: VaultEntry[]
-  group: SectionGroup
-  locale: AppLocale
-  onToggle: VisibilityToggleHandler
-  workspaces: WorkspaceIdentity[]
-}) {
-  const { label, type, Icon, customColor } = group
-  const { sectionColor } = resolveSectionColors(type, customColor)
-
-  return (
-    <div
-      className="grid items-center gap-2 px-3 py-1.5"
-      style={{
-        gridTemplateColumns: `minmax(96px, 1fr) repeat(${workspaces.length}, 28px)`,
-      }}
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <Icon size={14} style={{ color: sectionColor }} />
-        <span className="min-w-0 truncate text-left text-[13px] text-foreground">{label}</span>
-      </div>
-      {workspaces.map((workspace) => (
-        <VisibilityMatrixCell
-          key={workspace.path}
-          group={group}
-          typeEntry={findTypeDefinitionForWorkspace(entries, type, workspace.path)}
-          workspace={workspace}
-          onToggle={onToggle}
-          locale={locale}
-        />
-      ))}
-    </div>
-  )
-}
-
-function VisibilityMatrixPopover({
-  entries,
-  locale,
-  onToggle,
-  sections,
-  workspaces,
-}: {
-  entries: VaultEntry[]
-  locale: AppLocale
-  onToggle: VisibilityToggleHandler
-  sections: SectionGroup[]
-  workspaces: WorkspaceIdentity[]
-}) {
-  return (
-    <>
-      <VisibilityMatrixHeader workspaces={workspaces} />
-      {sections.map((group) => (
-        <VisibilityMatrixRow
-          key={group.type}
-          entries={entries}
-          group={group}
-          locale={locale}
-          onToggle={onToggle}
-          workspaces={workspaces}
-        />
-      ))}
-    </>
-  )
-}
-
-// --- Visibility Popover ---
-
-export function VisibilityPopover({
-  entries,
-  sections,
-  isSectionVisible,
-  onToggle,
-  workspaceOrder = [],
-  locale = 'en',
-}: {
-  entries: VaultEntry[]
-  sections: SectionGroup[]
-  isSectionVisible: (type: string) => boolean
-  onToggle: VisibilityToggleHandler
-  workspaceOrder?: readonly string[]
-  locale?: AppLocale
-}) {
-  const workspaces = collectTypeVisibilityWorkspaces(entries, workspaceOrder)
-  const showMatrix = workspaces.length > 1
-
-  return (
-    <div
-      className="border border-border bg-popover text-popover-foreground"
-      style={{
-        position: 'absolute',
-        top: '100%',
-        left: 6,
-        right: 6,
-        zIndex: 50,
-        borderRadius: 8,
-        padding: '8px 0',
-        boxShadow: '0 4px 12px var(--shadow-dialog)',
-      }}
-    >
-      <div className="text-[12px] font-semibold text-muted-foreground" style={{ padding: '0 12px 4px' }}>
-        {translate(locale, 'sidebar.section.showInSidebar')}
-      </div>
-      {showMatrix ? (
-        <VisibilityMatrixPopover
-          entries={entries}
-          locale={locale}
-          onToggle={onToggle}
-          sections={sections}
-          workspaces={workspaces}
-        />
-      ) : (
-        sections.map((group) => (
-          <VisibilityPopoverItem
-            key={group.type}
-            group={group}
-            isVisible={isSectionVisible(group.type)}
-            onToggle={onToggle}
-            locale={locale}
-          />
-        ))
-      )}
-    </div>
-  )
-}
-
-function ToggleSwitch({ on }: { on: boolean }) {
-  return (
-    <div
-      className="flex items-center"
-      style={{
-        width: 32,
-        height: 18,
-        borderRadius: 9,
-        padding: 2,
-        backgroundColor: on ? 'var(--primary)' : 'var(--muted)',
-        justifyContent: on ? 'flex-end' : 'flex-start',
-        transition: 'background-color 150ms',
-      }}
-    >
-      <div
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: 7,
-          backgroundColor: 'var(--background)',
-          transition: 'transform 150ms',
-        }}
-      />
-    </div>
   )
 }

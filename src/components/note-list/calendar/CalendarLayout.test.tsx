@@ -8,13 +8,26 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CalendarLayoutBindings } from "../../../collections/layoutRegistry";
+import { AppPreferencesProvider } from "../../../hooks/useAppPreferences";
 import type { AppLocale } from "../../../lib/i18n";
 import { makeEntry } from "../../../test-utils/noteListTestUtils";
 import type { VaultEntry } from "../../../types";
 import { CalendarLayout } from "./CalendarLayout";
 
-const { trackEvent } = vi.hoisted(() => ({ trackEvent: vi.fn() }));
+const { trackEvent, dndMonitor } = vi.hoisted(() => ({
+	trackEvent: vi.fn(),
+	dndMonitor: { current: null as unknown },
+}));
 vi.mock("../../../lib/telemetry", () => ({ trackEvent }));
+vi.mock("@dnd-kit/core", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+	return {
+		...actual,
+		useDndMonitor: (...args: unknown[]) => {
+			dndMonitor.current = args[0];
+		},
+	};
+});
 
 const launch = makeEntry({
 	path: "/v/launch.md",
@@ -64,22 +77,28 @@ function renderCalendar({
 	calendar = bindings(),
 	items = entries,
 	locale = "en" as AppLocale,
+	dateDisplayFormat = "friendly" as const,
 	properties = [] as string[],
 	showProperties = true,
 } = {}) {
 	const onOpen = vi.fn();
 	const view = render(
-		<CalendarLayout
-			entries={items}
-			allEntries={items}
-			properties={properties}
-			showProperties={showProperties}
-			locale={locale}
-			typeEntryMap={{}}
-			selectedNotePath="/v/review.md"
-			onOpen={onOpen}
-			calendar={calendar}
-		/>,
+		<AppPreferencesProvider
+			appLocale={locale}
+			dateDisplayFormat={dateDisplayFormat}
+		>
+			<CalendarLayout
+				entries={items}
+				allEntries={items}
+				properties={properties}
+				showProperties={showProperties}
+				locale={locale}
+				typeEntryMap={{}}
+				selectedNotePath="/v/review.md"
+				onOpen={onOpen}
+				calendar={calendar}
+			/>
+		</AppPreferencesProvider>,
 	);
 	return { ...view, onOpen, calendar };
 }
@@ -92,6 +111,28 @@ function day(key: string): HTMLElement {
 	return cell;
 }
 
+function busyEntries(prefix: string): VaultEntry[] {
+	return Array.from({ length: 6 }, (_, index) =>
+		makeEntry({
+			path: `/v/${prefix}-${index}.md`,
+			title: `${prefix} ${index}`,
+			properties: { due: "2026-11-10" },
+		}),
+	);
+}
+
+function emitDndMonitorEvent(name: "onDragStart" | "onDragEnd") {
+	const callbacks = dndMonitor.current as {
+		onDragStart?: unknown;
+		onDragEnd?: unknown;
+	} | null;
+	const callback =
+		name === "onDragStart" ? callbacks?.onDragStart : callbacks?.onDragEnd;
+	if (typeof callback === "function") {
+		act(() => (callback as (event: unknown) => void)({}));
+	}
+}
+
 describe("CalendarLayout", () => {
 	beforeEach(() => {
 		vi.useFakeTimers({ toFake: ["Date"] });
@@ -101,9 +142,7 @@ describe("CalendarLayout", () => {
 
 	it("opens on the current month with today highlighted and neighbouring days muted", () => {
 		renderCalendar();
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"November 2026",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("Nov 2026");
 		expect(screen.getAllByTestId("calendar-week")).toHaveLength(5);
 		expect(
 			day("2026-11-19").querySelector('[aria-current="date"]'),
@@ -113,16 +152,47 @@ describe("CalendarLayout", () => {
 		expect(day("2026-11-01")).toHaveTextContent("Nov 1");
 	});
 
+	it("keeps calendar items and overflow controls above day drop targets for mouse input", () => {
+		renderCalendar();
+		expect(
+			screen
+				.getAllByTestId("calendar-week")[0]
+				.querySelector(".calendar-week__lanes"),
+		).toHaveStyle({ zIndex: "1" });
+	});
+
 	it("starts weeks on Monday with localized names in Italian", () => {
 		renderCalendar({ locale: "it-IT" });
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"novembre 2026",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("nov 2026");
 		expect(screen.getAllByTestId("calendar-day")[0].dataset.day).toBe(
 			"2026-10-26",
 		);
 		expect(screen.getByRole("button", { name: "Oggi" })).toBeInTheDocument();
 	});
+
+	it.each(["quarter", "year"] as const)(
+		"keeps month/year headings while formatting days in the %s overview integration",
+		(view) => {
+			renderCalendar({
+				calendar: bindings({
+					settings: {
+						dateProperty: "due",
+						endDateProperty: "end",
+						view,
+						showWeekends: true,
+					},
+				}),
+				dateDisplayFormat: "iso",
+			});
+
+			expect(
+				screen.getByRole("region", { name: "Oct 2026" }),
+			).toBeInTheDocument();
+			expect(
+				screen.getByRole("button", { name: "2026-10-01, 0" }),
+			).toBeInTheDocument();
+		},
+	);
 
 	it("places notes with their icon, spans ranges across week rows, and keeps selection subtle", () => {
 		renderCalendar();
@@ -168,6 +238,23 @@ describe("CalendarLayout", () => {
 		).toHaveClass("min-w-0", "whitespace-normal", "break-words");
 	});
 
+	it("renders all selected card properties and removes unchecked properties", () => {
+		const { unmount } = renderCalendar({ properties: ["due", "owner"] });
+		const card = within(screen.getAllByRole("button", { name: "Launch" })[0]);
+		expect(card.getByTestId("property-chips")).toHaveTextContent(
+			"Nov 19, 2026",
+		);
+		expect(card.getByTestId("property-chips")).toHaveTextContent("Ada");
+
+		unmount();
+		renderCalendar({ properties: ["owner"] });
+		const unchecked = within(
+			screen.getAllByRole("button", { name: "Launch" })[0],
+		).getByTestId("property-chips");
+		expect(unchecked).toHaveTextContent("Ada");
+		expect(unchecked).not.toHaveTextContent("November 19, 2026");
+	});
+
 	it("hides card fields when item properties are disabled", () => {
 		renderCalendar({ properties: ["owner"], showProperties: false });
 		expect(
@@ -196,23 +283,15 @@ describe("CalendarLayout", () => {
 	it("moves by month, week and back to today with buttons and keyboard shortcuts", () => {
 		const { calendar } = renderCalendar();
 		fireEvent.click(screen.getByTestId("calendar-next"));
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"December 2026",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("Dec 2026");
 		fireEvent.keyDown(window, { key: "ArrowRight" });
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"January 2027",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("Jan 2027");
 		fireEvent.keyDown(window, { key: "ArrowLeft" });
 		fireEvent.click(screen.getByTestId("calendar-previous"));
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"November 2026",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("Nov 2026");
 		fireEvent.click(screen.getByTestId("calendar-next"));
 		fireEvent.keyDown(window, { key: "t" });
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"November 2026",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("Nov 2026");
 		fireEvent.keyDown(window, { key: "w" });
 		expect(calendar.onSettingsChange).toHaveBeenCalledWith({ view: "week" });
 		expect(trackEvent).toHaveBeenCalledWith("calendar_view_changed", {
@@ -234,9 +313,7 @@ describe("CalendarLayout", () => {
 		document.body.appendChild(input);
 		fireEvent.keyDown(input, { key: "ArrowRight" });
 		fireEvent.keyDown(window, { key: "ArrowRight", metaKey: true });
-		expect(screen.getByTestId("calendar-title")).toHaveTextContent(
-			"November 2026",
-		);
+		expect(screen.getByTestId("calendar-title")).toHaveTextContent("Nov 2026");
 		input.remove();
 	});
 
@@ -287,13 +364,7 @@ describe("CalendarLayout", () => {
 	});
 
 	it('collapses a busy day into "+N more" and lists every note in its popover', async () => {
-		const busy = Array.from({ length: 6 }, (_, index) =>
-			makeEntry({
-				path: `/v/busy-${index}.md`,
-				title: `Busy ${index}`,
-				properties: { due: "2026-11-10" },
-			}),
-		);
+		const busy = busyEntries("Busy");
 		const { onOpen } = renderCalendar({ items: busy });
 		const more = screen.getByTestId("calendar-more");
 		expect(more).toHaveTextContent("+3 more");
@@ -302,6 +373,10 @@ describe("CalendarLayout", () => {
 		const popover = await screen.findByTestId("calendar-more-popover");
 		const popoverItems = within(popover).getAllByTestId("calendar-item");
 		expect(popoverItems).toHaveLength(6);
+		expect(popoverItems[0]).toHaveAttribute("tabindex", "0");
+		expect(
+			popover.querySelector(".calendar-more-popover__header"),
+		).toBeInTheDocument();
 		for (const item of popoverItems) {
 			expect(item).toHaveClass("h-auto", "shrink-0");
 			expect(item.parentElement).toBe(
@@ -317,13 +392,30 @@ describe("CalendarLayout", () => {
 		);
 	});
 
+	it("keeps overflow items mounted during a drag, then closes the popover", async () => {
+		const busy = busyEntries("Drag");
+		renderCalendar({ items: busy });
+		fireEvent.click(screen.getByTestId("calendar-more"));
+		await screen.findByTestId("calendar-more-popover");
+		emitDndMonitorEvent("onDragStart");
+		await waitFor(() =>
+			expect(screen.getByTestId("calendar-more-popover")).toBeInTheDocument(),
+		);
+		emitDndMonitorEvent("onDragEnd");
+		await waitFor(() =>
+			expect(
+				screen.queryByTestId("calendar-more-popover"),
+			).not.toBeInTheDocument(),
+		);
+	});
+
 	it('creates a note on a day from its "+" button', () => {
 		const { calendar } = renderCalendar();
 		fireEvent.click(within(day("2026-11-25")).getByTestId("calendar-day-add"));
 		expect(calendar.onCreate).toHaveBeenCalledWith("2026-11-25");
 		expect(
 			within(day("2026-11-25")).getByTestId("calendar-day-add"),
-		).toHaveAccessibleName("New note on Wednesday, November 25, 2026");
+		).toHaveAccessibleName("New note on Wednesday, Nov 25, 2026");
 	});
 
 	it("keeps read-only sources from creating or dragging", () => {

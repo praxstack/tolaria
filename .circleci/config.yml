@@ -120,8 +120,7 @@ commands:
           name: Install Tauri Linux dependencies and Rust toolchain
           command: |
             set -euo pipefail
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends \
+            bash scripts/ci-apt-install.sh --no-install-recommends \
               build-essential \
               file \
               libayatana-appindicator3-dev \
@@ -410,7 +409,8 @@ jobs:
 
   # Validation runs as independent jobs so the slowest one, not their sum, sets the wall clock.
   # Job inputs, for skip_unless_changed: frontend jobs ignore Rust sources and docs/; Rust jobs
-  # need src-tauri/, the shared JSON contracts it embeds (src/shared/, mcp-server/), or CI config.
+  # need src-tauri/, the shared JSON contracts it embeds (src/shared/, mcp-server/), CI config or
+  # the CI apt install helper.
   static-gates:
     executor: node
     steps:
@@ -426,37 +426,11 @@ jobs:
           name: CodeScene project health gate
           command: |
             set -euo pipefail
-            if [[ -z "${CODESCENE_PAT:-}" || -z "${CODESCENE_PROJECT_ID:-}" ]]; then
-              echo "CODESCENE_PAT and CODESCENE_PROJECT_ID are required." >&2
-              exit 1
-            fi
-            hotspot_threshold="$(awk -F= '/^HOTSPOT_THRESHOLD=/{print $2}' .codescene-thresholds)"
-            average_threshold="$(awk -F= '/^AVERAGE_THRESHOLD=/{print $2}' .codescene-thresholds)"
-            response="$(curl -fsS \
-              -H "Authorization: Bearer ${CODESCENE_PAT}" \
-              -H "Accept: application/json" \
-              "https://api.codescene.io/v2/projects/${CODESCENE_PROJECT_ID}")"
-            HOTSPOT_SCORE="$(jq -r '.analysis.hotspot_code_health.now' \<<<"$response")" \
-            AVERAGE_SCORE="$(jq -r '.analysis.code_health.now' \<<<"$response")" \
-            HOTSPOT_THRESHOLD="$hotspot_threshold" \
-            AVERAGE_THRESHOLD="$average_threshold" \
-              node -e '
-                const read = (name) => {
-                  const value = Number.parseFloat(process.env[name] ?? "");
-                  if (!Number.isFinite(value)) throw new Error(`${name} is not numeric`);
-                  return value;
-                };
-                const hotspot = read("HOTSPOT_SCORE");
-                const average = read("AVERAGE_SCORE");
-                const hotspotThreshold = read("HOTSPOT_THRESHOLD");
-                const averageThreshold = read("AVERAGE_THRESHOLD");
-                console.log(`Hotspot Code Health: ${hotspot.toFixed(2)} (threshold ${hotspotThreshold.toFixed(2)})`);
-                console.log(`Average Code Health: ${average.toFixed(2)} (threshold ${averageThreshold.toFixed(2)})`);
-                if (hotspot < hotspotThreshold || average < averageThreshold) {
-                  console.error("CodeScene project health gate failed");
-                  process.exit(1);
-                }
-              '
+            bash scripts/check-codescene-project-health.test.sh
+            bash scripts/check-codescene-project-health.sh
+      - run:
+          name: CI apt install helper test
+          command: bash scripts/ci-apt-install.test.sh
       - run:
           name: Documentation build check
           command: |
@@ -551,7 +525,7 @@ jobs:
       - checkout
       - skip_unless_changed:
           scope: rust-coverage
-          paths: "^(src-tauri/|src/shared/|mcp-server/|\\.circleci/|rust-toolchain)"
+          paths: "^(src-tauri/|src/shared/|mcp-server/|\\.circleci/|rust-toolchain|scripts/ci-apt-install\\.sh)"
       - install_rust_ci_toolchain
       - install_node_runtime
       - restore_cache:
@@ -603,7 +577,7 @@ jobs:
       - checkout
       - skip_unless_changed:
           scope: rust-lint
-          paths: "^(src-tauri/|src/shared/|mcp-server/|\\.circleci/|rust-toolchain)"
+          paths: "^(src-tauri/|src/shared/|mcp-server/|\\.circleci/|rust-toolchain|scripts/ci-apt-install\\.sh)"
       - install_rust_ci_toolchain
       - restore_cache:
           keys:
@@ -938,10 +912,7 @@ jobs:
       - run:
           name: Install Linux build dependencies
           command: |
-            # Keep needrestart from opening an interactive prompt on machine images.
-            export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a
-            sudo -E apt-get update
-            sudo -E apt-get install -y \
+            bash scripts/ci-apt-install.sh \
               build-essential \
               libayatana-appindicator3-dev \
               librsvg2-dev \

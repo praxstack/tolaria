@@ -67,7 +67,11 @@ function stubGeometry({ lanes, card }: RowGeometry) {
 	);
 }
 
-function renderDay(count: number, properties: string[] = ["source"]) {
+function renderDay(
+	count: number,
+	properties: string[] = ["source"],
+	view: "month" | "week" = "month",
+) {
 	const entries = notesOnDay(count);
 	render(
 		<CalendarLayout
@@ -77,7 +81,7 @@ function renderDay(count: number, properties: string[] = ["source"]) {
 			locale="en"
 			typeEntryMap={{}}
 			onOpen={vi.fn()}
-			calendar={calendar}
+			calendar={{ ...calendar, settings: { ...calendar.settings, view } }}
 		/>,
 	);
 }
@@ -94,6 +98,17 @@ describe("calendar day cells fit cards at their natural height (TOL-393)", () =>
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.restoreAllMocks();
+	});
+
+	it("shows every weekly card and grows the day columns to contain the full stack", () => {
+		vi.setSystemTime(new Date(2026, 10, 4, 12));
+		stubGeometry({ lanes: 90, card: 58 });
+		renderDay(8, ["date", "source"], "week");
+		expect(shownCards()).toHaveLength(8);
+		expect(screen.queryByTestId("calendar-more")).not.toBeInTheDocument();
+		expect(
+			Number.parseFloat(screen.getByTestId("calendar-week").style.minHeight),
+		).toBeGreaterThan(8 * 58);
 	});
 
 	it('shows both cards of a two-note day instead of only "+2 more"', () => {
@@ -174,5 +189,25 @@ describe("calendar day cells fit cards at their natural height (TOL-393)", () =>
 		expect(shownCards()).toHaveLength(1);
 		expect(screen.getByTestId("calendar-more")).toHaveTextContent("+5 more");
 		vi.unstubAllGlobals();
+	});
+
+	it("keeps every month week row at least 150px with many notes on one day", () => {
+		stubGeometry({ lanes: 20, card: 58 });
+		renderDay(15, ["date", "source"]);
+
+		const rows = screen.getAllByTestId("calendar-week");
+		expect(rows.length).toBeGreaterThanOrEqual(4);
+		expect(
+			getComputedStyle(screen.getByTestId("calendar-weeks")).gridAutoRows,
+		).toBe("max-content");
+		for (const row of rows) {
+			expect(Number.parseFloat(row.style.minHeight)).toBeGreaterThanOrEqual(
+				150,
+			);
+		}
+		const days = screen
+			.getAllByTestId("calendar-day")
+			.map((cell) => cell.dataset.day);
+		expect(new Set(days).size).toBe(days.length);
 	});
 });
