@@ -33,19 +33,23 @@ import {
 } from "../../protocol/src/index.ts";
 import { BROWSER_PRESENCE_PACING } from "./awarenessPacing.ts";
 import { CollabProvider, type SocketLike } from "./collabProvider.ts";
-import { type RemoteAttachments, remoteAttachments } from "./remoteAttachments.ts";
-import {
-	createFolder,
-	deleteFolder,
-	listFolders,
-	renameFolder,
-} from "./remoteFolders.ts";
 import {
 	DEFAULT_CACHE_KEY,
 	entriesCacheKey,
 	writeCache,
 } from "./entriesCache.ts";
 import { takeCache } from "./entriesCachePrefetch.ts";
+import {
+	type RemoteAttachments,
+	remoteAttachments,
+} from "./remoteAttachments.ts";
+import {
+	createFolder,
+	deleteFolder,
+	listFolders,
+	renameFolder,
+} from "./remoteFolders.ts";
+import { type RemoteNoteHistory, remoteHistory } from "./remoteHistory.ts";
 import {
 	assertVaultPath,
 	encoded,
@@ -63,6 +67,7 @@ import {
 	trackCreate,
 	whenCreated,
 } from "./remoteNoteLifecycle.ts";
+import { listRemoteViews } from "./remoteViews.ts";
 
 export { RemoteError };
 
@@ -138,20 +143,18 @@ function appEntryDefaults(): AppEntryDefaults {
 	};
 }
 
-/** The fields that are set: an index entry omits what a note does not have. */
-function definedFields<T extends object>(value: T): Partial<T> {
-	return Object.fromEntries(
-		Object.entries(value).filter(([, field]) => field !== undefined),
-	) as Partial<T>;
-}
-
 /** The desktop's vault scan leaves dot files out (`is_visible_vault_file`), a folder's `.keep` among them. */
 function visibleEntries(entries: AppVaultEntry[]): AppVaultEntry[] {
 	return entries.filter((entry) => !entry.filename.startsWith("."));
 }
 
 function mapProtocolEntryToApp(entry: ProtocolVaultEntry): AppVaultEntry {
-	return { ...appEntryDefaults(), ...definedFields(entry) } as AppVaultEntry;
+	const mapped = appEntryDefaults() as AppVaultEntry;
+	for (const key of Object.keys(entry)) {
+		const value = entry[key as keyof ProtocolVaultEntry];
+		if (value !== undefined) Reflect.set(mapped, key, value);
+	}
+	return mapped;
 }
 
 /** Empty lists, maps and nulls are left out of the cached index, as the server does. */
@@ -201,7 +204,9 @@ let revalidating = false;
 // Startup lists the vault more than once at the same time: they share one cache read.
 let pendingCacheList: Promise<AppVaultEntry[] | null> | null = null;
 
-async function listFromCache(request: Request): Promise<AppVaultEntry[] | null> {
+async function listFromCache(
+	request: Request,
+): Promise<AppVaultEntry[] | null> {
 	const cached = await takeCache(cacheKey);
 	if (!cached) return null;
 	cachedEntries = new Map(
@@ -300,6 +305,9 @@ async function revalidateInBackground(
 			mapAppEntryToProtocol,
 		);
 		await writeCache(delta.head, protocolEntries, cacheKey);
+		if (typeof window !== "undefined") {
+			window.dispatchEvent(new Event("tolaria:vault-entries-stale"));
+		}
 	} catch {
 		// Revalidation failures are silent; the cached data remains valid
 	} finally {
@@ -447,7 +455,8 @@ function fileOps(request: Request): VaultFileOps {
 function chromeOps(request: Request): VaultChromeOps {
 	return {
 		listFolders: () => listFolders(request),
-		listViews: unsupported("listing views"),
+		listViews: () =>
+			listRemoteViews(request, (path) => readFile(request, path)),
 	};
 }
 
@@ -536,6 +545,11 @@ export function createRemoteAttachments(
 	options: RemoteOptions & { now?: () => number },
 ): RemoteAttachments {
 	return remoteAttachments(requester(options), options.now);
+}
+
+/** A note's checkpoints with the server's credentials, for the web history drawer (TOL-421). */
+export function createRemoteHistory(options: RemoteOptions): RemoteNoteHistory {
+	return remoteHistory(requester(options));
 }
 
 export function createRemoteVaultBackend(

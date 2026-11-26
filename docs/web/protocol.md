@@ -1,8 +1,8 @@
-# Tolaria remote protocol, version 1.9
+# Tolaria remote protocol, version 1.11
 
 The HTTP protocol between a Tolaria client and a server that hosts one vault as a git repository. It is written so that anyone can implement a compatible server (self-hosting) or client. The reference implementation is `apps/server`; the wire types are in `packages/protocol/src/index.ts` and are the source of truth when this document and the code disagree.
 
-Status: spikes S3 (TOL-5) and S4 (TOL-8). The file API and the collaboration channel below are implemented and tested. Version 1.1 added the collaboration channel; it changed nothing in the file API of 1.0. Version 1.2 added the change feed (`GET /v1/changes`); it changed nothing in 1.1's file or collaboration API. Version 1.3 added remote image import (`POST /v1/attachments/imports`) and the `remote_unavailable` error code; it changed nothing else. Version 1.4 added the wikilink rewrite of `POST /v1/rename` (`rewriteLinks`, `title`, `oldTitle`); a rename without them works as in 1.0. Version 1.5 changed which side of a collaboration fork becomes the conflict copy: the live document keeps its edits and `meta.conflictCopy` names the copy of the incoming file (see "What the server does with a document"); nothing else changed. Version 1.6 added rate limits and websocket limits: the `rate_limited` error code with `Retry-After`, the `429` refusal of a websocket upgrade, and the `4408` close code of an idle connection (see "Limits"); a client within the limits sees no change. Version 1.7 added folder renames (`POST /v1/folders/rename`, capability `folders.rename`); nothing else changed. Version 1.8 added creating and deleting folders (`POST /v1/folders`, capability `folders.create`; `POST /v1/folders/delete`, capability `folders.delete`); nothing else changed. Version 1.9 added access tickets (capability `access.tickets`, see "Access tickets"): a front end that holds the token gives other users a role on the vault or on single notes, the `forbidden` error code, `POST /v1/access/revocations`, the `4403` close code, and `access` in `GET /v1/vault`; a client with the token sees no change. Version 1.10 added the optional `author` of an access ticket (capability `access.authors`): the commits a subject's changes cause name it in a `Co-authored-by` trailer; a ticket without it, and the token, see no change.
+Status: spikes S3 (TOL-5) and S4 (TOL-8). The file API and the collaboration channel below are implemented and tested. Version 1.1 added the collaboration channel; it changed nothing in the file API of 1.0. Version 1.2 added the change feed (`GET /v1/changes`); it changed nothing in 1.1's file or collaboration API. Version 1.3 added remote image import (`POST /v1/attachments/imports`) and the `remote_unavailable` error code; it changed nothing else. Version 1.4 added the wikilink rewrite of `POST /v1/rename` (`rewriteLinks`, `title`, `oldTitle`); a rename without them works as in 1.0. Version 1.5 changed which side of a collaboration fork becomes the conflict copy: the live document keeps its edits and `meta.conflictCopy` names the copy of the incoming file (see "What the server does with a document"); nothing else changed. Version 1.6 added rate limits and websocket limits: the `rate_limited` error code with `Retry-After`, the `429` refusal of a websocket upgrade, and the `4408` close code of an idle connection (see "Limits"); a client within the limits sees no change. Version 1.7 added folder renames (`POST /v1/folders/rename`, capability `folders.rename`); nothing else changed. Version 1.8 added creating and deleting folders (`POST /v1/folders`, capability `folders.create`; `POST /v1/folders/delete`, capability `folders.delete`); nothing else changed. Version 1.9 added access tickets (capability `access.tickets`, see "Access tickets"): a front end that holds the token gives other users a role on the vault or on single notes, the `forbidden` error code, `POST /v1/access/revocations`, the `4403` close code, and `access` in `GET /v1/vault`; a client with the token sees no change. Version 1.10 added the optional `author` of an access ticket (capability `access.authors`): the commits a subject's changes cause name it in a `Co-authored-by` trailer; a ticket without it, and the token, see no change. Version 1.11 added note history (capabilities `history.read` and `history.restore`, `GET /v1/history/<path>` and `POST /v1/restore`); nothing else changed.
 
 ## Design rules
 
@@ -43,6 +43,8 @@ Capabilities:
 | `collab.tickets` | `POST /v1/collab/tickets` issues websocket tickets (since 1.1). |
 | `access.tickets` | Access tickets are accepted as the bearer credential and `POST /v1/access/revocations` is served (since 1.9). |
 | `access.authors` | The `author` of an access ticket is named in the commits its subject's changes cause (since 1.10). |
+| `history.read` | `GET /v1/history/<path>` lists a note's checkpoints and serves one checkpoint's content (since 1.11). |
+| `history.restore` | `POST /v1/restore` puts a checkpoint's content back into its note as a new checkpoint (since 1.11). |
 
 ## Authentication and transport
 
@@ -212,7 +214,7 @@ The body is the complete new content of the file, as raw bytes. Exactly one prec
 | `If-Match: *` | "Overwrite whatever is there." Explicit last-write-wins. |
 | none | `428 precondition_required`. A missing header is more often a bug than a decision. |
 
-The server pulls from the git remote, decides, commits once, and pushes. The response is always a write result:
+The server decides, commits once (flushed to disk), and answers; the commit reaches the git remote in the background, a few seconds later (ADR 0309). A server started with no push debounce instead pulls before and pushes before it answers, as in ADR 0186. The response is always a write result:
 
 ```json
 { "outcome": "updated", "path": "welcome.md", "etag": "872e91ac…", "commit": "ddd19dd2…", "pushed": true, "docId": "bc1a7bc2-…" }
@@ -241,9 +243,9 @@ On `conflict`, `path` and `etag` describe the conflict copy and `current` descri
 ```
 
 - The copy is named `<name> (conflict <YYYY-MM-DD HHMM>)<ext>` in UTC, next to the original, with a counter appended (`… 1611 2`, `… 1611 3`) when the name is taken. It is an ordinary file with its own `docId`.
-- `pushed: false` means the commit is safe on the server but has not reached the git remote (the remote is unreachable, or pushing kept losing a race). The server pushes it with the next write or `POST /v1/sync`.
-- `Server-Timing: pull;dur=…, commit;dur=…, push;dur=…` reports the three phases in milliseconds.
-- If another device pushes the same file between the server's fetch and its push, the server keeps the pushed version and returns `conflict` with a conflict copy, exactly as above.
+- `pushed: false` means the commit is safe on the server but has not reached the git remote yet. That is the normal answer when pushes run in the background; the change feed's `push-success` says when it has. A push that fails (the remote is slow, unreachable or kept winning a race) is retried on its own, with a growing delay, until it lands.
+- `Server-Timing: pull;dur=…, commit;dur=…, push;dur=…` reports the three phases in milliseconds; with background pushes, `pull` and `push` are about zero.
+- If another device pushes the same file before the server's commit reaches the remote, the write keeps the path it was answered with, and the pushed version is saved next to it as a conflict copy when the server integrates the remote (ADR 0310). A live document of the note names that copy in `meta.conflictCopy`; the change feed's `pull` event and a fresh listing show it too.
 
 ### `DELETE /v1/files/<path>`
 
@@ -394,13 +396,49 @@ The URL comes from a client, so the server refuses anything that is not a public
 
 Attachments are read and written through the file routes with the bearer token like every other file. The web client shows them through object URLs, because an `<img>` cannot send the token.
 
+### `GET /v1/history/<path>` (since 1.11)
+
+The checkpoints of a note, newest first, at most 100. A checkpoint is a saved version of the note; on a git-backed server it is a commit that changed the note's file. Only notes (`.md`) have a history (`400 invalid_request` otherwise). The caller needs read access to the note.
+
+```json
+{
+  "path": "projects/alpha.md",
+  "checkpoints": [
+    { "id": "4f1c…", "time": "2026-11-25T20:42:19+00:00", "author": "Ana", "message": "Update projects/alpha.md" }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | Opaque. Clients never parse it; they send it back to read or restore the checkpoint. A git-backed server uses the full commit id; another store may use anything else. |
+| `time` | ISO 8601 time the checkpoint was made. |
+| `author` | Who made it: the first co-author the change names (see "Attribution in git"), else the committer's name. |
+| `message` | What the store says the change was. |
+
+`GET /v1/history/<path>?checkpoint=<id>` answers the note's bytes at that checkpoint (`200`, `text/markdown`), `404 not_found` where the note did not exist then, and `400 invalid_request` for an id that is not one of this server's checkpoint ids.
+
+### `POST /v1/restore` (since 1.11)
+
+Puts a checkpoint's content back into its note. Nothing is reset: the restore is a new checkpoint on top of the history, so every later checkpoint stays listed and readable, and a note deleted since comes back. It overwrites whatever the note holds (like `If-Match: *`), which the history keeps. The caller needs write access to the note (`403 forbidden` for a viewer).
+
+```json
+{ "path": "projects/alpha.md", "checkpoint": "4f1c…" }
+```
+
+The answer is the `WriteResult` of the note: `200` with `outcome: "updated"`, `201` with `"created"` for a note that had been deleted, and `200` with `"unchanged"` (no new checkpoint) when the note already had that content. An open collaborative document of the note takes the restored content the way it takes any commit (see "What the server does with a document").
+
 ## How the server keeps git consistent
 
-Every mutation runs alone, in this order: fetch and integrate the remote, change files, commit, push.
+Every mutation runs alone: change files, commit (flushed to disk), answer. The remote is kept in step separately, one operation at a time, and never while a mutation waits (ADR 0309):
 
-- **Remote ahead, nothing local pending:** fast-forward.
-- **Local commits pending and the remote moved** (the server was offline, or lost a push race): the remote's history wins. The server resets to it and re-applies its pending changes file by file in one commit. A pending change to a file the remote also changed becomes a conflict copy; a pending deletion of such a file is dropped.
-- **Push rejected:** integrate and retry, up to three times, then answer `pushed: false`.
+- **Push:** about 2 s after the last commit, and at most 5 s after the first commit still waiting, so a commit reaches the remote within a few seconds even while saves keep coming. A failed push is retried on its own, with a growing delay up to 30 s, until it lands; meanwhile writes go on and answer `pushed: false`.
+- **Fetch:** every 30 s (`TOLARIA_VAULT_FETCH_INTERVAL_MS`), on `POST /v1/sync`, and when a push is rejected. What it brings is integrated between two mutations:
+  - **Remote ahead, nothing local pending:** fast-forward.
+  - **Local commits pending and the remote moved** (another device pushed first, or the server was offline): the remote's history wins. The server resets to it and re-applies its pending changes file by file in one commit. For a file the remote also changed, the server's version keeps the path and the remote's version becomes a conflict copy, because the server has already answered that save (ADR 0310); with inline pushes (`pushDebounceMs: 0`) the remote's version keeps the path and the pending change becomes the copy. A pending deletion of such a file is dropped.
+- **Push rejected:** integrate and retry, up to three times, then retry later as above.
+
+A server started with no push debounce runs the older, inline order instead: fetch and integrate, change files, commit, push, then answer.
 
 The server never force-pushes and never rewrites commits that reached the remote.
 
